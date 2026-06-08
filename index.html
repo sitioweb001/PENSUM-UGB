@@ -616,6 +616,10 @@ header {
       <label>Fecha</label>
       <input type="date" id="eventDate" class="activity-input" style="width:100%; height:36px;">
     </div>
+    <div class="modal-field">
+      <label>Comentario (opcional)</label>
+      <input type="text" id="eventComment" class="activity-input" style="width:100%; height:36px;" placeholder="Ej. Estudiar tema 4...">
+    </div>
     <div class="modal-btns">
       <button class="modal-btn secondary" onclick="document.getElementById('addEventModal').classList.remove('open')">Cancelar</button>
       <button class="modal-btn primary" onclick="saveEvent()">Guardar</button>
@@ -813,8 +817,20 @@ function getSubjectData(num) {
   return sd.notas[num];
 }
 
+let autoSyncTimer = null;
+function triggerAutoSync() {
+  if (!config.appsScriptUrl || !currentStudent) return;
+  clearTimeout(autoSyncTimer);
+  const st = document.getElementById('syncStatus');
+  if (st) st.textContent = '⏳ Guardando cambios...';
+  autoSyncTimer = setTimeout(() => {
+    syncToSheets(true);
+  }, 2000);
+}
+
 function saveLocal() {
   localStorage.setItem('ugb_pensum_appdata', JSON.stringify(appData));
+  triggerAutoSync();
 }
 
 // ========== CALENDARIO ==========
@@ -845,6 +861,7 @@ function addEvent(type) {
   
   document.getElementById('eventSubject').innerHTML = '<option value="">-- Primero elige ciclo --</option>';
   document.getElementById('eventDate').value = '';
+  document.getElementById('eventComment').value = '';
   document.getElementById('addEventModal').classList.add('open');
 }
 
@@ -867,6 +884,7 @@ function updateEventSubjects() {
 function saveEvent() {
   const subNum = document.getElementById('eventSubject').value;
   const date = document.getElementById('eventDate').value;
+  const comment = document.getElementById('eventComment').value.trim();
   if (!date) return showToast('Selecciona una fecha', 'error');
   
   if (!appData[currentStudent].events) appData[currentStudent].events = [];
@@ -874,7 +892,8 @@ function saveEvent() {
     id: Date.now(),
     type: currentEventType,
     subject: subNum,
-    date: date
+    date: date,
+    comment: comment
   });
   
   saveLocal();
@@ -903,6 +922,8 @@ function renderEvents() {
     let sname = '';
     CYCLES.forEach(c => c.subjects.forEach(s => { if(s.num === ev.subject) sname = s.name; }));
     
+    const commentHtml = ev.comment ? `<div style="font-size:11px; color:#6b7280; font-style:italic; margin-top:3px;">"${ev.comment}"</div>` : '';
+    
     html += `
       <div style="background:#f3f4f6; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
         <div style="flex:1;">
@@ -911,6 +932,7 @@ function renderEvents() {
             <span style="color:var(--fail); font-weight:700; font-size:12px;">📅 ${ev.date}</span>
           </div>
           <div style="font-size:11px; color:#4b5563; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${sname}</div>
+          ${commentHtml}
         </div>
         <button onclick="deleteEvent(${ev.id})" style="background:transparent; border:none; color:var(--fail); cursor:pointer; font-size:16px; margin-left:10px;" title="Eliminar">🗑</button>
       </div>
@@ -1550,13 +1572,18 @@ function exportPDF() {
 }
 
 // ========== SINCRONIZACIÓN CON GOOGLE SHEETS ==========
-async function syncToSheets() {
+async function syncToSheets(isAuto = false) {
   if (!config.appsScriptUrl) {
-    openConfig();
-    showToast('Configura la URL de Apps Script primero', 'error');
+    if (!isAuto) {
+      openConfig();
+      showToast('Configura la URL de Apps Script primero', 'error');
+    }
     return;
   }
-  showToast('⏳ Sincronizando (Subiendo)…', 'success');
+  
+  if (!isAuto) showToast('⏳ Sincronizando (Subiendo)...', 'success');
+  else document.getElementById('syncStatus').textContent = '⏳ Subiendo a la nube...';
+  
   const payload = {
     student: currentStudent || 'Estudiante',
     timestamp: new Date().toISOString(),
@@ -1584,9 +1611,13 @@ async function syncToSheets() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),
     });
-    document.getElementById('syncStatus').textContent = '✓ Guardado en nube';
-    showToast('✓ Datos subidos a Google Sheets', 'success');
-  } catch(e) { showToast('✗ Error al subir', 'error'); }
+    const time = new Date().toLocaleTimeString();
+    document.getElementById('syncStatus').textContent = '✓ Nube: ' + time;
+    if (!isAuto) showToast('✓ Datos subidos a Google Sheets', 'success');
+  } catch(e) {
+    document.getElementById('syncStatus').textContent = '✗ Error Nube';
+    if (!isAuto) showToast('✗ Error al subir', 'error');
+  }
 }
 
 async function fetchFromSheets() {

@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>UGB - Gestor de Notas | Ingeniería en Sistemas y Redes</title>
-    <!-- Librerías externas -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <title>UGB - Gestor Académico | Ingeniería en Sistemas y Redes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -15,7 +14,6 @@
             box-sizing: border-box;
         }
 
-        /* ========== TEMAS ========== */
         :root {
             --bg-body: #f4f7fc;
             --bg-surface: #ffffff;
@@ -41,8 +39,6 @@
             --text-secondary: #94a3b8;
             --border-light: #334155;
             --blue-ugb-light: #1e293b;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
         }
 
         body {
@@ -53,7 +49,62 @@
             line-height: 1.5;
         }
 
-        /* Header moderno */
+        /* Login */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--blue-ugb), #1e3a6f);
+        }
+        .login-card {
+            background: var(--bg-surface);
+            border-radius: 2rem;
+            padding: 2rem;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+        }
+        .login-card h2 {
+            color: var(--blue-ugb);
+            margin-bottom: 0.5rem;
+        }
+        .login-card select, .login-card input {
+            width: 100%;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border: 1px solid var(--border-light);
+            border-radius: 2rem;
+            background: var(--bg-body);
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border: none;
+            cursor: pointer;
+            background: var(--blue-ugb);
+            color: white;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+        }
+
+        /* Header y barra de progreso */
         .header {
             background: var(--bg-surface);
             border-bottom: 1px solid var(--border-light);
@@ -63,13 +114,11 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 1rem;
-            backdrop-filter: blur(8px);
             position: sticky;
             top: 0;
             z-index: 100;
             box-shadow: var(--shadow-sm);
         }
-
         .logo-area {
             display: flex;
             align-items: center;
@@ -88,45 +137,15 @@
             -webkit-background-clip: text;
             color: transparent;
         }
-
         .header-actions {
             display: flex;
             gap: 0.75rem;
             align-items: center;
             flex-wrap: wrap;
         }
-
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            font-weight: 600;
-            font-size: 0.875rem;
-            border: none;
-            cursor: pointer;
-            background: var(--blue-ugb-light);
-            color: var(--blue-ugb);
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .btn-primary {
-            background: var(--blue-ugb);
-            color: white;
-        }
-        .btn-primary:hover {
-            background: var(--blue-ugb-dark);
-            transform: translateY(-2px);
-        }
-        .btn-outline {
-            border: 1px solid var(--border-light);
-            background: transparent;
-        }
         .sync-btn {
             background: var(--blue-ugb);
             color: white;
-            position: relative;
-            overflow: hidden;
         }
         .sync-btn.blink {
             animation: pulse 0.8s infinite;
@@ -148,10 +167,9 @@
             border-radius: 50%;
             margin-right: 6px;
         }
-        .status-red { background: var(--danger); box-shadow: 0 0 2px red;}
-        .status-green { background: var(--success);}
+        .status-red { background: var(--danger); box-shadow: 0 0 2px red; }
+        .status-green { background: var(--success); }
 
-        /* Barra progreso */
         .progress-stats {
             background: var(--bg-surface);
             border-bottom: 1px solid var(--border-light);
@@ -169,7 +187,7 @@
         }
         .progress-bar-container {
             flex: 1;
-            height: 6px;
+            height: 8px;
             background: var(--border-light);
             border-radius: 10px;
             max-width: 200px;
@@ -182,7 +200,7 @@
             transition: width 0.3s;
         }
 
-        /* Contenedor principal con zoom */
+        /* Zoom y contenedor principal */
         .app-main {
             padding: 1.5rem 2rem;
             transition: transform 0.1s ease;
@@ -199,8 +217,14 @@
             width: fit-content;
             border: 1px solid var(--border-light);
         }
+        .view {
+            display: none;
+        }
+        .view.active {
+            display: block;
+        }
 
-        /* Vista de ciclos (tarjetas) */
+        /* Tarjetas de ciclos */
         .cycles-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -255,39 +279,64 @@
         .grade-pass { color: var(--success); }
         .grade-fail { color: var(--danger); }
         .grade-pending { color: var(--warning); }
+        .grade-inprogress { color: var(--blue-ugb); }
 
-        /* Detalle de ciclo (edición) */
-        .detail-view {
-            background: var(--bg-surface);
-            border-radius: 1.5rem;
-            padding: 1.5rem;
-            margin-top: 1rem;
+        /* Vista detalle */
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
         .subject-detail-card {
+            background: var(--bg-surface);
             border: 1px solid var(--border-light);
             border-radius: 1rem;
             margin-bottom: 1rem;
-            background: var(--bg-surface);
+            overflow: hidden;
         }
         .subject-summary {
             padding: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
             cursor: pointer;
+            transition: background 0.2s;
+        }
+        .subject-summary:hover {
+            background: var(--blue-ugb-light);
+        }
+        .subject-summary .left {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .subject-code {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .subject-name {
+            font-weight: 600;
+        }
+        .final-grade {
+            font-size: 1.2rem;
+            font-weight: 700;
         }
         .computos-panel {
+            display: none;
             padding: 1rem;
             border-top: 1px solid var(--border-light);
-            display: none;
+            background: var(--bg-body);
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 1rem;
         }
         .computo-item {
-            background: var(--bg-body);
+            background: var(--bg-surface);
             padding: 0.75rem;
             border-radius: 1rem;
+            border: 1px solid var(--border-light);
         }
         .input-grade {
             width: 70px;
@@ -297,6 +346,12 @@
             background: var(--bg-surface);
             color: var(--text-primary);
             text-align: center;
+        }
+        .save-subject-btn, .clear-subject-btn {
+            margin-top: 0.5rem;
+        }
+        .clear-subject-btn {
+            background: var(--danger);
         }
 
         /* Botones flotantes inferiores */
@@ -327,7 +382,7 @@
             transform: scale(1.1);
         }
 
-        /* Modal importar / pegar */
+        /* Modales */
         .modal {
             display: none;
             position: fixed;
@@ -347,16 +402,15 @@
             border-radius: 1.5rem;
             padding: 1.5rem;
         }
-        textarea {
+        textarea, input {
             width: 100%;
-            min-height: 200px;
             background: var(--bg-body);
             border: 1px solid var(--border-light);
             border-radius: 1rem;
             padding: 0.8rem;
             color: var(--text-primary);
+            margin-top: 0.5rem;
         }
-
         @media (max-width: 700px) {
             .header { flex-direction: column; align-items: stretch; }
             .bottom-toolbar { bottom: 0.5rem; right: 0.5rem; gap: 0.4rem; padding: 0.4rem 0.8rem;}
@@ -366,82 +420,116 @@
 </head>
 <body>
 
-<header class="header">
-    <div class="logo-area">
-        <img src="Logotipo-horizontal-azul.png" alt="UGB Logo" onerror="this.style.display='none'; this.nextSibling.style.display='block'">
-        <h1>📘 Gestor Académico<br><small style="font-size:0.7rem;">Ingeniería en Sistemas y Redes</small></h1>
+<!-- Pantalla de Login -->
+<div id="loginView" class="login-container">
+    <div class="login-card">
+        <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height: 60px; margin-bottom: 1rem;" onerror="this.style.display='none'">
+        <h2>📘 Gestor Académico</h2>
+        <p>Ingeniería en Sistemas y Redes Informáticas</p>
+        <select id="studentSelect">
+            <option value="">-- Selecciona un alumno --</option>
+            <option value="Ana García">Ana García</option>
+            <option value="Carlos López">Carlos López</option>
+            <option value="Marta Reyes">Marta Reyes</option>
+            <option value="Otro">Otro (escribe tu nombre)</option>
+        </select>
+        <input type="text" id="customStudent" placeholder="Escribe tu nombre completo" style="display:none;">
+        <button class="btn" id="loginBtn" style="margin-top: 1rem; width: 100%;">Ingresar</button>
     </div>
-    <div class="header-actions">
-        <button class="btn" id="configSheetsBtn"><i class="fas fa-cloud-upload-alt"></i> Configurar Sheets</button>
-        <button class="btn sync-btn" id="manualSyncBtn"><i class="fas fa-save"></i> Guardar en Sheets</button>
-        <span class="sync-status" id="syncStatusText"><span class="status-badge status-red"></span>Sin guardar</span>
-    </div>
-</header>
-
-<div class="progress-stats">
-    <div class="stat"><span>✅ Aprobadas:</span> <strong id="statPass">0</strong></div>
-    <div class="stat"><span>❌ Reprobadas:</span> <strong id="statFail">0</strong></div>
-    <div class="stat"><span>🔄 En curso:</span> <strong id="statProgress">0</strong></div>
-    <div class="stat"><span>⏳ Pendientes:</span> <strong id="statPending">0</strong></div>
-    <div class="stat"><span>📊 Progreso:</span> <strong id="statPercent">0%</strong></div>
-    <div class="progress-bar-container"><div class="progress-fill" id="globalProgress"></div></div>
 </div>
 
-<div class="app-main" id="zoomableArea">
-    <div class="zoom-control">
-        <i class="fas fa-search-minus"></i>
-        <input type="range" id="zoomRange" min="50" max="150" value="100" step="5">
-        <i class="fas fa-search-plus"></i>
-        <span id="zoomValue">100%</span>
+<!-- Aplicación principal (se muestra después del login) -->
+<div id="appView" style="display:none;">
+    <header class="header">
+        <div class="logo-area">
+            <img src="Logotipo-horizontal-azul.png" alt="UGB Logo" onerror="this.style.display='none'">
+            <h1>📘 Gestor Académico<br><small style="font-size:0.7rem;">Ingeniería en Sistemas y Redes</small></h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn" id="configSheetsBtn"><i class="fas fa-cloud-upload-alt"></i> Configurar Sheets</button>
+            <button class="btn sync-btn" id="manualSyncBtn"><i class="fas fa-save"></i> Guardar en Sheets</button>
+            <span class="sync-status" id="syncStatusText"><span class="status-badge status-red"></span>Sin guardar</span>
+        </div>
+    </header>
+
+    <div class="progress-stats">
+        <div class="stat"><span>✅ Aprobadas:</span> <strong id="statPass">0</strong></div>
+        <div class="stat"><span>❌ Reprobadas:</span> <strong id="statFail">0</strong></div>
+        <div class="stat"><span>🔄 En curso:</span> <strong id="statProgress">0</strong></div>
+        <div class="stat"><span>⏳ Pendientes:</span> <strong id="statPending">0</strong></div>
+        <div class="stat"><span>📊 Valor al pénsum:</span> <strong id="statPercent">0%</strong></div>
+        <div class="progress-bar-container"><div class="progress-fill" id="globalProgress"></div></div>
     </div>
-    <div id="cyclesContainer" class="cycles-grid"></div>
+
+    <div class="app-main" id="zoomableArea">
+        <div class="zoom-control">
+            <i class="fas fa-search-minus"></i>
+            <input type="range" id="zoomRange" min="50" max="150" value="100" step="5">
+            <i class="fas fa-search-plus"></i>
+            <span id="zoomValue">100%</span>
+        </div>
+
+        <!-- Vista de pénsum (ciclos) -->
+        <div id="pensumView" class="view active">
+            <div class="cycles-grid" id="cyclesContainer"></div>
+        </div>
+
+        <!-- Vista de detalle de ciclo -->
+        <div id="detailView" class="view">
+            <div class="detail-header">
+                <button class="btn" id="backToPensumBtn"><i class="fas fa-arrow-left"></i> Volver al pénsum</button>
+                <h2 id="detailCycleTitle">Ciclo I</h2>
+            </div>
+            <div id="subjectsDetailList"></div>
+        </div>
+    </div>
+
+    <div class="bottom-toolbar">
+        <button class="tool-btn" id="darkModeToggle" title="Modo oscuro"><i class="fas fa-moon"></i></button>
+        <button class="tool-btn" id="pasteNotesBtn" title="Pegar notas desde portal"><i class="fas fa-paste"></i></button>
+        <button class="tool-btn" id="exportExcelBtn" title="Exportar a Excel"><i class="fas fa-file-excel"></i></button>
+        <button class="tool-btn" id="importExcelBtn" title="Importar respaldo"><i class="fas fa-upload"></i></button>
+        <button class="tool-btn" id="helpBtn" title="Ayuda"><i class="fas fa-question-circle"></i></button>
+    </div>
 </div>
 
-<div class="bottom-toolbar">
-    <button class="tool-btn" id="darkModeToggle" title="Modo oscuro"><i class="fas fa-moon"></i></button>
-    <button class="tool-btn" id="pasteNotesBtn" title="Pegar notas desde portapapeles"><i class="fas fa-paste"></i></button>
-    <button class="tool-btn" id="exportExcelBtn" title="Exportar a Excel"><i class="fas fa-file-excel"></i></button>
-    <button class="tool-btn" id="importExcelBtn" title="Importar respaldo"><i class="fas fa-upload"></i></button>
-    <button class="tool-btn" id="helpBtn" title="Ayuda"><i class="fas fa-question-circle"></i></button>
-</div>
-
-<!-- Modal pegar notas -->
+<!-- Modales -->
 <div id="pasteModal" class="modal">
     <div class="modal-content">
-        <h3>📋 Pegar tabla de notas (desde portal UGB)</h3>
-        <p>Copia la tabla completa (incluyencabezados) desde Excel, Sheets o el portal. Ejemplo: Materia | N1 | N2 | P | C1 ...</p>
-        <textarea id="pasteTextarea" placeholder="Pega aquí la tabla..."></textarea>
-        <div style="display:flex; gap: 0.5rem; margin-top: 1rem;">
+        <h3>📋 Pegar tabla de notas (portal UGB)</h3>
+        <p>Copia la tabla completa desde el portal (incluyendo la fila de encabezados) y pégala aquí.</p>
+        <textarea id="pasteTextarea" rows="8" placeholder="Ejemplo:&#10;MATERIA	CÓMPUTO 1	N1	N2	P	C1 ...&#10;134 - Curso Superior de Gramática	8.75	10	9.1	9.27 ..."></textarea>
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button class="btn btn-primary" id="processPasteBtn">Procesar notas</button>
             <button class="btn" id="closePasteModal">Cancelar</button>
         </div>
     </div>
 </div>
 
-<!-- Modal ayuda -->
 <div id="helpModal" class="modal">
     <div class="modal-content">
         <h3>📌 Ayuda rápida</h3>
         <ul style="margin-top:1rem; list-style: disc inside;">
-            <li>Haz clic en cualquier ciclo para ver y editar notas (cómputos, labs, parciales).</li>
-            <li>Las notas se guardan automáticamente en el navegador.</li>
-            <li><strong>Guardado automático nube:</strong> cada 3 segundos si hay cambios y tienes configurada la URL de Google Sheets.</li>
-            <li>Botón "Pegar notas" permite importar desde el portal UGB (copiar tabla).</li>
+            <li>Haz clic en cualquier ciclo o materia para abrir la edición.</li>
+            <li>Las notas se guardan automáticamente en el navegador por cada estudiante.</li>
+            <li>Auto-guardado a Google Sheets cada 5 segundos (si configurado).</li>
+            <li>Botón "Pegar notas" importa desde el portal UGB (copia la tabla completa).</li>
+            <li>Botón "Limpiar" dentro de cada materia borra todas sus notas.</li>
             <li>Exportar/Importar Excel para respaldos.</li>
-            <li>Modo oscuro disponible abajo.</li>
+            <li>Modo oscuro disponible.</li>
         </ul>
         <button class="btn btn-primary" id="closeHelpBtn" style="margin-top:1rem;">Entendido</button>
     </div>
 </div>
 
-<!-- Modal config Sheets -->
 <div id="configModal" class="modal">
     <div class="modal-content">
-        <h3><i class="fas fa-cloud-upload-alt"></i> Sincronización con Google Sheets</h3>
-        <label>URL de Web App (Apps Script):</label>
-        <input type="text" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; margin:0.5rem 0; padding:0.5rem;">
-        <label>Nombre del estudiante:</label>
-        <input type="text" id="studentName" placeholder="Tu nombre completo" style="width:100%; margin:0.5rem 0; padding:0.5rem;">
+        <h3><i class="fas fa-cloud-upload-alt"></i> Google Sheets</h3>
+        <p>Ingresa la URL de tu Web App de Apps Script y tu nombre (para identificar los registros).</p>
+        <label>URL del Web App:</label>
+        <input type="text" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <label>Nombre del estudiante (se usará el del login):</label>
+        <input type="text" id="studentName" readonly style="background:#eef5ff;">
         <div style="display:flex; gap:0.5rem; margin-top:1rem;">
             <button id="saveConfigBtn" class="btn btn-primary">Guardar</button>
             <button id="closeConfigBtn" class="btn">Cancelar</button>
@@ -450,8 +538,8 @@
 </div>
 
 <script>
-    // DATOS DEL PENSUM (igual al original, completo)
-    const CYCLES = [ /* Mismo contenido exacto del archivo anterior */ 
+    // ======================== DATOS DEL PENSUM (10 ciclos completos) ========================
+    const CYCLES = [
         { id:1, name:'Ciclo I', year:'I Año', subjects:[ { num:'01', code:'482', name:'Matemática Computacional I', prereq:'Br.', uv:4 }, { num:'02', code:'712', name:'Sistemas Operativos', prereq:'Br.', uv:4 }, { num:'03', code:'601', name:'Principios de Física', prereq:'Br.', uv:4 }, { num:'04', code:'346', name:'Fundamentos de Programación', prereq:'Br.', uv:4 }, { num:'05', code:'134', name:'Curso Superior de Gramática', prereq:'Br.', uv:4 } ] },
         { id:2, name:'Ciclo II', year:'I Año', subjects:[ { num:'06', code:'483', name:'Matemática Computacional II', prereq:'01', uv:4 }, { num:'07', code:'719', name:'Sociología General', prereq:'Br.', uv:4 }, { num:'08', code:'600', name:'Principios de Electrónica', prereq:'03', uv:4 }, { num:'09', code:'608', name:'Programación Computacional I', prereq:'04', uv:4 }, { num:'10', code:'1180', name:'Educación Ciudadana', prereq:'Br.', uv:4 } ] },
         { id:3, name:'Ciclo III', year:'II Año', subjects:[ { num:'11', code:'484', name:'Matemática Computacional III', prereq:'06', uv:4 }, { num:'12', code:'33', name:'Administración de Bases de Datos I', prereq:'02', uv:4 }, { num:'13', code:'1035', name:'Electrónica Análoga', prereq:'08', uv:4 }, { num:'14', code:'609', name:'Programación Computacional II', prereq:'09', uv:4 }, { num:'15', code:'1011', name:'Infraestructura Tecnológica', prereq:'02', uv:4 } ] },
@@ -464,103 +552,188 @@
         { id:10, name:'Ciclo X', year:'V Año', subjects:[ { num:'46', code:'290', name:'Ética Profesional', prereq:'—', uv:4 }, { num:'47', code:'1205', name:'Práctica Profesional', prereq:'—', uv:5 }, { num:'48', code:'1209', name:'Técnica Electiva II', prereq:'Rev.Prerr.', uv:4 } ] }
     ];
 
-    // Estado local
-    let appData = {};   // { "01": { computos: [[{lab1,lab2,parcial}...]], status, finalGrade } }
+    // ======================== ESTADO GLOBAL ========================
+    let appData = {};          // { "01": { computos: [c1,c2,c3], status, finalGrade } }
     let config = {};
+    let currentStudent = "";
     let dirtyFlag = false;
+    let currentCycleId = null;
     let autoSyncInterval = null;
 
+    // ======================== FUNCIONES DE DATOS ========================
     function getSubjectData(num) {
-        if (!appData[num]) appData[num] = { computos: [ {lab1:'',lab2:'',parcial:''}, {lab1:'',lab2:'',parcial:''}, {lab1:'',lab2:'',parcial:''} ], status:'pending', finalGrade:null };
+        if (!appData[num]) {
+            appData[num] = {
+                computos: [ {lab1:'', lab2:'', parcial:''}, {lab1:'', lab2:'', parcial:''}, {lab1:'', lab2:'', parcial:''} ],
+                status: 'pending',
+                finalGrade: null
+            };
+        }
         return appData[num];
     }
 
     function calcComputo(c) {
-        let l1 = parseFloat(c.lab1) || 0, l2 = parseFloat(c.lab2) || 0, p = parseFloat(c.parcial) || 0;
-        if (isNaN(l1) && isNaN(l2) && isNaN(p)) return null;
-        return (l1*0.30)+(l2*0.30)+(p*0.40);
+        let l1 = parseFloat(c.lab1) || 0;
+        let l2 = parseFloat(c.lab2) || 0;
+        let p = parseFloat(c.parcial) || 0;
+        if (c.lab1 === '' && c.lab2 === '' && c.parcial === '') return null;
+        return (l1 * 0.30) + (l2 * 0.30) + (p * 0.40);
     }
+
     function calcFinal(computos) {
-        let scores = computos.map(calcComputo).filter(v=>v!==null);
-        if(scores.length===0) return null;
-        return scores.reduce((a,b)=>a+b,0)/computos.length;
+        let scores = computos.map(calcComputo).filter(v => v !== null);
+        if (scores.length === 0) return null;
+        let sum = scores.reduce((a,b) => a + b, 0);
+        return sum / computos.length;
     }
-    function getStatus(grade) { if(grade===null) return 'pending'; return grade>=6.0?'pass':'fail'; }
-    function saveLocal() { localStorage.setItem('ugb_pensum_data', JSON.stringify(appData)); dirtyFlag = true; updateStatsUI(); }
-    function loadLocal() { let saved = localStorage.getItem('ugb_pensum_data'); if(saved) appData = JSON.parse(saved); }
-    
-    // Actualizar estadísticas
+
+    function getStatus(grade) {
+        if (grade === null) return 'pending';
+        return grade >= 6.0 ? 'pass' : 'fail';
+    }
+
+    function updateSubjectStatus(num) {
+        let sd = getSubjectData(num);
+        let final = calcFinal(sd.computos);
+        sd.finalGrade = final;
+        let newStatus = getStatus(final);
+        // Si tiene al menos una nota pero no final, considerar "inprogress"
+        let hasAnyNote = sd.computos.some(c => c.lab1 !== '' || c.lab2 !== '' || c.parcial !== '');
+        if (hasAnyNote && final === null) sd.status = 'inprogress';
+        else sd.status = newStatus;
+    }
+
+    function saveLocal() {
+        if (!currentStudent) return;
+        let all = JSON.parse(localStorage.getItem('ugb_all_students_data') || '{}');
+        all[currentStudent] = appData;
+        localStorage.setItem('ugb_all_students_data', JSON.stringify(all));
+        dirtyFlag = true;
+        updateStatsUI();
+        // Actualizar vistas actuales si están abiertas
+        if (document.getElementById('detailView').classList.contains('active') && currentCycleId) {
+            openCycleDetail(currentCycleId);
+        } else {
+            renderCycles();
+        }
+    }
+
+    function loadLocal() {
+        if (!currentStudent) return;
+        let all = JSON.parse(localStorage.getItem('ugb_all_students_data') || '{}');
+        appData = all[currentStudent] || {};
+        // Asegurar que todas las materias tengan estructura
+        CYCLES.forEach(cycle => cycle.subjects.forEach(sub => { getSubjectData(sub.num); updateSubjectStatus(sub.num); }));
+        updateStatsUI();
+    }
+
+    function clearSubject(num) {
+        if (confirm(`¿Borrar todas las notas de la materia ${num}?`)) {
+            appData[num] = {
+                computos: [ {lab1:'', lab2:'', parcial:''}, {lab1:'', lab2:'', parcial:''}, {lab1:'', lab2:'', parcial:''} ],
+                status: 'pending',
+                finalGrade: null
+            };
+            saveLocal();
+            showToast(`Notas de ${num} eliminadas`, 'success');
+        }
+    }
+
+    // ======================== ESTADÍSTICAS ========================
     function updateStatsUI() {
-        let pass=0,fail=0,prog=0,pend=0,total=0;
-        CYCLES.forEach(c=>c.subjects.forEach(sub=>{
-            total++;
-            let sd = getSubjectData(sub.num);
-            let grade = calcFinal(sd.computos);
-            let st = sd.status !== 'pending' ? sd.status : getStatus(grade);
-            if(st==='pass') pass++; else if(st==='fail') fail++; else if(st==='inprogress') prog++; else pend++;
-        }));
-        document.getElementById('statPass').innerText=pass;
-        document.getElementById('statFail').innerText=fail;
-        document.getElementById('statProgress').innerText=prog;
-        document.getElementById('statPending').innerText=pend;
-        let pct = Math.round((pass/total)*100);
-        document.getElementById('statPercent').innerText=pct+'%';
-        document.getElementById('globalProgress').style.width=pct+'%';
+        let pass = 0, fail = 0, inprogress = 0, pending = 0, total = 0;
+        CYCLES.forEach(cycle => {
+            cycle.subjects.forEach(sub => {
+                total++;
+                let sd = getSubjectData(sub.num);
+                let status = sd.status;
+                if (status === 'pass') pass++;
+                else if (status === 'fail') fail++;
+                else if (status === 'inprogress') inprogress++;
+                else pending++;
+            });
+        });
+        document.getElementById('statPass').innerText = pass;
+        document.getElementById('statFail').innerText = fail;
+        document.getElementById('statProgress').innerText = inprogress;
+        document.getElementById('statPending').innerText = pending;
+        let pct = Math.round((pass / total) * 100);
+        document.getElementById('statPercent').innerText = pct + '%';
+        document.getElementById('globalProgress').style.width = pct + '%';
     }
-    
-    // Renderizar tarjetas de ciclos (vista principal)
+
+    // ======================== RENDERIZADO ========================
     function renderCycles() {
         const container = document.getElementById('cyclesContainer');
         container.innerHTML = '';
         CYCLES.forEach(cycle => {
             const card = document.createElement('div');
             card.className = 'cycle-card';
+            let subjectsPreview = '';
+            cycle.subjects.forEach(sub => {
+                let sd = getSubjectData(sub.num);
+                let final = sd.finalGrade;
+                let gradeClass = '';
+                let gradeText = '—';
+                if (final !== null) {
+                    gradeText = final.toFixed(2);
+                    gradeClass = final >= 6 ? 'grade-pass' : 'grade-fail';
+                } else {
+                    if (sd.status === 'inprogress') gradeClass = 'grade-inprogress';
+                    else gradeClass = 'grade-pending';
+                }
+                subjectsPreview += `
+                    <div class="preview-subject" data-subject-num="${sub.num}" data-cycle-id="${cycle.id}">
+                        <span>${sub.code} - ${sub.name.substring(0,28)}</span>
+                        <span class="subject-grade ${gradeClass}">${gradeText}</span>
+                    </div>
+                `;
+            });
             card.innerHTML = `
                 <div class="cycle-header" data-cycle-id="${cycle.id}">
                     <span>📚 ${cycle.name} · ${cycle.year}</span>
                     <span><i class="fas fa-chevron-right"></i></span>
                 </div>
                 <div class="subjects-preview">
-                    ${cycle.subjects.map(sub => {
-                        let sd = getSubjectData(sub.num);
-                        let final = calcFinal(sd.computos);
-                        let gradeClass = '';
-                        let gradeText = '—';
-                        if(final!==null) { gradeText = final.toFixed(2); gradeClass = final>=6 ? 'grade-pass' : 'grade-fail'; }
-                        else gradeClass = 'grade-pending';
-                        return `<div class="preview-subject" data-subject-num="${sub.num}" data-cycle-id="${cycle.id}">
-                                    <span>${sub.code} - ${sub.name.substring(0,28)}</span>
-                                    <span class="subject-grade ${gradeClass}">${gradeText}</span>
-                                </div>`;
-                    }).join('')}
+                    ${subjectsPreview}
                 </div>
             `;
-            card.querySelector('.cycle-header').addEventListener('click', (e) => openCycleDetail(cycle.id));
+            card.querySelector('.cycle-header').addEventListener('click', () => openCycleDetail(cycle.id));
             card.querySelectorAll('.preview-subject').forEach(el => {
-                el.addEventListener('click', (e) => { e.stopPropagation(); openCycleDetail(cycle.id, el.dataset.subjectNum); });
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openCycleDetail(cycle.id, el.dataset.subjectNum);
+                });
             });
             container.appendChild(card);
         });
         updateStatsUI();
     }
-    
-    let currentCycleId = null;
-    function openCycleDetail(cycleId, highlightSubject=null) {
+
+    function openCycleDetail(cycleId, highlightSubject = null) {
         currentCycleId = cycleId;
-        const cycle = CYCLES.find(c=>c.id===cycleId);
-        const container = document.getElementById('cyclesContainer');
-        container.innerHTML = `<div class="detail-view"><div style="display:flex; justify-content:space-between;"><button id="backToCyclesBtn" class="btn"><i class="fas fa-arrow-left"></i> Volver al pénsum</button><h2>${cycle.name} · ${cycle.year}</h2></div><div id="subjectsDetailList"></div></div>`;
-        document.getElementById('backToCyclesBtn').addEventListener('click', () => { renderCycles(); });
+        const cycle = CYCLES.find(c => c.id === cycleId);
+        document.getElementById('detailCycleTitle').innerHTML = `${cycle.name} · ${cycle.year}`;
         const listDiv = document.getElementById('subjectsDetailList');
         listDiv.innerHTML = '';
+
         cycle.subjects.forEach(sub => {
             const sd = getSubjectData(sub.num);
+            const finalGrade = sd.finalGrade;
+            const gradeDisplay = finalGrade !== null ? finalGrade.toFixed(2) : (sd.status === 'inprogress' ? 'En curso' : '—');
+            let gradeClass = '';
+            if (finalGrade !== null) gradeClass = finalGrade >= 6 ? 'grade-pass' : 'grade-fail';
+            else gradeClass = sd.status === 'inprogress' ? 'grade-inprogress' : 'grade-pending';
+
             const card = document.createElement('div');
             card.className = 'subject-detail-card';
             card.innerHTML = `
                 <div class="subject-summary" data-sub-num="${sub.num}">
-                    <div><strong>${sub.code} - ${sub.name}</strong><br><small>Prerreq: ${sub.prereq} | UV: ${sub.uv}</small></div>
-                    <div><span id="finalGrade_${sub.num}">${calcFinal(sd.computos)?.toFixed(2)||'—'}</span> <i class="fas fa-chevron-down"></i></div>
+                    <div class="left">
+                        <div class="subject-code">${sub.code} · Prerreq: ${sub.prereq} · ${sub.uv} UV</div>
+                        <div class="subject-name">${sub.name}</div>
+                    </div>
+                    <div class="final-grade ${gradeClass}">${gradeDisplay} <i class="fas fa-chevron-down"></i></div>
                 </div>
                 <div class="computos-panel" id="panel_${sub.num}">
                     ${[0,1,2].map(cIdx => `
@@ -572,165 +745,348 @@
                             <div><small>Nota cómputo: <span id="compScore_${sub.num}_${cIdx}">${calcComputo(sd.computos[cIdx])?.toFixed(2)||'—'}</span></small></div>
                         </div>
                     `).join('')}
-                    <div class="btn btn-primary" style="grid-column:1/-1; width:fit-content;" data-save-sub="${sub.num}">💾 Guardar cambios</div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; grid-column: 1/-1; justify-content: flex-end;">
+                        <button class="btn save-subject-btn" data-save-sub="${sub.num}">💾 Guardar materia</button>
+                        <button class="btn clear-subject-btn" data-clear-sub="${sub.num}">🗑️ Limpiar notas</button>
+                    </div>
                 </div>
             `;
             listDiv.appendChild(card);
-            const summaryDiv = card.querySelector('.subject-summary');
-            summaryDiv.addEventListener('click', () => { card.querySelector('.computos-panel').style.display = card.querySelector('.computos-panel').style.display === 'grid' ? 'none' : 'grid'; });
+
+            // Evento toggle del panel
+            const summary = card.querySelector('.subject-summary');
+            summary.addEventListener('click', () => {
+                const panel = card.querySelector('.computos-panel');
+                panel.style.display = panel.style.display === 'grid' ? 'none' : 'grid';
+            });
+
+            // Eventos de entrada en los campos
             card.querySelectorAll('.input-grade').forEach(inp => {
                 inp.addEventListener('input', (e) => {
                     let num = inp.dataset.num, comp = parseInt(inp.dataset.comp), field = inp.dataset.field;
-                    let sd = getSubjectData(num);
-                    sd.computos[comp][field] = inp.value;
-                    let newCompScore = calcComputo(sd.computos[comp]);
-                    document.getElementById(`compScore_${num}_${comp}`).innerText = newCompScore?.toFixed(2)||'—';
-                    let final = calcFinal(sd.computos);
-                    document.getElementById(`finalGrade_${num}`).innerText = final?.toFixed(2)||'—';
+                    let sdItem = getSubjectData(num);
+                    sdItem.computos[comp][field] = inp.value;
+                    let newCompScore = calcComputo(sdItem.computos[comp]);
+                    document.getElementById(`compScore_${num}_${comp}`).innerText = newCompScore?.toFixed(2) || '—';
+                    let final = calcFinal(sdItem.computos);
+                    updateSubjectStatus(num);
+                    const gradeSpan = card.querySelector('.final-grade');
+                    let newDisplay = final !== null ? final.toFixed(2) : (sdItem.status === 'inprogress' ? 'En curso' : '—');
+                    let newClass = '';
+                    if (final !== null) newClass = final >= 6 ? 'grade-pass' : 'grade-fail';
+                    else newClass = sdItem.status === 'inprogress' ? 'grade-inprogress' : 'grade-pending';
+                    gradeSpan.innerHTML = `${newDisplay} <i class="fas fa-chevron-down"></i>`;
+                    gradeSpan.className = `final-grade ${newClass}`;
                     saveLocal();
                 });
             });
-            card.querySelector(`[data-save-sub="${sub.num}"]`).addEventListener('click', () => { saveLocal(); showToast('Guardado localmente'); });
+
+            // Guardar materia (ya se guarda automáticamente pero forzamos)
+            card.querySelector(`[data-save-sub="${sub.num}"]`).addEventListener('click', () => {
+                saveLocal();
+                showToast(`Guardado local: ${sub.name}`, 'success');
+            });
+
+            // Limpiar materia
+            card.querySelector(`[data-clear-sub="${sub.num}"]`).addEventListener('click', () => {
+                clearSubject(sub.num);
+                // Recargar la vista de detalle para reflejar cambios
+                openCycleDetail(cycleId);
+            });
         });
-        if(highlightSubject) document.getElementById(`panel_${highlightSubject}`).style.display = 'grid';
-        updateStatsUI();
+
+        if (highlightSubject) {
+            const panel = document.getElementById(`panel_${highlightSubject}`);
+            if (panel) panel.style.display = 'grid';
+        }
+
+        // Cambiar vistas
+        document.getElementById('pensumView').classList.remove('active');
+        document.getElementById('detailView').classList.add('active');
     }
-    
-    // Sincronización automática y manual
-    async function syncToSheets(manual=true) {
-        if(!config.appsScriptUrl) { showToast('Configura URL de Sheets primero', 'error'); if(manual) openConfigModal(); return false; }
-        const syncBtn = document.getElementById('manualSyncBtn');
-        if(manual) syncBtn.classList.add('blink');
-        const statusSpan = document.getElementById('syncStatusText');
-        statusSpan.innerHTML = '<span class="status-badge status-red"></span> Sincronizando...';
-        let payload = { student: config.studentName || 'Estudiante', timestamp: new Date().toISOString(), data: [] };
-        CYCLES.forEach(cycle=>cycle.subjects.forEach(sub=>{
-            let sd = getSubjectData(sub.num);
-            payload.data.push({ num:sub.num, code:sub.code, name:sub.name, cycle:cycle.name, year:cycle.year, uv:sub.uv, 
-                computo1:calcComputo(sd.computos[0]), computo2:calcComputo(sd.computos[1]), computo3:calcComputo(sd.computos[2]), 
-                lab1_c1:sd.computos[0].lab1, lab2_c1:sd.computos[0].lab2, parcial_c1:sd.computos[0].parcial,
-                lab1_c2:sd.computos[1].lab1, lab2_c2:sd.computos[1].lab2, parcial_c2:sd.computos[1].parcial,
-                lab1_c3:sd.computos[2].lab1, lab2_c3:sd.computos[2].lab2, parcial_c3:sd.computos[2].parcial,
-                finalGrade:calcFinal(sd.computos), status: getStatus(calcFinal(sd.computos)) });
-        }));
-        try {
-            await fetch(config.appsScriptUrl, { method:'POST', mode:'no-cors', body:JSON.stringify(payload) });
-            statusSpan.innerHTML = '<span class="status-badge status-green"></span> Guardado en nube';
-            dirtyFlag = false;
-            showToast('✅ Notas respaldadas en Google Sheets', 'success');
-        } catch(e) { statusSpan.innerHTML = '<span class="status-badge status-red"></span> Error en sincronización'; showToast('Error al sincronizar', 'error'); }
-        if(manual) syncBtn.classList.remove('blink');
-        setTimeout(()=>{ if(!dirtyFlag && config.appsScriptUrl) statusSpan.innerHTML = '<span class="status-badge status-green"></span> Sincronizado'; }, 2000);
-        return true;
+
+    function showPensum() {
+        document.getElementById('detailView').classList.remove('active');
+        document.getElementById('pensumView').classList.add('active');
+        renderCycles(); // refrescar
     }
-    
-    // Importar desde portapapeles (parseo básico)
+
+    // ======================== IMPORTACIÓN DESDE PORTAPAPELES (formato exacto de la imagen) ========================
     function parseTableFromClipboard(text) {
         const lines = text.split(/\r?\n/);
-        let materiasData = {};
-        lines.forEach(line => {
-            let parts = line.split(/\t|  +/).filter(p=>p.trim());
-            if(parts.length<2) return;
-            let materiaNombre = parts[0];
-            for(let cycle of CYCLES) for(let sub of cycle.subjects) if(materiaNombre.includes(sub.code) || materiaNombre.toLowerCase().includes(sub.name.toLowerCase())) {
-                let idx = 1;
-                let c1n1=parseFloat(parts[idx]); let c1n2=parseFloat(parts[idx+1]); let c1p=parseFloat(parts[idx+2]); 
-                let c2n1=parseFloat(parts[idx+4]); let c2n2=parseFloat(parts[idx+5]); let c2p=parseFloat(parts[idx+6]);
-                let c3n1=parseFloat(parts[idx+8]); let c3n2=parseFloat(parts[idx+9]); let c3p=parseFloat(parts[idx+10]);
-                let sd = getSubjectData(sub.num);
-                if(!isNaN(c1n1)) sd.computos[0].lab1=c1n1; if(!isNaN(c1n2)) sd.computos[0].lab2=c1n2; if(!isNaN(c1p)) sd.computos[0].parcial=c1p;
-                if(!isNaN(c2n1)) sd.computos[1].lab1=c2n1; if(!isNaN(c2n2)) sd.computos[1].lab2=c2n2; if(!isNaN(c2p)) sd.computos[1].parcial=c2p;
-                if(!isNaN(c3n1)) sd.computos[2].lab1=c3n1; if(!isNaN(c3n2)) sd.computos[2].lab2=c3n2; if(!isNaN(c3p)) sd.computos[2].parcial=c3p;
-                saveLocal();
-                break;
+        let materiasActualizadas = 0;
+        // Buscar línea que contenga código de materia (ej "134 - Curso...")
+        for (let line of lines) {
+            // Patrón: números al inicio, luego guión, luego texto
+            let match = line.match(/^(\d{3})\s*-\s*([^0-9]+)/);
+            if (!match) continue;
+            let codigo = match[1];
+            // Extraer todos los números decimales o enteros
+            let numbers = line.match(/\d+(?:\.\d+)?/g);
+            if (!numbers || numbers.length < 13) continue;
+            // Índices según el formato de la tabla:
+            // [0]:N1_c1, [1]:N2_c1, [2]:P_c1, [3]:C1, [4]:N1_c2, [5]:N2_c2, [6]:P_c2, [7]:C2, [8]:N1_c3, [9]:N2_c3, [10]:P_c3, [11]:C3, [12]:REP, [13]:NF
+            let c1n1 = parseFloat(numbers[0]);
+            let c1n2 = parseFloat(numbers[1]);
+            let c1p  = parseFloat(numbers[2]);
+            let c2n1 = parseFloat(numbers[4]);
+            let c2n2 = parseFloat(numbers[5]);
+            let c2p  = parseFloat(numbers[6]);
+            let c3n1 = parseFloat(numbers[8]);
+            let c3n2 = parseFloat(numbers[9]);
+            let c3p  = parseFloat(numbers[10]);
+            // Buscar materia por código
+            let found = false;
+            for (let cycle of CYCLES) {
+                for (let sub of cycle.subjects) {
+                    if (sub.code === codigo) {
+                        let sd = getSubjectData(sub.num);
+                        if (!isNaN(c1n1)) sd.computos[0].lab1 = c1n1;
+                        if (!isNaN(c1n2)) sd.computos[0].lab2 = c1n2;
+                        if (!isNaN(c1p))  sd.computos[0].parcial = c1p;
+                        if (!isNaN(c2n1)) sd.computos[1].lab1 = c2n1;
+                        if (!isNaN(c2n2)) sd.computos[1].lab2 = c2n2;
+                        if (!isNaN(c2p))  sd.computos[1].parcial = c2p;
+                        if (!isNaN(c3n1)) sd.computos[2].lab1 = c3n1;
+                        if (!isNaN(c3n2)) sd.computos[2].lab2 = c3n2;
+                        if (!isNaN(c3p))  sd.computos[2].parcial = c3p;
+                        updateSubjectStatus(sub.num);
+                        materiasActualizadas++;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) break;
             }
-        });
-        renderCycles();
-        showToast('Notas importadas desde portapapeles correctamente');
+        }
+        if (materiasActualizadas === 0) {
+            showToast("No se pudo interpretar la tabla. Asegúrate de copiar filas completas con código de materia (ej: 134 - Nombre) y todas las notas.", "error");
+        } else {
+            saveLocal();
+            renderCycles();
+            showToast(`✅ ${materiasActualizadas} materias actualizadas desde el portapapeles`, "success");
+        }
     }
-    
-    // Exportar a Excel
+
+    // ======================== SINCRONIZACIÓN CON GOOGLE SHEETS ========================
+    async function syncToSheets(manual = true) {
+        if (!config.appsScriptUrl) {
+            showToast('Configura la URL de Google Sheets primero', 'error');
+            if (manual) openConfigModal();
+            return false;
+        }
+        const syncBtn = document.getElementById('manualSyncBtn');
+        if (manual) syncBtn.classList.add('blink');
+        const statusSpan = document.getElementById('syncStatusText');
+        statusSpan.innerHTML = '<span class="status-badge status-red"></span> Sincronizando...';
+        let payload = {
+            student: currentStudent,
+            timestamp: new Date().toISOString(),
+            data: []
+        };
+        CYCLES.forEach(cycle => {
+            cycle.subjects.forEach(sub => {
+                let sd = getSubjectData(sub.num);
+                payload.data.push({
+                    num: sub.num, code: sub.code, name: sub.name, cycle: cycle.name, year: cycle.year, uv: sub.uv,
+                    computo1: calcComputo(sd.computos[0]), computo2: calcComputo(sd.computos[1]), computo3: calcComputo(sd.computos[2]),
+                    lab1_c1: sd.computos[0].lab1, lab2_c1: sd.computos[0].lab2, parcial_c1: sd.computos[0].parcial,
+                    lab1_c2: sd.computos[1].lab1, lab2_c2: sd.computos[1].lab2, parcial_c2: sd.computos[1].parcial,
+                    lab1_c3: sd.computos[2].lab1, lab2_c3: sd.computos[2].lab2, parcial_c3: sd.computos[2].parcial,
+                    finalGrade: calcFinal(sd.computos), status: sd.status
+                });
+            });
+        });
+        try {
+            await fetch(config.appsScriptUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
+            });
+            statusSpan.innerHTML = '<span class="status-badge status-green"></span> Sincronizado';
+            dirtyFlag = false;
+            showToast('✅ Datos enviados a Google Sheets', 'success');
+        } catch (e) {
+            statusSpan.innerHTML = '<span class="status-badge status-red"></span> Error';
+            showToast('Error al sincronizar: ' + e.message, 'error');
+        }
+        if (manual) syncBtn.classList.remove('blink');
+        setTimeout(() => {
+            if (!dirtyFlag && config.appsScriptUrl)
+                statusSpan.innerHTML = '<span class="status-badge status-green"></span> Sincronizado';
+        }, 2000);
+    }
+
+    // ======================== EXPORTAR / IMPORTAR EXCEL ========================
     function exportToExcel() {
         let exportData = [];
-        CYCLES.forEach(cycle=>cycle.subjects.forEach(sub=>{
-            let sd = getSubjectData(sub.num);
-            exportData.push({ Código:sub.code, Materia:sub.name, Ciclo:cycle.name, 
-                'Comp1 Lab1':sd.computos[0].lab1, 'Comp1 Lab2':sd.computos[0].lab2, 'Comp1 Parcial':sd.computos[0].parcial,
-                'Comp2 Lab1':sd.computos[1].lab1, 'Comp2 Lab2':sd.computos[1].lab2, 'Comp2 Parcial':sd.computos[1].parcial,
-                'Comp3 Lab1':sd.computos[2].lab1, 'Comp3 Lab2':sd.computos[2].lab2, 'Comp3 Parcial':sd.computos[2].parcial,
-                NotaFinal: calcFinal(sd.computos)?.toFixed(2) || '' });
-        }));
+        CYCLES.forEach(cycle => {
+            cycle.subjects.forEach(sub => {
+                let sd = getSubjectData(sub.num);
+                exportData.push({
+                    Código: sub.code,
+                    Materia: sub.name,
+                    Ciclo: cycle.name,
+                    'Comp1 Lab1': sd.computos[0].lab1,
+                    'Comp1 Lab2': sd.computos[0].lab2,
+                    'Comp1 Parcial': sd.computos[0].parcial,
+                    'Comp2 Lab1': sd.computos[1].lab1,
+                    'Comp2 Lab2': sd.computos[1].lab2,
+                    'Comp2 Parcial': sd.computos[1].parcial,
+                    'Comp3 Lab1': sd.computos[2].lab1,
+                    'Comp3 Lab2': sd.computos[2].lab2,
+                    'Comp3 Parcial': sd.computos[2].parcial,
+                    NotaFinal: sd.finalGrade !== null ? sd.finalGrade.toFixed(2) : ''
+                });
+            });
+        });
         let ws = XLSX.utils.json_to_sheet(exportData);
         let wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Notas');
-        XLSX.writeFile(wb, `notas_ugb_${new Date().toISOString().slice(0,19)}.xlsx`);
+        XLSX.writeFile(wb, `notas_${currentStudent}_${new Date().toISOString().slice(0,19)}.xlsx`);
+        showToast('Exportado a Excel', 'success');
     }
-    
+
     function importExcel(file) {
         let reader = new FileReader();
         reader.onload = function(e) {
             let data = new Uint8Array(e.target.result);
-            let workbook = XLSX.read(data, {type: 'array'});
+            let workbook = XLSX.read(data, { type: 'array' });
             let sheet = workbook.Sheets[workbook.SheetNames[0]];
             let rows = XLSX.utils.sheet_to_json(sheet);
             rows.forEach(row => {
                 let materia = row['Materia'] || row['Código'];
-                for(let cycle of CYCLES) for(let sub of cycle.subjects) if(materia.includes(sub.code) || materia.includes(sub.name)) {
-                    let sd = getSubjectData(sub.num);
-                    if(row['Comp1 Lab1'] !== undefined) sd.computos[0].lab1 = row['Comp1 Lab1'];
-                    if(row['Comp1 Lab2']) sd.computos[0].lab2 = row['Comp1 Lab2'];
-                    if(row['Comp1 Parcial']) sd.computos[0].parcial = row['Comp1 Parcial'];
-                    if(row['Comp2 Lab1']) sd.computos[1].lab1 = row['Comp2 Lab1'];
-                    if(row['Comp2 Lab2']) sd.computos[1].lab2 = row['Comp2 Lab2'];
-                    if(row['Comp2 Parcial']) sd.computos[1].parcial = row['Comp2 Parcial'];
-                    if(row['Comp3 Lab1']) sd.computos[2].lab1 = row['Comp3 Lab1'];
-                    if(row['Comp3 Lab2']) sd.computos[2].lab2 = row['Comp3 Lab2'];
-                    if(row['Comp3 Parcial']) sd.computos[2].parcial = row['Comp3 Parcial'];
-                    saveLocal();
+                for (let cycle of CYCLES) {
+                    for (let sub of cycle.subjects) {
+                        if (materia && (materia.includes(sub.code) || materia.toLowerCase().includes(sub.name.toLowerCase()))) {
+                            let sd = getSubjectData(sub.num);
+                            if (row['Comp1 Lab1'] !== undefined) sd.computos[0].lab1 = row['Comp1 Lab1'];
+                            if (row['Comp1 Lab2']) sd.computos[0].lab2 = row['Comp1 Lab2'];
+                            if (row['Comp1 Parcial']) sd.computos[0].parcial = row['Comp1 Parcial'];
+                            if (row['Comp2 Lab1']) sd.computos[1].lab1 = row['Comp2 Lab1'];
+                            if (row['Comp2 Lab2']) sd.computos[1].lab2 = row['Comp2 Lab2'];
+                            if (row['Comp2 Parcial']) sd.computos[1].parcial = row['Comp2 Parcial'];
+                            if (row['Comp3 Lab1']) sd.computos[2].lab1 = row['Comp3 Lab1'];
+                            if (row['Comp3 Lab2']) sd.computos[2].lab2 = row['Comp3 Lab2'];
+                            if (row['Comp3 Parcial']) sd.computos[2].parcial = row['Comp3 Parcial'];
+                            updateSubjectStatus(sub.num);
+                            break;
+                        }
+                    }
                 }
             });
+            saveLocal();
             renderCycles();
-            showToast('Respaldo importado correctamente');
+            showToast('Respaldo importado correctamente', 'success');
         };
         reader.readAsArrayBuffer(file);
     }
-    
-    // Modo oscuro
-    function toggleDarkMode() { document.body.classList.toggle('dark'); localStorage.setItem('darkMode', document.body.classList.contains('dark')); }
-    
-    // Zoom
-    function applyZoom(value) { document.getElementById('zoomableArea').style.transform = `scale(${value/100})`; document.getElementById('zoomValue').innerText = value+'%'; localStorage.setItem('zoomLevel', value); }
-    
-    // Inicialización
-    function init() {
-        loadLocal();
-        if(localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark');
-        let zoom = localStorage.getItem('zoomLevel')||100;
-        document.getElementById('zoomRange').value = zoom;
-        applyZoom(zoom);
-        renderCycles();
-        let cfg = localStorage.getItem('ugb_pensum_config');
-        if(cfg) { config = JSON.parse(cfg); if(config.appsScriptUrl) document.getElementById('syncStatusText').innerHTML = '<span class="status-badge status-green"></span> Sheets listo'; }
-        setInterval(() => { if(dirtyFlag && config.appsScriptUrl) syncToSheets(false); }, 3000);
+
+    // ======================== CONFIGURACIÓN Y MODALES ========================
+    function openConfigModal() {
+        document.getElementById('appsScriptUrl').value = config.appsScriptUrl || '';
+        document.getElementById('studentName').value = currentStudent;
+        document.getElementById('configModal').classList.add('active');
     }
-    
-    // Event listeners y modales
-    window.openConfigModal = () => { document.getElementById('configModal').classList.add('active'); document.getElementById('appsScriptUrl').value = config.appsScriptUrl||''; document.getElementById('studentName').value = config.studentName||''; };
-    document.getElementById('configSheetsBtn').onclick = openConfigModal;
-    document.getElementById('saveConfigBtn').onclick = () => { config.appsScriptUrl = document.getElementById('appsScriptUrl').value.trim(); config.studentName = document.getElementById('studentName').value.trim(); localStorage.setItem('ugb_pensum_config', JSON.stringify(config)); document.getElementById('configModal').classList.remove('active'); showToast('Configuración guardada'); };
-    document.getElementById('closeConfigBtn').onclick = () => document.getElementById('configModal').classList.remove('active');
-    document.getElementById('manualSyncBtn').onclick = () => syncToSheets(true);
-    document.getElementById('darkModeToggle').onclick = toggleDarkMode;
-    document.getElementById('exportExcelBtn').onclick = exportToExcel;
-    document.getElementById('importExcelBtn').onclick = () => { let input = document.createElement('input'); input.type='file'; input.accept='.xlsx,.xls,.csv'; input.onchange=e=>importExcel(e.target.files[0]); input.click(); };
-    document.getElementById('pasteNotesBtn').onclick = () => document.getElementById('pasteModal').classList.add('active');
-    document.getElementById('processPasteBtn').onclick = () => { parseTableFromClipboard(document.getElementById('pasteTextarea').value); document.getElementById('pasteModal').classList.remove('active'); document.getElementById('pasteTextarea').value=''; };
-    document.getElementById('closePasteModal').onclick = () => document.getElementById('pasteModal').classList.remove('active');
-    document.getElementById('helpBtn').onclick = () => document.getElementById('helpModal').classList.add('active');
-    document.getElementById('closeHelpBtn').onclick = () => document.getElementById('helpModal').classList.remove('active');
+    function closeConfigModal() { document.getElementById('configModal').classList.remove('active'); }
+    function saveConfig() {
+        config.appsScriptUrl = document.getElementById('appsScriptUrl').value.trim();
+        localStorage.setItem('ugb_pensum_config', JSON.stringify(config));
+        closeConfigModal();
+        showToast('Configuración guardada', 'success');
+        if (config.appsScriptUrl) document.getElementById('syncStatusText').innerHTML = '<span class="status-badge status-green"></span> Sheets listo';
+    }
+
+    function showToast(msg, type = '') {
+        let toast = document.createElement('div');
+        toast.innerText = msg;
+        toast.style.position = 'fixed';
+        toast.style.bottom = '80px';
+        toast.style.right = '20px';
+        toast.style.background = type === 'error' ? 'var(--danger)' : 'var(--blue-ugb)';
+        toast.style.color = 'white';
+        toast.style.padding = '8px 16px';
+        toast.style.borderRadius = '2rem';
+        toast.style.zIndex = '9999';
+        toast.style.fontSize = '0.875rem';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // ======================== ZOOM Y MODO OSCURO ========================
+    function applyZoom(value) {
+        let zoomArea = document.getElementById('zoomableArea');
+        zoomArea.style.transform = `scale(${value / 100})`;
+        document.getElementById('zoomValue').innerText = value + '%';
+        localStorage.setItem('zoomLevel', value);
+    }
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+    }
+
+    // ======================== INICIALIZACIÓN Y LOGIN ========================
+    document.getElementById('studentSelect').addEventListener('change', function() {
+        let customInput = document.getElementById('customStudent');
+        customInput.style.display = this.value === 'Otro' ? 'block' : 'none';
+    });
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        let selected = document.getElementById('studentSelect').value;
+        let custom = document.getElementById('customStudent').value.trim();
+        if (selected === 'Otro' && custom !== '') currentStudent = custom;
+        else if (selected !== '' && selected !== 'Otro') currentStudent = selected;
+        else { alert('Por favor selecciona o escribe un nombre'); return; }
+        // Cargar datos del estudiante
+        loadLocal();
+        // Cargar configuración de Sheets
+        let savedCfg = localStorage.getItem('ugb_pensum_config');
+        if (savedCfg) config = JSON.parse(savedCfg);
+        if (config.appsScriptUrl) document.getElementById('syncStatusText').innerHTML = '<span class="status-badge status-green"></span> Sheets listo';
+        // Mostrar app
+        document.getElementById('loginView').style.display = 'none';
+        document.getElementById('appView').style.display = 'block';
+        renderCycles();
+        // Configurar auto-sync cada 5 segundos
+        if (autoSyncInterval) clearInterval(autoSyncInterval);
+        autoSyncInterval = setInterval(() => {
+            if (dirtyFlag && config.appsScriptUrl) syncToSheets(false);
+        }, 5000);
+    });
+
+    // Event listeners de la interfaz
+    document.getElementById('backToPensumBtn').addEventListener('click', showPensum);
+    document.getElementById('configSheetsBtn').addEventListener('click', openConfigModal);
+    document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
+    document.getElementById('closeConfigBtn').addEventListener('click', closeConfigModal);
+    document.getElementById('manualSyncBtn').addEventListener('click', () => syncToSheets(true));
+    document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
+    document.getElementById('pasteNotesBtn').addEventListener('click', () => document.getElementById('pasteModal').classList.add('active'));
+    document.getElementById('processPasteBtn').addEventListener('click', () => {
+        let text = document.getElementById('pasteTextarea').value;
+        if (text.trim()) parseTableFromClipboard(text);
+        else showToast('Pega algún contenido primero', 'error');
+        document.getElementById('pasteModal').classList.remove('active');
+        document.getElementById('pasteTextarea').value = '';
+    });
+    document.getElementById('closePasteModal').addEventListener('click', () => document.getElementById('pasteModal').classList.remove('active'));
+    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+    document.getElementById('importExcelBtn').addEventListener('click', () => {
+        let input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx, .xls, .csv';
+        input.onchange = e => importExcel(e.target.files[0]);
+        input.click();
+    });
+    document.getElementById('helpBtn').addEventListener('click', () => document.getElementById('helpModal').classList.add('active'));
+    document.getElementById('closeHelpBtn').addEventListener('click', () => document.getElementById('helpModal').classList.remove('active'));
     document.getElementById('zoomRange').addEventListener('input', (e) => applyZoom(e.target.value));
-    function showToast(msg, type='') { let t = document.createElement('div'); t.innerText=msg; t.style.position='fixed'; t.style.bottom='70px'; t.style.right='20px'; t.style.background= type==='error'?'var(--danger)':'var(--blue-ugb)'; t.style.color='white'; t.style.padding='8px 16px'; t.style.borderRadius='2rem'; t.style.zIndex='9999'; document.body.appendChild(t); setTimeout(()=>t.remove(),2000); }
-    init();
+
+    // Restaurar preferencias
+    if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark');
+    let zoom = localStorage.getItem('zoomLevel') || 100;
+    document.getElementById('zoomRange').value = zoom;
+    applyZoom(zoom);
 </script>
 </body>
 </html>

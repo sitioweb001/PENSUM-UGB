@@ -605,6 +605,10 @@ header {
   <div class="modal">
     <h3>Anotar <span id="eventActivityName"></span></h3>
     <div class="modal-field">
+      <label>Ciclo</label>
+      <select id="eventCycle" class="activity-input" style="width:100%; height:36px;" onchange="updateEventSubjects()"></select>
+    </div>
+    <div class="modal-field">
       <label>Materia</label>
       <select id="eventSubject" class="activity-input" style="width:100%; height:36px;"></select>
     </div>
@@ -713,8 +717,19 @@ let pendingDeleteAction = null;
 function init() {
   const saved = localStorage.getItem('ugb_pensum_appdata');
   if (saved) { try { appData = JSON.parse(saved); } catch(e) { appData = {}; } }
+  
+  const defaultUrl = 'https://script.google.com/macros/s/AKfycbzkLqA1uXc7ayITUEyLd5tY8fbdgSeXwnAE_9FXB0wy-wfHizaTlndMQwYqUHH62z1_6A/exec';
   const savedCfg = localStorage.getItem('ugb_pensum_config');
-  if (savedCfg) { try { config = JSON.parse(savedCfg); } catch(e) { config = {}; } }
+  if (savedCfg) { 
+    try { 
+      config = JSON.parse(savedCfg); 
+      if (!config.appsScriptUrl) config.appsScriptUrl = defaultUrl;
+    } catch(e) { 
+      config = { appsScriptUrl: defaultUrl }; 
+    } 
+  } else {
+    config = { appsScriptUrl: defaultUrl };
+  }
   
   if(localStorage.getItem('darkMode') === 'true') { document.body.classList.add('dark'); }
   const savedZoom = localStorage.getItem('zoomLevel');
@@ -750,7 +765,10 @@ function doLogin() {
 
 function selectStudent(name) {
   currentStudent = name;
-  if (!appData[name]) appData[name] = { notas: {} };
+  if (!appData[name]) {
+    appData[name] = { notas: {}, events: [] };
+    saveLocal(); // Guardar inmediatamente para que no se pierda al recargar
+  }
   document.getElementById('loginView').style.display = 'none';
   document.getElementById('appView').style.display = 'block';
   document.getElementById('bottomBar').style.display = 'flex';

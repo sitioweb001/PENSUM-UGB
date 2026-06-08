@@ -628,9 +628,8 @@ header {
 <div class="bottom-toolbar" id="bottomBar" style="display:none;">
   <button class="tool-btn" onclick="openPasteModal()" title="Pegar notas">📋</button>
   <button class="tool-btn" onclick="openCalendarModal()" title="Calendario">📅</button>
-  <button class="tool-btn" onclick="exportJSON()" title="Exportar JSON">💾</button>
-  <button class="tool-btn" onclick="importJSON()" title="Importar JSON">📂</button>
-  <button class="tool-btn" onclick="syncToSheets()" title="Sincronizar">☁️</button>
+  <button class="tool-btn" onclick="fetchFromSheets()" title="Descargar nube">⬇️</button>
+  <button class="tool-btn" onclick="syncToSheets()" title="Subir nube">☁️</button>
   <button class="tool-btn" onclick="exportPDF()" title="Exportar a PDF">🖨️</button>
   <button class="tool-btn" onclick="toggleDarkMode()" title="Modo oscuro">🌙</button>
 </div>
@@ -1557,7 +1556,7 @@ async function syncToSheets() {
     showToast('Configura la URL de Apps Script primero', 'error');
     return;
   }
-  showToast('⏳ Sincronizando…');
+  showToast('⏳ Sincronizando (Subiendo)…', 'success');
   const payload = {
     student: currentStudent || 'Estudiante',
     timestamp: new Date().toISOString(),
@@ -1585,9 +1584,46 @@ async function syncToSheets() {
       headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),
     });
-    document.getElementById('syncStatus').textContent = '✓ Sincronizado ' + new Date().toLocaleTimeString();
-    showToast('✓ Datos enviados a Google Sheets', 'success');
-  } catch(e) { showToast('✗ Error: ' + e.message, 'error'); }
+    document.getElementById('syncStatus').textContent = '✓ Guardado en nube';
+    showToast('✓ Datos subidos a Google Sheets', 'success');
+  } catch(e) { showToast('✗ Error al subir', 'error'); }
+}
+
+async function fetchFromSheets() {
+  if (!config.appsScriptUrl) return showToast('Configura Sheets primero', 'error');
+  showToast('⏳ Descargando datos de la nube...', 'success');
+  try {
+    const url = config.appsScriptUrl + '?student=' + encodeURIComponent(currentStudent);
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.status === 'success') {
+      const data = json.payload.data;
+      const events = json.payload.events;
+      
+      if (!appData[currentStudent]) appData[currentStudent] = { notas: {}, events: [] };
+      
+      data.forEach(row => {
+        appData[currentStudent].notas[row.num] = {
+           status: row.status,
+           finalGrade: row.finalGrade === '' ? null : parseFloat(row.finalGrade),
+           computos: [
+             { lab1: row.lab1_c1, lab2: row.lab2_c1, parcial: row.parcial_c1 },
+             { lab1: row.lab1_c2, lab2: row.lab2_c2, parcial: row.parcial_c2 },
+             { lab1: row.lab1_c3, lab2: row.lab2_c3, parcial: row.parcial_c3 }
+           ]
+        };
+      });
+      appData[currentStudent].events = events || [];
+      
+      saveLocal();
+      renderPensum();
+      showToast('✓ Datos descargados correctamente', 'success');
+    } else {
+      showToast('✗ ' + json.message, 'error');
+    }
+  } catch(e) {
+    showToast('✗ Error de conexión o URL', 'error');
+  }
 }
 
 function openConfig() {

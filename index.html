@@ -1,1092 +1,1640 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>UGB - Gestor Académico | Ingeniería en Sistemas y Redes</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UGB - Pénsum Ing. Sistemas y Redes</title>
+<link rel="icon" type="image/png" href="Logotipo-horizontal-azul.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue: #1e40af;
+  --blue-dark: #1e3a8a;
+  --blue-light: #3b82f6;
+  --white: #ffffff;
+  --gray-bg: #f3f4f6;
+  --gray-light: #e5e7eb;
+  --gray-mid: #6b7280;
+  --text: #111827;
+  --pass: #10b981;
+  --fail: #ef4444;
+  --pending: #f59e0b;
+  --none: #9ca3af;
+  --card-shadow: 0 4px 24px rgba(30,64,175,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--gray-bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+body.dark {
+  --blue: #3b82f6;
+  --white: #1e293b;
+  --gray-bg: #0f172a;
+  --text: #f1f5f9;
+  --gray-mid: #94a3b8;
+}
 
-        :root {
-            --bg-body: #f4f7fc;
-            --bg-surface: #ffffff;
-            --text-primary: #1a2c3e;
-            --text-secondary: #4a627a;
-            --border-light: #e2e8f0;
-            --blue-ugb: #0057b3;
-            --blue-ugb-light: #eef5ff;
-            --blue-ugb-dark: #003d7a;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-            --transition: all 0.2s ease;
-        }
+/* LOGIN */
+#loginView {
+  position: fixed; inset: 0; background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 100%);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.login-box {
+  background: white; border-radius: 20px; padding: 40px; width: 420px; max-width: 90vw;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.3);
+}
+.login-box h2 {
+  font-size: 24px; font-weight: 800; color: var(--blue-dark); margin-bottom: 8px; text-align: center;
+}
+.login-box p { color: var(--gray-mid); font-size: 14px; text-align: center; margin-bottom: 24px; }
+.login-field { margin-bottom: 16px; }
+.login-field label {
+  display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.login-field input, .login-field select {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--gray-light); border-radius: 10px;
+  font-family: 'Inter', sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s;
+}
+.login-field input:focus, .login-field select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(30,64,175,0.08); }
+.login-btn {
+  width: 100%; padding: 14px; background: var(--blue); color: white; border: none; border-radius: 10px;
+  font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+  margin-top: 8px;
+}
+.login-btn:hover { background: var(--blue-dark); transform: translateY(-1px); }
+.student-list { margin-top: 20px; }
+.student-list h4 { font-size: 12px; color: var(--gray-mid); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.student-chip {
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 14px;
+  background: var(--gray-bg); border-radius: 8px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
+  font-size: 14px; font-weight: 500;
+}
+.student-chip:hover { background: var(--blue-light); color: white; }
+.student-chip .del-btn {
+  background: transparent; border: none; color: var(--gray-mid); cursor: pointer; font-size: 16px; padding: 0 4px;
+}
+.student-chip:hover .del-btn { color: white; }
 
-        body.dark {
-            --bg-body: #0f172a;
-            --bg-surface: #1e293b;
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --border-light: #334155;
-            --blue-ugb-light: #1e293b;
-        }
+/* HEADER */
+header {
+  background: var(--blue-dark); color: white; padding: 16px 32px;
+  display: flex; align-items: center; gap: 20px; position: sticky; top: 0; z-index: 200;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+}
+.logo-box {
+  width: 48px; height: 48px; border: 2px solid rgba(255,255,255,0.6); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 15px; letter-spacing: 1px;
+}
+.header-title h1 { font-size: 13px; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; opacity: 0.7; }
+.header-title h2 { font-size: 20px; font-weight: 800; letter-spacing: 0.5px; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.student-name { font-size: 14px; font-weight: 600; opacity: 0.9; }
+.sync-btn {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white;
+  padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500;
+  transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+}
+.sync-btn:hover { background: rgba(255,255,255,0.25); }
+.sync-status { font-size: 12px; opacity: 0.7; }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-body);
-            color: var(--text-primary);
-            transition: var(--transition);
-            line-height: 1.5;
-        }
+/* VIEWS */
+.view { display: none; }
+.view.active { display: block; }
 
-        /* Login */
-        .login-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, var(--blue-ugb), #1e3a6f);
-        }
-        .login-card {
-            background: var(--bg-surface);
-            border-radius: 2rem;
-            padding: 2rem;
-            width: 90%;
-            max-width: 400px;
-            text-align: center;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.2);
-        }
-        .login-card h2 {
-            color: var(--blue-ugb);
-            margin-bottom: 0.5rem;
-        }
-        .login-card select, .login-card input {
-            width: 100%;
-            padding: 0.8rem;
-            margin: 0.5rem 0;
-            border: 1px solid var(--border-light);
-            border-radius: 2rem;
-            background: var(--bg-body);
-            color: var(--text-primary);
-            font-size: 1rem;
-        }
-        .btn {
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            font-weight: 600;
-            font-size: 0.875rem;
-            border: none;
-            cursor: pointer;
-            background: var(--blue-ugb);
-            color: white;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            opacity: 0.9;
-        }
-        .btn-outline {
-            background: transparent;
-            border: 1px solid var(--border-light);
-            color: var(--text-primary);
-        }
+/* STATS BAR */
+.stats-bar {
+  background: white; border-bottom: 1px solid var(--gray-light); padding: 10px 32px;
+  display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
+}
+.stat-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.stat-dot { width: 10px; height: 10px; border-radius: 50%; }
+.stat-label { color: var(--gray-mid); }
+.stat-val { font-weight: 700; color: var(--text); }
+.progress-bar-wrap { width: 100%; height: 6px; background: var(--gray-light); border-radius: 3px; margin-top: 2px; overflow: hidden; max-width: 200px; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--blue), #60a5fa); border-radius: 3px; transition: width 0.4s; }
 
-        /* Header y barra de progreso */
-        .header {
-            background: var(--bg-surface);
-            border-bottom: 1px solid var(--border-light);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow-sm);
-        }
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        .logo-area img {
-            height: 48px;
-            width: auto;
-            object-fit: contain;
-        }
-        .logo-area h1 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--blue-ugb), #2c7da0);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-        }
-        .header-actions {
-            display: flex;
-            gap: 0.75rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .sync-btn {
-            background: var(--blue-ugb);
-            color: white;
-        }
-        .sync-btn.blink {
-            animation: pulse 0.8s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; background: var(--blue-ugb);}
-            50% { opacity: 0.7; background: #3b82f6; box-shadow: 0 0 5px #3b82f6;}
-            100% { opacity: 1; background: var(--blue-ugb);}
-        }
-        .sync-status {
-            font-size: 0.75rem;
-            margin-left: 0.5rem;
-            font-weight: 400;
-        }
-        .status-badge {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 6px;
-        }
-        .status-red { background: var(--danger); box-shadow: 0 0 2px red; }
-        .status-green { background: var(--success); }
+/* PENSUM CONTROLS */
+.pensum-controls {
+  padding: 16px 32px; display: flex; align-items: center; gap: 16px;
+  background: white; border-bottom: 1px solid var(--gray-light);
+}
+.pensum-controls label { font-size: 13px; color: var(--gray-mid); font-weight: 500; }
+.zoom-slider { -webkit-appearance: none; width: 140px; height: 4px; border-radius: 2px; background: var(--blue); outline: none; cursor: pointer; }
+.zoom-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--blue-dark); cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+.zoom-value { font-size: 13px; color: var(--blue); font-weight: 600; min-width: 38px; }
+.pensum-hint { margin-left: auto; font-size: 12px; color: var(--gray-mid); }
+.pensum-hint span { color: var(--blue); font-weight: 600; }
 
-        .progress-stats {
-            background: var(--bg-surface);
-            border-bottom: 1px solid var(--border-light);
-            padding: 0.75rem 2rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-            align-items: center;
-            font-size: 0.8rem;
-        }
-        .stat {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .progress-bar-container {
-            flex: 1;
-            height: 8px;
-            background: var(--border-light);
-            border-radius: 10px;
-            max-width: 200px;
-        }
-        .progress-fill {
-            height: 100%;
-            background: var(--blue-ugb);
-            border-radius: 10px;
-            width: 0%;
-            transition: width 0.3s;
-        }
+/* PENSUM GRID - RECTA Y ALINEADA */
+.pensum-scroll-area { overflow: auto; padding: 24px 32px; min-height: calc(100vh - 130px); }
+.pensum-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+  transform-origin: top left;
+}
+.year-row {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(170px, 180px));
+  gap: 12px;
+  margin-bottom: 8px;
+  padding-left: 0;
+}
+.year-label {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--gray-mid);
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--gray-light);
+  padding-bottom: 6px;
+  white-space: nowrap;
+}
+.pensum-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(170px, 180px));
+  gap: 12px;
+  width: max-content;
+}
+.cycle-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cycle-header-box {
+  background: var(--blue);
+  color: white;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 10px 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s;
+  user-select: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cycle-header-box:hover { background: var(--blue-dark); }
 
-        /* Zoom y contenedor principal */
-        .app-main {
-            padding: 1.5rem 2rem;
-            transition: transform 0.1s ease;
-            transform-origin: top left;
-        }
-        .zoom-control {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            background: var(--bg-surface);
-            padding: 0.5rem 1rem;
-            border-radius: 3rem;
-            width: fit-content;
-            border: 1px solid var(--border-light);
-        }
-        .view {
-            display: none;
-        }
-        .view.active {
-            display: block;
-        }
+.subject-card {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 120px;
+}
+.subject-card:hover {
+  border-color: var(--blue);
+  box-shadow: 0 4px 12px rgba(30,64,175,0.15);
+  transform: translateY(-2px);
+}
+.card-top-bar {
+  background: rgba(30, 64, 175, 0.85);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.card-body {
+  padding: 8px 10px;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-extra {
+  background: #d1d5db;
+  color: #4b5563;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  display: inline-block;
+  margin: 0 auto 4px;
+}
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  border-top: 1px solid var(--gray-light);
+  font-size: 10px;
+  color: #6b7280;
+}
+.card-status-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: transparent;
+}
+.status-pass { background: var(--pass); }
+.status-fail { background: var(--fail); }
+.status-inprogress { background: var(--pending); }
+.status-pending { background: var(--none); }
 
-        /* Tarjetas de ciclos */
-        .cycles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            gap: 1.5rem;
-        }
-        .cycle-card {
-            background: var(--bg-surface);
-            border-radius: 1.5rem;
-            border: 1px solid var(--border-light);
-            overflow: hidden;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
-        }
-        .cycle-card:hover {
-            transform: translateY(-4px);
-            box-shadow: var(--shadow-lg);
-        }
-        .cycle-header {
-            background: var(--blue-ugb-light);
-            padding: 1rem;
-            font-weight: 700;
-            font-size: 1.2rem;
-            border-bottom: 2px solid var(--blue-ugb);
-            display: flex;
-            justify-content: space-between;
-            cursor: pointer;
-        }
-        .subjects-preview {
-            padding: 0.75rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .preview-subject {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            padding: 0.5rem;
-            border-radius: 1rem;
-            background: var(--bg-body);
-            transition: var(--transition);
-            cursor: pointer;
-        }
-        .preview-subject:hover {
-            background: var(--blue-ugb-light);
-        }
-        .subject-grade {
-            font-weight: 700;
-            font-size: 0.9rem;
-        }
-        .grade-pass { color: var(--success); }
-        .grade-fail { color: var(--danger); }
-        .grade-pending { color: var(--warning); }
-        .grade-inprogress { color: var(--blue-ugb); }
+.card-grade-badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: var(--pass);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 2;
+}
+.card-grade-badge-inline {
+  background: var(--pass);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+.card-grade-badge-inline.fail, .card-grade-badge.fail { background: var(--fail); }
+.card-grade-badge-inline.inprogress, .card-grade-badge.inprogress { background: var(--pending); }
+.card-grade-badge-inline.pending, .card-grade-badge.pending { background: var(--none); }
 
-        /* Vista detalle */
-        .detail-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        .subject-detail-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-light);
-            border-radius: 1rem;
-            margin-bottom: 1rem;
-            overflow: hidden;
-        }
-        .subject-summary {
-            padding: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .subject-summary:hover {
-            background: var(--blue-ugb-light);
-        }
-        .subject-summary .left {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-        .subject-code {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-        .subject-name {
-            font-weight: 600;
-        }
-        .final-grade {
-            font-size: 1.2rem;
-            font-weight: 700;
-        }
-        .computos-panel {
-            display: none;
-            padding: 1rem;
-            border-top: 1px solid var(--border-light);
-            background: var(--bg-body);
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1rem;
-        }
-        .computo-item {
-            background: var(--bg-surface);
-            padding: 0.75rem;
-            border-radius: 1rem;
-            border: 1px solid var(--border-light);
-        }
-        .input-grade {
-            width: 70px;
-            padding: 0.3rem;
-            border-radius: 0.5rem;
-            border: 1px solid var(--border-light);
-            background: var(--bg-surface);
-            color: var(--text-primary);
-            text-align: center;
-        }
-        .save-subject-btn, .clear-subject-btn {
-            margin-top: 0.5rem;
-        }
-        .clear-subject-btn {
-            background: var(--danger);
-        }
+/* CYCLE DETAIL VIEW */
+#cycleView { padding: 24px 32px; max-width: 1200px; margin: 0 auto; }
+.back-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px;
+  background: white; border: 1px solid var(--gray-light); border-radius: 8px;
+  color: var(--blue); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  margin-bottom: 24px;
+}
+.back-btn:hover { background: var(--blue); color: white; }
+.cycle-detail-header { margin-bottom: 28px; }
+.cycle-detail-header h2 { font-size: 28px; font-weight: 800; color: var(--blue-dark); }
+.cycle-detail-header p { color: var(--gray-mid); font-size: 14px; margin-top: 4px; }
 
-        /* Botones flotantes inferiores */
-        .bottom-toolbar {
-            position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            display: flex;
-            gap: 0.8rem;
-            background: var(--bg-surface);
-            padding: 0.6rem 1rem;
-            border-radius: 3rem;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--border-light);
-            z-index: 99;
-        }
-        .tool-btn {
-            background: transparent;
-            border: none;
-            font-size: 1.3rem;
-            cursor: pointer;
-            color: var(--text-secondary);
-            transition: 0.2s;
-            padding: 0.3rem;
-        }
-        .tool-btn:hover {
-            color: var(--blue-ugb);
-            transform: scale(1.1);
-        }
+.subjects-list { display: flex; flex-direction: column; gap: 16px; }
+.subject-row {
+  background: white; border-radius: 14px; box-shadow: var(--card-shadow); overflow: hidden;
+  border: 1px solid var(--gray-light); transition: box-shadow 0.2s;
+}
+.subject-row:hover { box-shadow: 0 8px 32px rgba(30,64,175,0.13); }
+.subject-row-header {
+  padding: 16px 20px; display: flex; align-items: center; gap: 16px;
+  cursor: pointer; user-select: none; background: white; transition: background 0.15s;
+}
+.subject-row-header:hover { background: #f8f8ff; }
+.srh-num {
+  width: 36px; height: 36px; background: var(--blue); color: white; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.srh-info { flex: 1; }
+.srh-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.srh-meta { font-size: 12px; color: var(--gray-mid); margin-top: 2px; }
+.srh-status { display: flex; align-items: center; gap: 10px; }
+.status-chip {
+  padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+.chip-pass { background: #d1fae5; color: #065f46; }
+.chip-fail { background: #fee2e2; color: #991b1b; }
+.chip-inprogress { background: #fef3c7; color: #92400e; }
+.chip-pending { background: var(--gray-light); color: var(--gray-mid); }
 
-        /* Modales */
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .modal.active {
-            display: flex;
-        }
-        .modal-content {
-            background: var(--bg-surface);
-            max-width: 600px;
-            width: 90%;
-            border-radius: 1.5rem;
-            padding: 1.5rem;
-        }
-        textarea, input {
-            width: 100%;
-            background: var(--bg-body);
-            border: 1px solid var(--border-light);
-            border-radius: 1rem;
-            padding: 0.8rem;
-            color: var(--text-primary);
-            margin-top: 0.5rem;
-        }
-        @media (max-width: 700px) {
-            .header { flex-direction: column; align-items: stretch; }
-            .bottom-toolbar { bottom: 0.5rem; right: 0.5rem; gap: 0.4rem; padding: 0.4rem 0.8rem;}
-            .app-main { padding: 1rem; }
-        }
-    </style>
+.final-grade-display { font-size: 22px; font-weight: 800; color: var(--blue-dark); min-width: 50px; text-align: right; }
+.final-grade-display.pass { color: var(--pass); }
+.final-grade-display.fail { color: var(--fail); }
+.final-grade-display.pending { color: var(--none); }
+
+.toggle-icon { font-size: 18px; color: var(--gray-mid); transition: transform 0.2s; }
+.subject-row.open .toggle-icon { transform: rotate(180deg); }
+
+.subject-computos { padding: 0 20px 20px; display: none; }
+.subject-row.open .subject-computos { display: block; }
+
+.computos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 4px; }
+.computo-block {
+  background: var(--gray-bg); border-radius: 10px; padding: 14px; border: 1px solid var(--gray-light);
+}
+.computo-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--blue);
+  text-transform: uppercase; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
+}
+.computo-avg { font-size: 11px; color: var(--text); font-weight: 700; background: white; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--gray-light); }
+
+.activity-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.activity-label { font-size: 11px; color: var(--text); flex: 1; line-height: 1.2; }
+.activity-pct { font-size: 10px; color: var(--gray-mid); width: 30px; text-align: right; }
+.activity-input {
+  width: 64px; padding: 5px 8px; border: 1px solid var(--gray-light); border-radius: 6px;
+  font-size: 13px; font-family: 'Inter', sans-serif; font-weight: 500; text-align: center;
+  color: var(--text); background: white; transition: border-color 0.15s; outline: none;
+}
+.activity-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(30,64,175,0.08); }
+.activity-input::placeholder { color: var(--gray-mid); font-size: 11px; }
+
+.computo-score {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gray-light);
+  display: flex; justify-content: space-between; font-size: 12px; color: var(--gray-mid);
+}
+.computo-score strong { color: var(--text); font-weight: 700; }
+
+.subject-summary {
+  background: white; border-radius: 10px; padding: 14px; margin-top: 12px;
+  border: 2px solid var(--gray-light); display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.summary-item { text-align: center; flex: 1; min-width: 80px; }
+.summary-item label { display: block; font-size: 10px; color: var(--gray-mid); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+.summary-item span { font-size: 22px; font-weight: 800; color: var(--text); }
+.summary-item span.pass { color: var(--pass); }
+.summary-item span.fail { color: var(--fail); }
+.summary-item span.pending { color: var(--none); }
+
+.btn-group { display: flex; gap: 8px; margin-left: auto; }
+.save-subject-btn {
+  background: var(--blue); color: white; border: none; padding: 10px 22px; border-radius: 8px;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+}
+.save-subject-btn:hover { background: var(--blue-dark); transform: translateY(-1px); }
+.delete-subject-btn {
+  background: var(--fail); color: white; border: none; padding: 10px 18px; border-radius: 8px;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+}
+.delete-subject-btn:hover { background: #b91c1c; transform: translateY(-1px); }
+
+/* MODALS */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,20,0.5); z-index: 300;
+  display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: white; border-radius: 16px; padding: 32px; width: 520px; max-width: 95vw;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.3);
+}
+.modal h3 { font-size: 20px; font-weight: 800; color: var(--blue-dark); margin-bottom: 6px; }
+.modal p { color: var(--gray-mid); font-size: 13px; margin-bottom: 20px; }
+.modal-field { margin-bottom: 16px; }
+.modal-field label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.modal-field input, .modal-field textarea {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--gray-light); border-radius: 8px;
+  font-family: 'Inter', sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s;
+}
+.modal-field input:focus, .modal-field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(30,64,175,0.08); }
+.modal-field textarea { min-height: 200px; resize: vertical; }
+.modal-btns { display: flex; gap: 10px; margin-top: 24px; }
+.modal-btn { flex: 1; padding: 11px; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+.modal-btn.primary { background: var(--blue); color: white; }
+.modal-btn.primary:hover { background: var(--blue-dark); }
+.modal-btn.secondary { background: var(--gray-light); color: var(--text); }
+.modal-btn.secondary:hover { background: #d1d5db; }
+.modal-btn.danger { background: var(--fail); color: white; }
+.modal-btn.danger:hover { background: #b91c1c; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; background: var(--blue-dark); color: white;
+  padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2); transform: translateY(80px); opacity: 0;
+  transition: all 0.3s; z-index: 999;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: #059669; }
+.toast.error { background: var(--fail); }
+
+/* BOTTOM TOOLBAR */
+.bottom-toolbar {
+  position: fixed; bottom: 1rem; right: 1rem; display: flex; flex-direction: column; gap: 0.5rem;
+  background: white; padding: 1rem 0.5rem; border-radius: 3rem;
+  box-shadow: var(--card-shadow); border: 1px solid var(--gray-light); z-index: 99;
+}
+.tool-btn {
+  background: transparent; border: none; font-size: 1.2rem; cursor: pointer;
+  color: var(--gray-mid); transition: 0.2s; padding: 0.4rem; width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.tool-btn:hover { color: var(--blue); background: var(--gray-bg); }
+
+@media (max-width: 900px) {
+  .computos-grid { grid-template-columns: 1fr; }
+  .year-row, .pensum-grid { grid-template-columns: repeat(5, minmax(160px, 180px)) !important; }
+  header { padding: 14px 16px; flex-wrap: wrap; }
+  #cycleView { padding: 16px; }
+  .pensum-scroll-area { padding: 16px; }
+}
+@media (max-width: 600px) {
+  .year-row, .pensum-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+}
+@media print {
+  body { background: white; }
+  header, .bottom-toolbar, .zoom-controls, .pensum-hint { display: none !important; }
+  .app-view { margin-top: 0; padding: 0; height: auto; overflow: visible; }
+  .pensum-scroll-area { overflow: visible; height: auto; padding: 0; min-height: auto; }
+  .pensum-wrapper { zoom: 1 !important; transform: none !important; margin: 0; width: 100%; }
+  .pensum-grid { flex-wrap: wrap; justify-content: center; gap: 20px; }
+  .subject-card { break-inside: avoid; page-break-inside: avoid; }
+  .cycle-col { break-inside: avoid; page-break-inside: avoid; width: 180px; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  #cycleView, #loginView, .modal-overlay, #toast { display: none !important; }
+  #pensumView { display: flex !important; }
+}
+</style>
 </head>
 <body>
 
-<!-- Pantalla de Login -->
-<div id="loginView" class="login-container">
-    <div class="login-card">
-        <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height: 60px; margin-bottom: 1rem;" onerror="this.style.display='none'">
-        <h2>📘 Gestor Académico</h2>
-        <p>Ingeniería en Sistemas y Redes Informáticas</p>
-        <select id="studentSelect">
-            <option value="">-- Selecciona un alumno --</option>
-            <option value="Ana García">Ana García</option>
-            <option value="Carlos López">Carlos López</option>
-            <option value="Marta Reyes">Marta Reyes</option>
-            <option value="Otro">Otro (escribe tu nombre)</option>
-        </select>
-        <input type="text" id="customStudent" placeholder="Escribe tu nombre completo" style="display:none;">
-        <button class="btn" id="loginBtn" style="margin-top: 1rem; width: 100%;">Ingresar</button>
+<!-- LOGIN VIEW -->
+<div id="loginView">
+  <div class="login-box">
+    <h2>🎓 UGB Académico</h2>
+    <p>Ingeniería en Sistemas y Redes Informáticas</p>
+    <div class="login-field">
+      <label>Nombre del estudiante</label>
+      <input type="text" id="loginName" placeholder="Ej: Juan Pérez" onkeypress="if(event.key==='Enter')doLogin()">
     </div>
+    <button class="login-btn" onclick="doLogin()">Ingresar / Crear</button>
+    <div class="student-list" id="studentList"></div>
+  </div>
 </div>
 
-<!-- Aplicación principal (se muestra después del login) -->
+<!-- MAIN APP -->
 <div id="appView" style="display:none;">
-    <header class="header">
-        <div class="logo-area">
-            <img src="Logotipo-horizontal-azul.png" alt="UGB Logo" onerror="this.style.display='none'">
-            <h1>📘 Gestor Académico<br><small style="font-size:0.7rem;">Ingeniería en Sistemas y Redes</small></h1>
-        </div>
-        <div class="header-actions">
-            <button class="btn" id="configSheetsBtn"><i class="fas fa-cloud-upload-alt"></i> Configurar Sheets</button>
-            <button class="btn sync-btn" id="manualSyncBtn"><i class="fas fa-save"></i> Guardar en Sheets</button>
-            <span class="sync-status" id="syncStatusText"><span class="status-badge status-red"></span>Sin guardar</span>
-        </div>
-    </header>
+<header>
+  <div class="logo-box">UGB</div>
+  <div class="header-title">
+    <h1>Ingeniería en</h1>
+    <h2>Sistemas y Redes Informáticas</h2>
+  </div>
+  <div class="header-right">
+    <span class="student-name" id="currentStudentName"></span>
+    <button class="sync-btn" onclick="changeStudent()">👤 Cambiar</button>
+    <button class="sync-btn" onclick="openConfig()">⚙ Sheets</button>
+    <button class="sync-btn" onclick="syncToSheets()">☁ Guardar</button>
+    <span class="sync-status" id="syncStatus">Sin sincronizar</span>
+  </div>
+</header>
 
-    <div class="progress-stats">
-        <div class="stat"><span>✅ Aprobadas:</span> <strong id="statPass">0</strong></div>
-        <div class="stat"><span>❌ Reprobadas:</span> <strong id="statFail">0</strong></div>
-        <div class="stat"><span>🔄 En curso:</span> <strong id="statProgress">0</strong></div>
-        <div class="stat"><span>⏳ Pendientes:</span> <strong id="statPending">0</strong></div>
-        <div class="stat"><span>📊 Valor al pénsum:</span> <strong id="statPercent">0%</strong></div>
-        <div class="progress-bar-container"><div class="progress-fill" id="globalProgress"></div></div>
-    </div>
-
-    <div class="app-main" id="zoomableArea">
-        <div class="zoom-control">
-            <i class="fas fa-search-minus"></i>
-            <input type="range" id="zoomRange" min="50" max="150" value="100" step="5">
-            <i class="fas fa-search-plus"></i>
-            <span id="zoomValue">100%</span>
-        </div>
-
-        <!-- Vista de pénsum (ciclos) -->
-        <div id="pensumView" class="view active">
-            <div class="cycles-grid" id="cyclesContainer"></div>
-        </div>
-
-        <!-- Vista de detalle de ciclo -->
-        <div id="detailView" class="view">
-            <div class="detail-header">
-                <button class="btn" id="backToPensumBtn"><i class="fas fa-arrow-left"></i> Volver al pénsum</button>
-                <h2 id="detailCycleTitle">Ciclo I</h2>
-            </div>
-            <div id="subjectsDetailList"></div>
-        </div>
-    </div>
-
-    <div class="bottom-toolbar">
-        <button class="tool-btn" id="darkModeToggle" title="Modo oscuro"><i class="fas fa-moon"></i></button>
-        <button class="tool-btn" id="pasteNotesBtn" title="Pegar notas desde portal"><i class="fas fa-paste"></i></button>
-        <button class="tool-btn" id="exportExcelBtn" title="Exportar a Excel"><i class="fas fa-file-excel"></i></button>
-        <button class="tool-btn" id="importExcelBtn" title="Importar respaldo"><i class="fas fa-upload"></i></button>
-        <button class="tool-btn" id="helpBtn" title="Ayuda"><i class="fas fa-question-circle"></i></button>
-    </div>
+<!-- STATS BAR -->
+<div class="stats-bar" id="statsBar">
+  <div class="stat-item"><div class="stat-dot" style="background:var(--pass)"></div><span class="stat-label">Aprobadas:</span><span class="stat-val" id="statPass">0</span></div>
+  <div class="stat-item"><div class="stat-dot" style="background:var(--fail)"></div><span class="stat-label">Reprobadas:</span><span class="stat-val" id="statFail">0</span></div>
+  <div class="stat-item"><div class="stat-dot" style="background:var(--pending)"></div><span class="stat-label">En curso:</span><span class="stat-val" id="statProgress">0</span></div>
+  <div class="stat-item"><div class="stat-dot" style="background:var(--none)"></div><span class="stat-label">Pendientes:</span><span class="stat-val" id="statPending">0</span></div>
+  <div class="stat-item" style="margin-left:auto;"><span class="stat-label">Progreso:</span><span class="stat-val" id="statPct">0%</span></div>
+  <div style="width:160px;"><div class="progress-bar-wrap"><div class="progress-bar-fill" id="totalProgressBar" style="width:0%"></div></div></div>
 </div>
 
-<!-- Modales -->
-<div id="pasteModal" class="modal">
-    <div class="modal-content">
-        <h3>📋 Pegar tabla de notas (portal UGB)</h3>
-        <p>Copia la tabla completa desde el portal (incluyendo la fila de encabezados) y pégala aquí.</p>
-        <textarea id="pasteTextarea" rows="8" placeholder="Ejemplo:&#10;MATERIA	CÓMPUTO 1	N1	N2	P	C1 ...&#10;134 - Curso Superior de Gramática	8.75	10	9.1	9.27 ..."></textarea>
-        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-            <button class="btn btn-primary" id="processPasteBtn">Procesar notas</button>
-            <button class="btn" id="closePasteModal">Cancelar</button>
-        </div>
-    </div>
+<!-- VIEW: PENSUM -->
+<div class="view active" id="pensumView">
+  <div class="pensum-controls">
+    <label>Zoom:</label>
+    <input type="range" class="zoom-slider" id="zoomSlider" min="40" max="250" value="85" oninput="updateZoom(this.value)">
+    <span class="zoom-value" id="zoomLabel">85%</span>
+    <span class="pensum-hint">Haz clic en <span>CICLO</span> para ver notas · <span style="cursor:pointer;color:var(--blue);text-decoration:underline;" onclick="openPasteModal()">📋 Pegar notas</span></span>
+  </div>
+  <div class="pensum-scroll-area">
+    <div class="pensum-wrapper" id="pensumWrapper"></div>
+  </div>
 </div>
 
-<div id="helpModal" class="modal">
-    <div class="modal-content">
-        <h3>📌 Ayuda rápida</h3>
-        <ul style="margin-top:1rem; list-style: disc inside;">
-            <li>Haz clic en cualquier ciclo o materia para abrir la edición.</li>
-            <li>Las notas se guardan automáticamente en el navegador por cada estudiante.</li>
-            <li>Auto-guardado a Google Sheets cada 5 segundos (si configurado).</li>
-            <li>Botón "Pegar notas" importa desde el portal UGB (copia la tabla completa).</li>
-            <li>Botón "Limpiar" dentro de cada materia borra todas sus notas.</li>
-            <li>Exportar/Importar Excel para respaldos.</li>
-            <li>Modo oscuro disponible.</li>
-        </ul>
-        <button class="btn btn-primary" id="closeHelpBtn" style="margin-top:1rem;">Entendido</button>
+<!-- VIEW: CYCLE DETAIL -->
+<div class="view" id="cycleView">
+  <button class="back-btn" onclick="showPensum()">← Volver al Pénsum</button>
+  <button class="clear-cycle-btn" onclick="clearCurrentCycle()" style="float:right; padding:9px 18px; background:var(--fail); color:white; border:none; border-radius:8px; font-weight:600; cursor:pointer; font-size:13px; transition:all 0.15s; margin-bottom: 24px;">🗑 Limpiar ciclo</button>
+  <div class="cycle-detail-header">
+    <h2 id="cycleTitle">Ciclo I</h2>
+    <p id="cycleSubtitle">I Año · 5 asignaturas</p>
+  </div>
+  <div class="subjects-list" id="subjectsList"></div>
+</div>
+</div><!-- /appView -->
+
+<!-- MODALS -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal">
+    <h3>Configurar Google Sheets</h3>
+    <p>Ingresa la URL de tu Web App de Google Apps Script.</p>
+    <div class="modal-field">
+      <label>URL del Web App (Apps Script)</label>
+      <input type="url" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
     </div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="closeConfig()">Cancelar</button>
+      <button class="modal-btn primary" onclick="saveConfig()">Guardar</button>
+    </div>
+  </div>
 </div>
 
-<div id="configModal" class="modal">
-    <div class="modal-content">
-        <h3><i class="fas fa-cloud-upload-alt"></i> Google Sheets</h3>
-        <p>Ingresa la URL de tu Web App de Apps Script y tu nombre (para identificar los registros).</p>
-        <label>URL del Web App:</label>
-        <input type="text" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
-        <label>Nombre del estudiante (se usará el del login):</label>
-        <input type="text" id="studentName" readonly style="background:#eef5ff;">
-        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
-            <button id="saveConfigBtn" class="btn btn-primary">Guardar</button>
-            <button id="closeConfigBtn" class="btn">Cancelar</button>
-        </div>
+<div class="modal-overlay" id="pasteModal">
+  <div class="modal">
+    <h3>📋 Pegar tabla de notas</h3>
+    <p>Copia la tabla completa desde el portal UGB (incluyendo encabezados) y pégala aquí. El formato debe ser similar a:</p>
+    <pre style="background:#f3f4f6; padding:8px; font-size:11px; margin-bottom:12px; border-radius:8px;">MATERIA	CÓMPUTO 1	N1	N2	P	C1	N1	N2	P	C2	N1	N2	P	C3	REP	NF
+134 - Curso Superior de Gramática	8.75	10	9.1	9.27	9.8	9.9	9.9	9.87	0	0	0	0	0	6.3</pre>
+    <div class="modal-field">
+      <textarea id="pasteTextarea" placeholder="Pega aquí la tabla de notas..."></textarea>
     </div>
+    <div class="modal-btns">
+      <button class="modal-btn primary" onclick="processPaste()">Procesar notas</button>
+      <button class="modal-btn secondary" onclick="closePasteModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>⚠️ Eliminar notas</h3>
+    <p id="deleteModalText">¿Estás seguro de que deseas eliminar todas las notas de esta asignatura?</p>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="closeDeleteModal()">Cancelar</button>
+      <button class="modal-btn danger" onclick="confirmDelete()">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CALENDAR MODALS -->
+<div class="modal-overlay" id="calendarModal">
+  <div class="modal">
+    <h3>📅 Calendario de Actividades</h3>
+    <p style="font-size:12px; color:#6b7280; margin-bottom:15px;">Anota fechas importantes para tus materias.</p>
+    <div style="margin-bottom:15px; display:flex; gap:8px; flex-wrap:wrap;">
+       <button class="modal-btn secondary" style="padding:6px 10px; font-size:12px;" onclick="addEvent('Lab 1')">+ Lab 1</button>
+       <button class="modal-btn secondary" style="padding:6px 10px; font-size:12px;" onclick="addEvent('Lab 2')">+ Lab 2</button>
+       <button class="modal-btn secondary" style="padding:6px 10px; font-size:12px;" onclick="addEvent('Parcial')">+ Parcial</button>
+       <button class="modal-btn secondary" style="padding:6px 10px; font-size:12px;" onclick="addEvent('Otra')">+ Otra</button>
+    </div>
+    <div id="eventsList" style="max-height:200px; overflow-y:auto; margin-bottom:15px; font-size:13px;"></div>
+    <div class="modal-btns">
+      <button class="modal-btn primary" onclick="closeCalendarModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="addEventModal" style="z-index:9999;">
+  <div class="modal">
+    <h3>Anotar <span id="eventActivityName"></span></h3>
+    <div class="modal-field">
+      <label>Materia</label>
+      <select id="eventSubject" class="activity-input" style="width:100%; height:36px;"></select>
+    </div>
+    <div class="modal-field">
+      <label>Fecha</label>
+      <input type="date" id="eventDate" class="activity-input" style="width:100%; height:36px;">
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="document.getElementById('addEventModal').classList.remove('open')">Cancelar</button>
+      <button class="modal-btn primary" onclick="saveEvent()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="bottom-toolbar" id="bottomBar" style="display:none;">
+  <button class="tool-btn" onclick="openPasteModal()" title="Pegar notas">📋</button>
+  <button class="tool-btn" onclick="openCalendarModal()" title="Calendario">📅</button>
+  <button class="tool-btn" onclick="exportJSON()" title="Exportar JSON">💾</button>
+  <button class="tool-btn" onclick="importJSON()" title="Importar JSON">📂</button>
+  <button class="tool-btn" onclick="syncToSheets()" title="Sincronizar">☁️</button>
+  <button class="tool-btn" onclick="exportPDF()" title="Exportar a PDF">🖨️</button>
+  <button class="tool-btn" onclick="toggleDarkMode()" title="Modo oscuro">🌙</button>
 </div>
 
 <script>
-    // ======================== DATOS DEL PENSUM (10 ciclos completos) ========================
-    const CYCLES = [
-        { id:1, name:'Ciclo I', year:'I Año', subjects:[ { num:'01', code:'482', name:'Matemática Computacional I', prereq:'Br.', uv:4 }, { num:'02', code:'712', name:'Sistemas Operativos', prereq:'Br.', uv:4 }, { num:'03', code:'601', name:'Principios de Física', prereq:'Br.', uv:4 }, { num:'04', code:'346', name:'Fundamentos de Programación', prereq:'Br.', uv:4 }, { num:'05', code:'134', name:'Curso Superior de Gramática', prereq:'Br.', uv:4 } ] },
-        { id:2, name:'Ciclo II', year:'I Año', subjects:[ { num:'06', code:'483', name:'Matemática Computacional II', prereq:'01', uv:4 }, { num:'07', code:'719', name:'Sociología General', prereq:'Br.', uv:4 }, { num:'08', code:'600', name:'Principios de Electrónica', prereq:'03', uv:4 }, { num:'09', code:'608', name:'Programación Computacional I', prereq:'04', uv:4 }, { num:'10', code:'1180', name:'Educación Ciudadana', prereq:'Br.', uv:4 } ] },
-        { id:3, name:'Ciclo III', year:'II Año', subjects:[ { num:'11', code:'484', name:'Matemática Computacional III', prereq:'06', uv:4 }, { num:'12', code:'33', name:'Administración de Bases de Datos I', prereq:'02', uv:4 }, { num:'13', code:'1035', name:'Electrónica Análoga', prereq:'08', uv:4 }, { num:'14', code:'609', name:'Programación Computacional II', prereq:'09', uv:4 }, { num:'15', code:'1011', name:'Infraestructura Tecnológica', prereq:'02', uv:4 } ] },
-        { id:4, name:'Ciclo IV', year:'II Año', subjects:[ { num:'16', code:'268', name:'Estadística Computacional', prereq:'06', uv:4 }, { num:'17', code:'32', name:'Administración de Bases de Datos II', prereq:'12', uv:4 }, { num:'18', code:'280', name:'Estructura y Diseño de Circuitos Digitales', prereq:'13', uv:4 }, { num:'19', code:'610', name:'Programación Computacional III', prereq:'14', uv:4 }, { num:'20', code:'409', name:'Inglés Básico', prereq:'Br.', uv:4 } ] },
-        { id:5, name:'Ciclo V', year:'III Año', subjects:[ { num:'21', code:'532', name:'Métodos y Técnicas de Investigación', prereq:'16', uv:4 }, { num:'22', code:'674', name:'Redes', prereq:'15', uv:4 }, { num:'23', code:'403', name:'Ingeniería de Software I', prereq:'09', uv:4 }, { num:'24', code:'611', name:'Programación Computacional IV', prereq:'19', uv:4 }, { num:'25', code:'1202', name:'Inglés Aplicado a la Computación I', prereq:'20', uv:4 } ] },
-        { id:6, name:'Ciclo VI', year:'III Año', subjects:[ { num:'26', code:'1204', name:'Animación por Computadora', prereq:'24', uv:4 }, { num:'27', code:'826', name:'Software Libre', prereq:'22', uv:4 }, { num:'28', code:'404', name:'Ingeniería de Software II', prereq:'23', uv:4 }, { num:'29', code:'35', name:'Administración de Redes de Computadoras', prereq:'22', uv:4 }, { num:'30', code:'1203', name:'Inglés Aplicado a la Computación II', prereq:'25', uv:4 } ] },
-        { id:7, name:'Ciclo VII', year:'IV Año', subjects:[ { num:'31', code:'1003', name:'Robótica', prereq:'18', uv:4 }, { num:'32', code:'974', name:'Servidores Informáticos', prereq:'27', uv:4 }, { num:'33', code:'358', name:'Gestión de Proyectos Informáticos', prereq:'28', uv:4 }, { num:'34', code:'676', name:'Redes Públicas', prereq:'29', uv:4 }, { num:'35', code:'109', name:'Contabilidad Empresarial', prereq:'Br.', uv:4 } ] },
-        { id:8, name:'Ciclo VIII', year:'IV Año', subjects:[ { num:'36', code:'1004', name:'Emprendimiento', prereq:'33', uv:4 }, { num:'37', code:'975', name:'Seguridad Informática', prereq:'32', uv:4 }, { num:'38', code:'827', name:'Ingeniería Económica', prereq:'35', uv:4 }, { num:'39', code:'740', name:'Telecomunicaciones', prereq:'34', uv:4 }, { num:'40', code:'154', name:'Derecho Empresarial e Informático', prereq:'Br.', uv:4 } ] },
-        { id:9, name:'Ciclo IX', year:'V Año', subjects:[ { num:'41', code:'426', name:'Inteligencia de Negocios', prereq:'28', uv:4 }, { num:'42', code:'739', name:'Tecnologías Emergentes', prereq:'33', uv:4 }, { num:'43', code:'1002', name:'Negocios Electrónicos', prereq:'24', uv:4 }, { num:'44', code:'1206', name:'Técnica Electiva I', prereq:'Rev.Prerr.', uv:4 }, { num:'45', code:'54', name:'Auditoría de Sistemas Informáticos', prereq:'28', uv:4 } ] },
-        { id:10, name:'Ciclo X', year:'V Año', subjects:[ { num:'46', code:'290', name:'Ética Profesional', prereq:'—', uv:4 }, { num:'47', code:'1205', name:'Práctica Profesional', prereq:'—', uv:5 }, { num:'48', code:'1209', name:'Técnica Electiva II', prereq:'Rev.Prerr.', uv:4 } ] }
-    ];
+// ========== PENSUM COMPLETO (10 ciclos) ==========
+const CYCLES = [
+  { id: 1, name: "Ciclo I", year: "I AÑO", subjects: [
+    { num: "01", code: "482", name: "Matemática Computacional I", prereq: "Br.", uv: 4 },
+    { num: "02", code: "712", name: "Sistemas Operativos", prereq: "Br.", uv: 4 },
+    { num: "03", code: "601", name: "Principios de Física", prereq: "Br.", uv: 4 },
+    { num: "04", code: "346", name: "Fundamentos de Programación", prereq: "Br.", uv: 4 },
+    { num: "05", code: "134", name: "Curso Superior de Gramática", prereq: "Br.", uv: 4 },
+  ]},
+  { id: 2, name: "Ciclo II", year: "I AÑO", subjects: [
+    { num: "06", code: "483", name: "Matemática Computacional II", prereq: "01", uv: 4 },
+    { num: "07", code: "719", name: "Sociología General", prereq: "Br.", uv: 4 },
+    { num: "08", code: "600", name: "Principios de Electrónica", prereq: "03", uv: 4 },
+    { num: "09", code: "608", name: "Programación Computacional I", prereq: "04", uv: 4 },
+    { num: "10", code: "1180", name: "Educación Ciudadana", prereq: "Br.", uv: 4 },
+  ]},
+  { id: 3, name: "Ciclo III", year: "II AÑO", subjects: [
+    { num: "11", code: "484", name: "Matemática Computacional III", prereq: "06", uv: 4 },
+    { num: "12", code: "33", name: "Administración de Bases de Datos I", prereq: "02", uv: 4 },
+    { num: "13", code: "1035", name: "Electrónica Análoga", prereq: "08", uv: 4 },
+    { num: "14", code: "609", name: "Programación Computacional II", prereq: "09", uv: 4 },
+    { num: "15", code: "1011", name: "Infraestructura Tecnológica", prereq: "02", uv: 4 },
+  ]},
+  { id: 4, name: "Ciclo IV", year: "II AÑO", subjects: [
+    { num: "16", code: "268", name: "Estadística Computacional", prereq: "06", uv: 4 },
+    { num: "17", code: "32", name: "Administración de Bases de Datos II", prereq: "12", uv: 4 },
+    { num: "18", code: "280", name: "Estructura y Diseño de Circuitos Digitales", prereq: "13", uv: 4 },
+    { num: "19", code: "610", name: "Programación Computacional III", prereq: "14", uv: 4 },
+    { num: "20", code: "409", name: "Inglés Básico", prereq: "Br.", uv: 4 },
+  ]},
+  { id: 5, name: "Ciclo V", year: "III AÑO", subjects: [
+    { num: "21", code: "532", name: "Métodos y Técnicas de Investigación", prereq: "16", uv: 4 },
+    { num: "22", code: "674", name: "Redes", prereq: "15", uv: 4 },
+    { num: "23", code: "403", name: "Ingeniería de Software I", prereq: "09", uv: 4 },
+    { num: "24", code: "611", name: "Programación Computacional IV", prereq: "19", uv: 4 },
+    { num: "25", code: "1202", name: "Inglés Aplicado a la Computación I", prereq: "20", uv: 4 },
+  ]},
+  { id: 6, name: "Ciclo VI", year: "III AÑO", subjects: [
+    { num: "26", code: "1204", name: "Animación por Computadora", prereq: "24", uv: 4 },
+    { num: "27", code: "826", name: "Software Libre", prereq: "22", uv: 4 },
+    { num: "28", code: "404", name: "Ingeniería de Software II", prereq: "23", uv: 4 },
+    { num: "29", code: "35", name: "Administración de Redes de Computadoras", prereq: "22", uv: 4 },
+    { num: "30", code: "1203", name: "Inglés Aplicado a la Computación II", prereq: "25", uv: 4 },
+  ]},
+  { id: 7, name: "Ciclo VII", year: "IV AÑO", subjects: [
+    { num: "31", code: "1003", name: "Robótica", prereq: "18", uv: 4 },
+    { num: "32", code: "974", name: "Servidores Informáticos", prereq: "27", uv: 4 },
+    { num: "33", code: "358", name: "Gestión de Proyectos Informáticos", prereq: "28", uv: 4 },
+    { num: "34", code: "676", name: "Redes Públicas", prereq: "29", uv: 4 },
+    { num: "35", code: "109", name: "Contabilidad Empresarial", prereq: "Br.", uv: 4 },
+  ]},
+  { id: 8, name: "Ciclo VIII", year: "IV AÑO", subjects: [
+    { num: "36", code: "1004", name: "Emprendimiento", prereq: "33", uv: 4 },
+    { num: "37", code: "975", name: "Seguridad Informática", prereq: "32", uv: 4 },
+    { num: "38", code: "827", name: "Ingeniería Económica", prereq: "35", uv: 4 },
+    { num: "39", code: "740", name: "Telecomunicaciones", prereq: "34", uv: 4 },
+    { num: "40", code: "154", name: "Derecho Empresarial e Informático", prereq: "Br.", uv: 4 },
+  ]},
+  { id: 9, name: "Ciclo IX", year: "V AÑO", subjects: [
+    { num: "41", code: "426", name: "Inteligencia de Negocios", prereq: "28", uv: 4 },
+    { num: "42", code: "739", name: "Tecnologías Emergentes", prereq: "33", uv: 4 },
+    { num: "43", code: "1002", name: "Negocios Electrónicos", prereq: "24", uv: 4 },
+    { num: "44", code: "1206", name: "Técnica Electiva I", prereq: "Rev.Prer.", uv: 4 },
+    { num: "45", code: "54", name: "Auditoría de Sistemas Informáticos", prereq: "28", uv: 4 },
+  ]},
+  { id: 10, name: "Ciclo X", year: "V AÑO", subjects: [
+    { num: "46", code: "290", name: "Ética Profesional", prereq: "—", uv: 4 },
+    { num: "47", code: "1205", name: "Práctica Profesional", prereq: "—", uv: 5 },
+    { num: "48", code: "1209", name: "Técnica Electiva II", prereq: "Rev.Prer.", uv: 4 },
+  ]},
+];
 
-    // ======================== ESTADO GLOBAL ========================
-    let appData = {};          // { "01": { computos: [c1,c2,c3], status, finalGrade } }
-    let config = {};
-    let currentStudent = "";
-    let dirtyFlag = false;
-    let currentCycleId = null;
-    let autoSyncInterval = null;
+// ========== ESTADO GLOBAL ==========
+let currentStudent = null;
+let appData = {}; // { studentName: { notas: { "01": { computos:[...], status, finalGrade } } } }
+let config = {};
+let pendingDeleteAction = null;
 
-    // ======================== FUNCIONES DE DATOS ========================
-    function getSubjectData(num) {
-        if (!appData[num]) {
-            appData[num] = {
-                computos: [ {lab1:'', lab2:'', parcial:''}, {lab1:'', lab2:'', parcial:''}, {lab1:'', lab2:'', parcial:''} ],
-                status: 'pending',
-                finalGrade: null
-            };
-        }
-        return appData[num];
+function init() {
+  const saved = localStorage.getItem('ugb_pensum_appdata');
+  if (saved) { try { appData = JSON.parse(saved); } catch(e) { appData = {}; } }
+  const savedCfg = localStorage.getItem('ugb_pensum_config');
+  if (savedCfg) { try { config = JSON.parse(savedCfg); } catch(e) { config = {}; } }
+  
+  if(localStorage.getItem('darkMode') === 'true') { document.body.classList.add('dark'); }
+  const savedZoom = localStorage.getItem('zoomLevel');
+  if(savedZoom) { 
+      currentZoom = savedZoom; 
+      document.getElementById('zoomSlider').value = savedZoom; 
+  }
+  
+  renderStudentList();
+}
+
+function renderStudentList() {
+  const list = document.getElementById('studentList');
+  const students = Object.keys(appData);
+  if (students.length === 0) { list.innerHTML = ''; return; }
+  let html = '<h4>Estudiantes guardados</h4>';
+  students.forEach(name => {
+    html += `<div class="student-chip" onclick="selectStudent('${name.replace(/'/g, "\\'")}')">
+      <span>${escapeHtml(name)}</span>
+      <button class="del-btn" onclick="event.stopPropagation(); deleteStudent('${name.replace(/'/g, "\\'")}')">×</button>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;}); }
+
+function doLogin() {
+  const name = document.getElementById('loginName').value.trim();
+  if (!name) { showToast('Ingresa un nombre', 'error'); return; }
+  selectStudent(name);
+}
+
+function selectStudent(name) {
+  currentStudent = name;
+  if (!appData[name]) appData[name] = { notas: {} };
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').style.display = 'block';
+  document.getElementById('bottomBar').style.display = 'flex';
+  document.getElementById('currentStudentName').textContent = '👤 ' + name;
+  if (config.appsScriptUrl) document.getElementById('syncStatus').textContent = '✓ Sheets listo';
+  renderPensum();
+}
+
+function changeStudent() {
+  currentStudent = null;
+  document.getElementById('loginView').style.display = 'flex';
+  document.getElementById('appView').style.display = 'none';
+  document.getElementById('bottomBar').style.display = 'none';
+  document.getElementById('loginName').value = '';
+  renderStudentList();
+}
+
+function deleteStudent(name) {
+  if (!confirm(`¿Eliminar todos los datos de ${name}?`)) return;
+  delete appData[name];
+  saveLocal();
+  renderStudentList();
+  showToast('Estudiante eliminado', 'success');
+}
+
+function getStudentData() {
+  return appData[currentStudent] || { notas: {} };
+}
+
+function getSubjectData(num) {
+  const sd = getStudentData();
+  if (!sd.notas[num]) {
+    sd.notas[num] = {
+      computos: [
+        { lab1: '', lab2: '', parcial: '' },
+        { lab1: '', lab2: '', parcial: '' },
+        { lab1: '', lab2: '', parcial: '' },
+      ],
+      status: 'pending',
+      finalGrade: null,
+    };
+  }
+  return sd.notas[num];
+}
+
+function saveLocal() {
+  localStorage.setItem('ugb_pensum_appdata', JSON.stringify(appData));
+}
+
+// ========== CALENDARIO ==========
+function openCalendarModal() {
+  document.getElementById('calendarModal').classList.add('open');
+  renderEvents();
+}
+function closeCalendarModal() {
+  document.getElementById('calendarModal').classList.remove('open');
+}
+
+let currentEventType = '';
+function addEvent(type) {
+  currentEventType = type;
+  document.getElementById('eventActivityName').textContent = type;
+  
+  const selCycle = document.getElementById('eventCycle');
+  selCycle.innerHTML = '<option value="">-- Selecciona un ciclo --</option>';
+  CYCLES.forEach(c => {
+    const allPass = c.subjects.every(sub => getStatus(calcFinal(getSubjectData(sub.num).computos), getSubjectData(sub.num).computos) === 'pass');
+    if (!allPass) {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      selCycle.appendChild(opt);
     }
+  });
+  
+  document.getElementById('eventSubject').innerHTML = '<option value="">-- Primero elige ciclo --</option>';
+  document.getElementById('eventDate').value = '';
+  document.getElementById('addEventModal').classList.add('open');
+}
 
-    function calcComputo(c) {
-        let l1 = parseFloat(c.lab1) || 0;
-        let l2 = parseFloat(c.lab2) || 0;
-        let p = parseFloat(c.parcial) || 0;
-        if (c.lab1 === '' && c.lab2 === '' && c.parcial === '') return null;
-        return (l1 * 0.30) + (l2 * 0.30) + (p * 0.40);
+function updateEventSubjects() {
+  const cycleId = parseInt(document.getElementById('eventCycle').value);
+  const sel = document.getElementById('eventSubject');
+  sel.innerHTML = '<option value="">-- Selecciona materia --</option>';
+  if (!cycleId) return;
+  const cycle = CYCLES.find(c => c.id === cycleId);
+  if (!cycle) return;
+  
+  cycle.subjects.forEach(sub => {
+    const opt = document.createElement('option');
+    opt.value = sub.num;
+    opt.textContent = `${sub.code} - ${sub.name}`;
+    sel.appendChild(opt);
+  });
+}
+
+function saveEvent() {
+  const subNum = document.getElementById('eventSubject').value;
+  const date = document.getElementById('eventDate').value;
+  if (!date) return showToast('Selecciona una fecha', 'error');
+  
+  if (!appData[currentStudent].events) appData[currentStudent].events = [];
+  appData[currentStudent].events.push({
+    id: Date.now(),
+    type: currentEventType,
+    subject: subNum,
+    date: date
+  });
+  
+  saveLocal();
+  document.getElementById('addEventModal').classList.remove('open');
+  renderEvents();
+  showToast('Fecha guardada exitosamente', 'success');
+}
+
+function deleteEvent(id) {
+  appData[currentStudent].events = appData[currentStudent].events.filter(e => e.id !== id);
+  saveLocal();
+  renderEvents();
+}
+
+function renderEvents() {
+  const list = document.getElementById('eventsList');
+  if (!appData[currentStudent].events || appData[currentStudent].events.length === 0) {
+    list.innerHTML = '<div style="color:var(--gray-mid); text-align:center; padding:20px;">No hay fechas guardadas</div>';
+    return;
+  }
+  
+  const sorted = [...appData[currentStudent].events].sort((a,b) => new Date(a.date) - new Date(b.date));
+  
+  let html = '';
+  sorted.forEach(ev => {
+    let sname = '';
+    CYCLES.forEach(c => c.subjects.forEach(s => { if(s.num === ev.subject) sname = s.name; }));
+    
+    html += `
+      <div style="background:#f3f4f6; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="flex:1;">
+          <div style="font-weight:bold; color:var(--blue); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <span>${ev.type}</span>
+            <span style="color:var(--fail); font-weight:700; font-size:12px;">📅 ${ev.date}</span>
+          </div>
+          <div style="font-size:11px; color:#4b5563; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${sname}</div>
+        </div>
+        <button onclick="deleteEvent(${ev.id})" style="background:transparent; border:none; color:var(--fail); cursor:pointer; font-size:16px; margin-left:10px;" title="Eliminar">🗑</button>
+      </div>
+    `;
+  });
+  list.innerHTML = html;
+}
+
+// ========== CÁLCULO DE NOTAS ==========
+function calcComputo(c) {
+  const l1 = parseFloat(c.lab1);
+  const l2 = parseFloat(c.lab2);
+  const p  = parseFloat(c.parcial);
+  const hasAny = !isNaN(l1) || !isNaN(l2) || !isNaN(p);
+  if (!hasAny) return null;
+  const v1 = isNaN(l1) ? 0 : l1 * 0.30;
+  const v2 = isNaN(l2) ? 0 : l2 * 0.30;
+  const v3 = isNaN(p)  ? 0 : p  * 0.40;
+  return v1 + v2 + v3;
+}
+
+function calcFinal(computos) {
+  const scores = computos.map(c => calcComputo(c));
+  const hasAny = scores.some(s => s !== null);
+  if (!hasAny) return null;
+  const sum = scores.reduce((a, b) => a + (b === null ? 0 : b), 0);
+  return sum / 3;
+}
+
+function getStatus(grade, computos) {
+  if (grade === null) {
+    const hasAny = computos.some(c => c.lab1 !== '' || c.lab2 !== '' || c.parcial !== '');
+    return hasAny ? 'inprogress' : 'pending';
+  }
+  return grade >= 6.0 ? 'pass' : 'fail';
+}
+
+function getProgress(grade) {
+  if (grade === null) return 0;
+  return Math.round((grade / 10) * 100);
+}
+
+function fillWithSix(num) {
+  const sd = getSubjectData(num);
+  let allSix = true;
+  for (let i = 0; i < 3; i++) {
+    if (parseFloat(sd.computos[i].lab1) !== 6 || parseFloat(sd.computos[i].lab2) !== 6 || parseFloat(sd.computos[i].parcial) !== 6) {
+      allSix = false; break;
     }
+  }
+  for (let i = 0; i < 3; i++) {
+    sd.computos[i].lab1 = allSix ? '' : 6;
+    sd.computos[i].lab2 = allSix ? '' : 6;
+    sd.computos[i].parcial = allSix ? '' : 6;
+  }
+  saveLocal();
+  showToast(allSix ? 'Notas limpiadas' : 'Materia rellenada con 6.0', 'success');
+  renderPensum();
+}
 
-    function calcFinal(computos) {
-        let scores = computos.map(calcComputo).filter(v => v !== null);
-        if (scores.length === 0) return null;
-        let sum = scores.reduce((a,b) => a + b, 0);
-        return sum / computos.length;
+// ========== VISTA DEL PENSUM (GRID RECTA) ==========
+let currentZoom = 85;
+function updateZoom(val) {
+  currentZoom = val;
+  localStorage.setItem('zoomLevel', val);
+  document.getElementById('zoomLabel').textContent = val + '%';
+  const wrapper = document.getElementById('pensumWrapper');
+  wrapper.style.zoom = val / 100;
+  wrapper.style.transform = 'none';
+  wrapper.style.height = 'auto';
+}
+
+function renderPensum() {
+  const wrapper = document.getElementById('pensumWrapper');
+  wrapper.innerHTML = '';
+
+  // Cabeceras de años
+  const yearRow = document.createElement('div');
+  yearRow.className = 'year-row';
+  const years = ['I AÑO','I AÑO','II AÑO','II AÑO','III AÑO','III AÑO','IV AÑO','IV AÑO','V AÑO','V AÑO'];
+  years.forEach((y, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'year-label';
+    cell.textContent = (i % 2 === 0) ? y : '';
+    yearRow.appendChild(cell);
+  });
+
+  const grid = document.createElement('div');
+  grid.className = 'pensum-grid';
+
+  CYCLES.forEach(cycle => {
+    const col = document.createElement('div');
+    col.className = 'cycle-col';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'cycle-header-box';
+    lbl.textContent = cycle.name.toUpperCase();
+    lbl.onclick = () => openCycle(cycle.id);
+    col.appendChild(lbl);
+
+    cycle.subjects.forEach(sub => {
+      const sd = getSubjectData(sub.num);
+      const grade = calcFinal(sd.computos);
+      const status = getStatus(grade, sd.computos);
+      const progress = getProgress(grade);
+      
+      const card = document.createElement('div');
+      card.className = 'subject-card';
+      
+      if (grade === null) {
+        card.style.background = 'white';
+      } else {
+        card.style.background = `linear-gradient(to right, rgba(16, 185, 129, 0.45) ${progress}%, rgba(239, 68, 68, 0.4) ${progress}%)`;
+      }
+      
+      let clickTimeout = null;
+      card.onclick = (e) => {
+        if (e.ctrlKey) return;
+        if (clickTimeout !== null) return;
+        clickTimeout = setTimeout(() => {
+          clickTimeout = null;
+          openCycle(cycle.id, sub.num);
+        }, 200);
+      };
+      card.ondblclick = (e) => {
+        if (!e.ctrlKey) return;
+        clearTimeout(clickTimeout);
+        clickTimeout = null;
+        fillWithSix(sub.num);
+      };
+      
+      card.innerHTML = `
+        <div class="card-status-left status-${status}"></div>
+        <div class="card-top-bar">
+          <div style="display:flex; gap:8px; align-items:center;">
+             <span>${sub.num}</span>
+             <span style="opacity:0.8; font-weight:500;">${sub.code}</span>
+          </div>
+          ${grade !== null ? `<div class="card-grade-badge-inline ${status}">${Math.floor(grade * 10) / 10}</div>` : ''}
+        </div>
+        <div class="card-body">
+          <div class="card-name">${escapeHtml(sub.name)}</div>
+          <div class="card-extra">Ciclo Extraordinario</div>
+        </div>
+        <div class="card-bottom">
+          <span>${sub.prereq}</span>
+          ${progress > 0 ? `<span style="color:var(--fail); font-weight:bold; font-size:10px;">${progress}%</span>` : `<span></span>`}
+          <span>${sub.uv} U.V.</span>
+        </div>
+      `;
+      col.appendChild(card);
+    });
+    grid.appendChild(col);
+  });
+
+  wrapper.appendChild(yearRow);
+  wrapper.appendChild(grid);
+  updateZoom(currentZoom);
+  updateStats();
+}
+
+function updateStats() {
+  let pass=0, fail=0, prog=0, pend=0, total=0;
+  CYCLES.forEach(c => {
+    c.subjects.forEach(sub => {
+      total++;
+      const sd = getSubjectData(sub.num);
+      const grade = calcFinal(sd.computos);
+      const status = getStatus(grade, sd.computos);
+      if (status === 'pass') pass++;
+      else if (status === 'fail') fail++;
+      else if (status === 'inprogress') prog++;
+      else pend++;
+    });
+  });
+  document.getElementById('statPass').textContent = pass;
+  document.getElementById('statFail').textContent = fail;
+  document.getElementById('statProgress').textContent = prog;
+  document.getElementById('statPending').textContent = pend;
+  const pct = Math.round((pass / total) * 100);
+  document.getElementById('statPct').textContent = pct + '%';
+  document.getElementById('totalProgressBar').style.width = pct + '%';
+}
+
+// ========== VISTA DE DETALLE DE CICLO ==========
+let currentCycleId = null;
+
+function openCycle(id, highlightNum=null) {
+  currentCycleId = id;
+  const cycle = CYCLES.find(c => c.id === id);
+  
+  const allPass = cycle.subjects.every(sub => getStatus(calcFinal(getSubjectData(sub.num).computos), getSubjectData(sub.num).computos) === 'pass');
+  const someStarted = cycle.subjects.some(sub => {
+     const st = getStatus(calcFinal(getSubjectData(sub.num).computos), getSubjectData(sub.num).computos);
+     return st === 'inprogress' || st === 'fail' || st === 'pass';
+  });
+  
+  let cycleStatusHtml = '';
+  if (allPass) {
+    cycleStatusHtml = `<span style="background:var(--pass); color:white; padding:4px 10px; border-radius:20px; font-size:12px; margin-left:15px; vertical-align:middle; text-transform:uppercase;">Cursado 100%</span>`;
+  } else if (someStarted) {
+    cycleStatusHtml = `<span style="background:var(--fail); color:white; padding:4px 10px; border-radius:20px; font-size:12px; margin-left:15px; vertical-align:middle; text-transform:uppercase;">Cursando</span>`;
+  }
+  
+  document.getElementById('cycleTitle').innerHTML = `${cycle.name} — ${cycle.year} ${cycleStatusHtml}`;
+  document.getElementById('cycleSubtitle').textContent = cycle.subjects.length + ' asignaturas · 3 cómputos';
+  document.getElementById('pensumView').classList.remove('active');
+  document.getElementById('cycleView').classList.add('active');
+  renderSubjects(cycle, highlightNum);
+}
+
+function showPensum() {
+  document.getElementById('cycleView').classList.remove('active');
+  document.getElementById('pensumView').classList.add('active');
+  renderPensum();
+}
+
+function renderSubjects(cycle, highlightNum=null) {
+  const list = document.getElementById('subjectsList');
+  list.innerHTML = '';
+  cycle.subjects.forEach((sub) => {
+    const sd = getSubjectData(sub.num);
+    const row = document.createElement('div');
+    row.className = 'subject-row';
+    row.id = 'srow-' + sub.num;
+    if (highlightNum === sub.num) row.classList.add('open');
+
+    const grade = calcFinal(sd.computos);
+    const status = getStatus(grade, sd.computos);
+    const chipClass = {pass:'chip-pass', fail:'chip-fail', inprogress:'chip-inprogress', pending:'chip-pending'}[status];
+    const chipText = {pass:'Aprobada', fail:'Reprobada', inprogress:'En curso', pending:'Pendiente'}[status];
+    const gradeClass = status === 'pass' ? 'pass' : status === 'fail' ? 'fail' : 'pending';
+    const gradeTrunc = grade !== null ? Math.floor(grade * 10) / 10 : null;
+    const gradeDisplay = gradeTrunc !== null ? gradeTrunc : '—';
+    const exactDisplay = grade !== null ? grade.toFixed(2) : '';
+
+    row.innerHTML = `
+      <div class="subject-row-header" onclick="toggleSubject('${sub.num}')">
+        <div class="srh-num">${sub.num}</div>
+        <div class="srh-info">
+          <div class="srh-name">${escapeHtml(sub.name)}</div>
+          <div class="srh-meta">Código: ${sub.code} · Prerrequisito: ${sub.prereq} · ${sub.uv} UV</div>
+        </div>
+        <div class="srh-status">
+          <span class="status-chip ${chipClass}">${chipText}</span>
+          <span class="final-grade-display" style="color:var(--pass); line-height:1; text-align:right;">
+            ${gradeDisplay}
+            ${exactDisplay ? `<span style="display:block; font-size:0.65em; color:var(--fail); margin-top:4px;">Exacto: ${exactDisplay}</span>` : ''}
+          </span>
+          <span class="toggle-icon">▾</span>
+        </div>
+      </div>
+      <div class="subject-computos" id="computos-${sub.num}">
+        ${renderComputos(sub, sd)}
+      </div>
+    `;
+    list.appendChild(row);
+    // Llenar los inputs después de agregar al DOM (los eventos se asignan globalmente con oninput)
+  });
+}
+
+function renderComputos(sub, sd) {
+  const n = sub.num;
+  let html = '<div class="computos-grid">';
+  for (let i = 0; i < 3; i++) {
+    const c = sd.computos[i];
+    const score = calcComputo(c);
+    const scoreDisp = score !== null ? score.toFixed(2) : '—';
+    html += `
+      <div class="computo-block">
+        <div class="computo-title">
+          Cómputo ${i+1}
+          <span class="computo-avg" id="cavg-${n}-${i}">${scoreDisp}</span>
+        </div>
+        <div class="activity-row">
+          <span class="activity-label">Laboratorio N°1</span>
+          <span class="activity-pct">30%</span>
+          <input type="number" class="activity-input" step="0.1" min="0" max="10"
+            id="inp-${n}-${i}-lab1" value="${c.lab1}" placeholder="0–10"
+            oninput="updateGrade('${n}',${i},'lab1',this.value)">
+        </div>
+        <div class="activity-row">
+          <span class="activity-label">Laboratorio N°2</span>
+          <span class="activity-pct">30%</span>
+          <input type="number" class="activity-input" step="0.1" min="0" max="10"
+            id="inp-${n}-${i}-lab2" value="${c.lab2}" placeholder="0–10"
+            oninput="updateGrade('${n}',${i},'lab2',this.value)">
+        </div>
+        <div class="activity-row">
+          <span class="activity-label">Parcial N°${i+1}</span>
+          <span class="activity-pct">40%</span>
+          <input type="number" class="activity-input" step="0.1" min="0" max="10"
+            id="inp-${n}-${i}-parcial" value="${c.parcial}" placeholder="0–10"
+            oninput="updateGrade('${n}',${i},'parcial',this.value)">
+        </div>
+        <div class="computo-score">
+          <span>Cómputo ${i+1}: <strong id="cscore-${n}-${i}">${scoreDisp}</strong></span>
+        </div>
+        <button onclick="clearComputo('${n}', ${i})" style="margin-top:8px; font-size:10px; background:var(--fail); color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:100%; transition:all 0.15s;">Borrar cómputo</button>
+      </div>
+    `;
+  }
+  html += '</div>';
+  const finalGrade = calcFinal(sd.computos);
+  const gradeTrunc = finalGrade !== null ? Math.floor(finalGrade * 10) / 10 : null;
+  const fg = gradeTrunc !== null ? gradeTrunc : '—';
+  const exactDisplay = finalGrade !== null ? finalGrade.toFixed(2) : '';
+  const status = getStatus(gradeTrunc, sd.computos);
+  const fgClass = status === 'pass' ? 'pass' : status === 'fail' ? 'fail' : 'pending';
+  html += `
+    <div class="subject-summary">
+      <div class="summary-item"><label>Cómputo 1</label><span id="smsc-${n}-0">${calcComputo(sd.computos[0]) !== null ? calcComputo(sd.computos[0]).toFixed(2) : '—'}</span></div>
+      <div class="summary-item"><label>Cómputo 2</label><span id="smsc-${n}-1">${calcComputo(sd.computos[1]) !== null ? calcComputo(sd.computos[1]).toFixed(2) : '—'}</span></div>
+      <div class="summary-item"><label>Cómputo 3</label><span id="smsc-${n}-2">${calcComputo(sd.computos[2]) !== null ? calcComputo(sd.computos[2]).toFixed(2) : '—'}</span></div>
+      <div class="summary-item" style="border-left:2px solid var(--gray-light);padding-left:16px;">
+        <label>Nota Final</label>
+        <span id="smfinal-${n}" style="color:var(--pass); font-weight:bold; line-height:1; display:inline-block; text-align:center;">
+          ${fg}
+          ${exactDisplay ? `<div id="smaprox-${n}" style="font-size:10px; color:var(--fail); margin-top:4px;">Exacto: ${exactDisplay}</div>` : ''}
+        </span>
+      </div>
+      <div class="btn-group">
+        <button class="save-subject-btn" onclick="saveSubject('${n}')">💾 Guardar</button>
+        <button class="delete-subject-btn" onclick="askDelete('${n}')">🗑 Eliminar</button>
+      </div>
+    </div>
+  `;
+  return html;
+}
+
+function toggleSubject(num) {
+  const row = document.getElementById('srow-' + num);
+  row.classList.toggle('open');
+}
+
+function updateGrade(num, computoIdx, field, val) {
+  const sd = getSubjectData(num);
+  sd.computos[computoIdx][field] = val;
+  // Actualizar vista
+  const score = calcComputo(sd.computos[computoIdx]);
+  const scoreDisp = score !== null ? score.toFixed(2) : '—';
+  const cscore = document.getElementById(`cscore-${num}-${computoIdx}`);
+  if (cscore) cscore.textContent = scoreDisp;
+  const cavg = document.getElementById(`cavg-${num}-${computoIdx}`);
+  if (cavg) cavg.textContent = scoreDisp;
+  const smsc = document.getElementById(`smsc-${num}-${computoIdx}`);
+  if (smsc) smsc.textContent = scoreDisp;
+
+  const finalGrade = calcFinal(sd.computos);
+  const gradeTrunc = finalGrade !== null ? Math.floor(finalGrade * 10) / 10 : null;
+  const fg = gradeTrunc !== null ? gradeTrunc : '—';
+  const exactDisplay = finalGrade !== null ? finalGrade.toFixed(2) : '';
+  const status = getStatus(gradeTrunc, sd.computos);
+  const finalSpan = document.getElementById(`smfinal-${num}`);
+  if (finalSpan) {
+    finalSpan.innerHTML = `${fg}${exactDisplay ? `<div id="smaprox-${num}" style="font-size:10px; color:var(--fail); margin-top:4px;">Exacto: ${exactDisplay}</div>` : ''}`;
+  }
+  // Actualizar cabecera de la fila
+  const row = document.getElementById(`srow-${num}`);
+  if (row) {
+    const chipSpan = row.querySelector('.status-chip');
+    const gradeSpan = row.querySelector('.final-grade-display');
+    if (chipSpan) {
+      const chipClass = {pass:'chip-pass', fail:'chip-fail', inprogress:'chip-inprogress', pending:'chip-pending'}[status];
+      const chipText = {pass:'Aprobada', fail:'Reprobada', inprogress:'En curso', pending:'Pendiente'}[status];
+      chipSpan.className = 'status-chip ' + chipClass;
+      chipSpan.textContent = chipText;
     }
-
-    function getStatus(grade) {
-        if (grade === null) return 'pending';
-        return grade >= 6.0 ? 'pass' : 'fail';
+    if (gradeSpan) {
+      gradeSpan.innerHTML = `${fg}${exactDisplay ? `<span style="display:block; font-size:0.65em; color:var(--fail); margin-top:4px;">Exacto: ${exactDisplay}</span>` : ''}`;
     }
+  }
+  saveLocal();
+  updateStats();
+}
 
-    function updateSubjectStatus(num) {
-        let sd = getSubjectData(num);
-        let final = calcFinal(sd.computos);
-        sd.finalGrade = final;
-        let newStatus = getStatus(final);
-        // Si tiene al menos una nota pero no final, considerar "inprogress"
-        let hasAnyNote = sd.computos.some(c => c.lab1 !== '' || c.lab2 !== '' || c.parcial !== '');
-        if (hasAnyNote && final === null) sd.status = 'inprogress';
-        else sd.status = newStatus;
+function saveSubject(num) {
+  saveLocal();
+  showToast('✓ Guardado localmente', 'success');
+  updateStats();
+}
+
+function askDelete(num) {
+  const sub = findSubject(num);
+  document.getElementById('deleteModalText').textContent = `¿Eliminar todas las notas de "${sub ? sub.name : num}"?`;
+  pendingDeleteAction = () => {
+    const sd = getSubjectData(num);
+    sd.computos = [ {lab1:'',lab2:'',parcial:''}, {lab1:'',lab2:'',parcial:''}, {lab1:'',lab2:'',parcial:''} ];
+    sd.status = 'pending';
+    sd.finalGrade = null;
+    saveLocal();
+    showToast('Notas eliminadas', 'success');
+    if (currentCycleId) {
+      const cycle = CYCLES.find(c => c.id === currentCycleId);
+      renderSubjects(cycle, num);
     }
+    updateStats();
+  };
+  document.getElementById('deleteModal').classList.add('open');
+}
+function clearComputo(num, compIdx) {
+  const sub = findSubject(num);
+  document.getElementById('deleteModalText').textContent = `¿Borrar notas del Cómputo ${compIdx+1} de "${sub ? sub.name : num}"?`;
+  pendingDeleteAction = () => {
+    const sd = getSubjectData(num);
+    sd.computos[compIdx] = {lab1:'', lab2:'', parcial:''};
+    const grade = calcFinal(sd.computos);
+    sd.status = getStatus(grade, sd.computos);
+    sd.finalGrade = grade;
+    saveLocal();
+    showToast(`Cómputo ${compIdx+1} borrado`, 'success');
+    if (currentCycleId) {
+      const cycle = CYCLES.find(c => c.id === currentCycleId);
+      renderSubjects(cycle, num);
+    }
+    updateStats();
+  };
+  document.getElementById('deleteModal').classList.add('open');
+}
+function clearCurrentCycle() {
+  if (!currentCycleId) return;
+  const cycle = CYCLES.find(c => c.id === currentCycleId);
+  document.getElementById('deleteModalText').textContent = `¿Eliminar todas las notas del "${cycle.name}"?`;
+  pendingDeleteAction = () => {
+    cycle.subjects.forEach(sub => {
+      const sd = getSubjectData(sub.num);
+      sd.computos = [ {lab1:'',lab2:'',parcial:''}, {lab1:'',lab2:'',parcial:''}, {lab1:'',lab2:'',parcial:''} ];
+      sd.status = 'pending';
+      sd.finalGrade = null;
+    });
+    saveLocal();
+    showToast('Ciclo limpiado', 'success');
+    renderSubjects(cycle);
+    updateStats();
+  };
+  document.getElementById('deleteModal').classList.add('open');
+}
 
-    function saveLocal() {
-        if (!currentStudent) return;
-        let all = JSON.parse(localStorage.getItem('ugb_all_students_data') || '{}');
-        all[currentStudent] = appData;
-        localStorage.setItem('ugb_all_students_data', JSON.stringify(all));
-        dirtyFlag = true;
-        updateStatsUI();
-        // Actualizar vistas actuales si están abiertas
-        if (document.getElementById('detailView').classList.contains('active') && currentCycleId) {
-            openCycleDetail(currentCycleId);
+function closeDeleteModal() { 
+  document.getElementById('deleteModal').classList.remove('open'); 
+  pendingDeleteAction = null; 
+}
+function confirmDelete() {
+  if (pendingDeleteAction) pendingDeleteAction();
+  closeDeleteModal();
+}
+function findSubject(num) {
+  for (const c of CYCLES) for (const s of c.subjects) if (s.num === num) return s;
+  return null;
+}
+
+// ========== PEGAR TABLA DESDE PORTAPAPELES (MEJORADO) ==========
+function openPasteModal() {
+  document.getElementById('pasteModal').classList.add('open');
+  document.getElementById('pasteTextarea').value = '';
+}
+function closePasteModal() { document.getElementById('pasteModal').classList.remove('open'); }
+
+function processPaste() {
+  const text = document.getElementById('pasteTextarea').value.trim();
+  if (!text) { showToast('Pega una tabla primero', 'error'); return; }
+
+  const lines = text.split(/\r?\n/);
+  
+  const validLines = [];
+  for (let line of lines) {
+      if (!line.trim()) continue;
+      let tokens = line.trim().split(/\s+/);
+      let numbers = [];
+      for (let i = tokens.length - 1; i >= 0; i--) {
+          let token = tokens[i].replace(',', '.');
+          if (!isNaN(parseFloat(token)) && isFinite(token)) {
+              numbers.unshift(parseFloat(token));
+          } else {
+              break;
+          }
+      }
+      if (numbers.length >= 12) {
+         validLines.push({ line, numbers: numbers.length > 14 ? numbers.slice(-14) : numbers });
+      }
+  }
+
+  let cycle = null;
+  if (currentCycleId) cycle = CYCLES.find(c => c.id === currentCycleId);
+  let subjectsSorted = cycle ? [...cycle.subjects].sort((a,b) => a.code.localeCompare(b.code)) : [];
+
+  let imported = 0;
+  for (let i = 0; i < validLines.length; i++) {
+      let vline = validLines[i];
+      let codigo = null;
+      let codeMatch = vline.line.match(/^(\d{2,4})\s*-\s*/);
+      if (codeMatch) codigo = codeMatch[1];
+
+      let subject = null;
+      if (codigo) {
+          for (let c of CYCLES) {
+              for (let sub of c.subjects) {
+                  if (sub.code === codigo) { subject = sub; break; }
+              }
+          }
+      } else if (cycle && i < subjectsSorted.length) {
+          subject = subjectsSorted[i];
+      }
+      if (!subject) continue;
+
+      let numbers = vline.numbers;
+      let c1n1 = numbers[0], c1n2 = numbers[1], c1p = numbers[2];
+      let c2n1 = numbers[4], c2n2 = numbers[5], c2p = numbers[6];
+      let c3n1 = numbers[8], c3n2 = numbers[9], c3p = numbers[10];
+
+      const sd = getSubjectData(subject.num);
+      sd.computos[0].lab1 = c1n1;
+      sd.computos[0].lab2 = c1n2;
+      sd.computos[0].parcial = c1p;
+      sd.computos[1].lab1 = c2n1;
+      sd.computos[1].lab2 = c2n2;
+      sd.computos[1].parcial = c2p;
+      sd.computos[2].lab1 = c3n1;
+      sd.computos[2].lab2 = c3n2;
+      sd.computos[2].parcial = c3p;
+      
+      imported++;
+  }
+
+  if (imported === 0) {
+      showToast('No se encontraron materias válidas. Revisa el formato.', 'error');
+  } else {
+      saveLocal();
+      closePasteModal();
+      document.getElementById('pasteTextarea').value = '';
+      showToast(`✓ ${imported} materias importadas`, 'success');
+      if (currentCycleId) {
+          const cycle = CYCLES.find(c => c.id === currentCycleId);
+          renderSubjects(cycle);
+      } else {
+          renderPensum();
+      }
+  }
+}
+
+// ========== EXPORTAR/IMPORTAR JSON ==========
+function exportJSON() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+  const el = document.createElement('a');
+  el.setAttribute("href", dataStr);
+  el.setAttribute("download", "pensum_ugb_backup.json");
+  document.body.appendChild(el);
+  el.click();
+  el.remove();
+}
+
+function importJSON() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        appData = parsed;
+        saveLocal();
+        showToast('Datos importados correctamente', 'success');
+        if (currentStudent) {
+          if (!appData[currentStudent]) appData[currentStudent] = { notas: {} };
+          renderPensum();
         } else {
-            renderCycles();
+          changeStudent();
         }
-    }
+      } catch(err) {
+        showToast('Error al importar archivo', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
 
-    function loadLocal() {
-        if (!currentStudent) return;
-        let all = JSON.parse(localStorage.getItem('ugb_all_students_data') || '{}');
-        appData = all[currentStudent] || {};
-        // Asegurar que todas las materias tengan estructura
-        CYCLES.forEach(cycle => cycle.subjects.forEach(sub => { getSubjectData(sub.num); updateSubjectStatus(sub.num); }));
-        updateStatsUI();
-    }
+function exportPDF() {
+  showToast('Generando PDF, por favor espera...', 'success');
+  const originalGrid = document.querySelector('.pensum-grid');
+  if (!originalGrid) return;
+  const clone = originalGrid.cloneNode(true);
+  
+  const container = document.createElement('div');
+  container.id = 'pdfTempContainer';
+  container.style.width = '1100px';
+  container.style.padding = '30px';
+  container.style.background = 'white';
+  container.style.position = 'absolute';
+  container.style.left = '0';
+  container.style.top = '0';
+  container.style.zIndex = '-9999';
+  
+  const header = document.createElement('div');
+  header.style.textAlign = 'center';
+  header.style.marginBottom = '25px';
+  header.innerHTML = `
+    <h1 style="color:#1e40af; margin:0 0 10px 0; font-family:'Inter',sans-serif; font-size:24px;">Pénsum de Ingeniería en Sistemas y Redes Informáticas</h1>
+    <h3 style="color:#4b5563; margin:0; font-family:'Inter',sans-serif; font-size:16px;">Estudiante: ${currentStudent || 'No especificado'}</h3>
+  `;
+  container.appendChild(header);
+  
+  clone.style.display = 'grid';
+  clone.style.gridTemplateColumns = 'repeat(5, 1fr)';
+  clone.style.gap = '15px';
+  
+  const cards = clone.querySelectorAll('.subject-card');
+  cards.forEach(c => {
+      c.style.boxShadow = 'none';
+      c.style.border = '1px solid #d1d5db';
+  });
+  
+  container.appendChild(clone);
+  document.body.appendChild(container);
+  
+  const opt = {
+    margin:       10,
+    filename:     'Pensum_UGB_' + (currentStudent || 'Estudiante') + '.pdf',
+    image:        { type: 'jpeg', quality: 1 },
+    html2canvas:  { scale: 2, useCORS: true, logging: false },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+  };
+  
+  if (typeof html2pdf === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = () => {
+          html2pdf().set(opt).from(container).save().then(() => document.body.removeChild(container));
+      };
+      document.head.appendChild(script);
+  } else {
+      html2pdf().set(opt).from(container).save().then(() => document.body.removeChild(container));
+  }
+}
 
-    function clearSubject(num) {
-        if (confirm(`¿Borrar todas las notas de la materia ${num}?`)) {
-            appData[num] = {
-                computos: [ {lab1:'', lab2:'', parcial:''}, {lab1:'', lab2:'', parcial:''}, {lab1:'', lab2:'', parcial:''} ],
-                status: 'pending',
-                finalGrade: null
-            };
-            saveLocal();
-            showToast(`Notas de ${num} eliminadas`, 'success');
-        }
-    }
-
-    // ======================== ESTADÍSTICAS ========================
-    function updateStatsUI() {
-        let pass = 0, fail = 0, inprogress = 0, pending = 0, total = 0;
-        CYCLES.forEach(cycle => {
-            cycle.subjects.forEach(sub => {
-                total++;
-                let sd = getSubjectData(sub.num);
-                let status = sd.status;
-                if (status === 'pass') pass++;
-                else if (status === 'fail') fail++;
-                else if (status === 'inprogress') inprogress++;
-                else pending++;
-            });
-        });
-        document.getElementById('statPass').innerText = pass;
-        document.getElementById('statFail').innerText = fail;
-        document.getElementById('statProgress').innerText = inprogress;
-        document.getElementById('statPending').innerText = pending;
-        let pct = Math.round((pass / total) * 100);
-        document.getElementById('statPercent').innerText = pct + '%';
-        document.getElementById('globalProgress').style.width = pct + '%';
-    }
-
-    // ======================== RENDERIZADO ========================
-    function renderCycles() {
-        const container = document.getElementById('cyclesContainer');
-        container.innerHTML = '';
-        CYCLES.forEach(cycle => {
-            const card = document.createElement('div');
-            card.className = 'cycle-card';
-            let subjectsPreview = '';
-            cycle.subjects.forEach(sub => {
-                let sd = getSubjectData(sub.num);
-                let final = sd.finalGrade;
-                let gradeClass = '';
-                let gradeText = '—';
-                if (final !== null) {
-                    gradeText = final.toFixed(2);
-                    gradeClass = final >= 6 ? 'grade-pass' : 'grade-fail';
-                } else {
-                    if (sd.status === 'inprogress') gradeClass = 'grade-inprogress';
-                    else gradeClass = 'grade-pending';
-                }
-                subjectsPreview += `
-                    <div class="preview-subject" data-subject-num="${sub.num}" data-cycle-id="${cycle.id}">
-                        <span>${sub.code} - ${sub.name.substring(0,28)}</span>
-                        <span class="subject-grade ${gradeClass}">${gradeText}</span>
-                    </div>
-                `;
-            });
-            card.innerHTML = `
-                <div class="cycle-header" data-cycle-id="${cycle.id}">
-                    <span>📚 ${cycle.name} · ${cycle.year}</span>
-                    <span><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="subjects-preview">
-                    ${subjectsPreview}
-                </div>
-            `;
-            card.querySelector('.cycle-header').addEventListener('click', () => openCycleDetail(cycle.id));
-            card.querySelectorAll('.preview-subject').forEach(el => {
-                el.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    openCycleDetail(cycle.id, el.dataset.subjectNum);
-                });
-            });
-            container.appendChild(card);
-        });
-        updateStatsUI();
-    }
-
-    function openCycleDetail(cycleId, highlightSubject = null) {
-        currentCycleId = cycleId;
-        const cycle = CYCLES.find(c => c.id === cycleId);
-        document.getElementById('detailCycleTitle').innerHTML = `${cycle.name} · ${cycle.year}`;
-        const listDiv = document.getElementById('subjectsDetailList');
-        listDiv.innerHTML = '';
-
-        cycle.subjects.forEach(sub => {
-            const sd = getSubjectData(sub.num);
-            const finalGrade = sd.finalGrade;
-            const gradeDisplay = finalGrade !== null ? finalGrade.toFixed(2) : (sd.status === 'inprogress' ? 'En curso' : '—');
-            let gradeClass = '';
-            if (finalGrade !== null) gradeClass = finalGrade >= 6 ? 'grade-pass' : 'grade-fail';
-            else gradeClass = sd.status === 'inprogress' ? 'grade-inprogress' : 'grade-pending';
-
-            const card = document.createElement('div');
-            card.className = 'subject-detail-card';
-            card.innerHTML = `
-                <div class="subject-summary" data-sub-num="${sub.num}">
-                    <div class="left">
-                        <div class="subject-code">${sub.code} · Prerreq: ${sub.prereq} · ${sub.uv} UV</div>
-                        <div class="subject-name">${sub.name}</div>
-                    </div>
-                    <div class="final-grade ${gradeClass}">${gradeDisplay} <i class="fas fa-chevron-down"></i></div>
-                </div>
-                <div class="computos-panel" id="panel_${sub.num}">
-                    ${[0,1,2].map(cIdx => `
-                        <div class="computo-item">
-                            <strong>Cómputo ${cIdx+1}</strong>
-                            <div>Lab1 (30%): <input class="input-grade" data-num="${sub.num}" data-comp="${cIdx}" data-field="lab1" value="${sd.computos[cIdx].lab1||''}" placeholder="0-10"></div>
-                            <div>Lab2 (30%): <input class="input-grade" data-num="${sub.num}" data-comp="${cIdx}" data-field="lab2" value="${sd.computos[cIdx].lab2||''}" placeholder="0-10"></div>
-                            <div>Parcial (40%): <input class="input-grade" data-num="${sub.num}" data-comp="${cIdx}" data-field="parcial" value="${sd.computos[cIdx].parcial||''}" placeholder="0-10"></div>
-                            <div><small>Nota cómputo: <span id="compScore_${sub.num}_${cIdx}">${calcComputo(sd.computos[cIdx])?.toFixed(2)||'—'}</span></small></div>
-                        </div>
-                    `).join('')}
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; grid-column: 1/-1; justify-content: flex-end;">
-                        <button class="btn save-subject-btn" data-save-sub="${sub.num}">💾 Guardar materia</button>
-                        <button class="btn clear-subject-btn" data-clear-sub="${sub.num}">🗑️ Limpiar notas</button>
-                    </div>
-                </div>
-            `;
-            listDiv.appendChild(card);
-
-            // Evento toggle del panel
-            const summary = card.querySelector('.subject-summary');
-            summary.addEventListener('click', () => {
-                const panel = card.querySelector('.computos-panel');
-                panel.style.display = panel.style.display === 'grid' ? 'none' : 'grid';
-            });
-
-            // Eventos de entrada en los campos
-            card.querySelectorAll('.input-grade').forEach(inp => {
-                inp.addEventListener('input', (e) => {
-                    let num = inp.dataset.num, comp = parseInt(inp.dataset.comp), field = inp.dataset.field;
-                    let sdItem = getSubjectData(num);
-                    sdItem.computos[comp][field] = inp.value;
-                    let newCompScore = calcComputo(sdItem.computos[comp]);
-                    document.getElementById(`compScore_${num}_${comp}`).innerText = newCompScore?.toFixed(2) || '—';
-                    let final = calcFinal(sdItem.computos);
-                    updateSubjectStatus(num);
-                    const gradeSpan = card.querySelector('.final-grade');
-                    let newDisplay = final !== null ? final.toFixed(2) : (sdItem.status === 'inprogress' ? 'En curso' : '—');
-                    let newClass = '';
-                    if (final !== null) newClass = final >= 6 ? 'grade-pass' : 'grade-fail';
-                    else newClass = sdItem.status === 'inprogress' ? 'grade-inprogress' : 'grade-pending';
-                    gradeSpan.innerHTML = `${newDisplay} <i class="fas fa-chevron-down"></i>`;
-                    gradeSpan.className = `final-grade ${newClass}`;
-                    saveLocal();
-                });
-            });
-
-            // Guardar materia (ya se guarda automáticamente pero forzamos)
-            card.querySelector(`[data-save-sub="${sub.num}"]`).addEventListener('click', () => {
-                saveLocal();
-                showToast(`Guardado local: ${sub.name}`, 'success');
-            });
-
-            // Limpiar materia
-            card.querySelector(`[data-clear-sub="${sub.num}"]`).addEventListener('click', () => {
-                clearSubject(sub.num);
-                // Recargar la vista de detalle para reflejar cambios
-                openCycleDetail(cycleId);
-            });
-        });
-
-        if (highlightSubject) {
-            const panel = document.getElementById(`panel_${highlightSubject}`);
-            if (panel) panel.style.display = 'grid';
-        }
-
-        // Cambiar vistas
-        document.getElementById('pensumView').classList.remove('active');
-        document.getElementById('detailView').classList.add('active');
-    }
-
-    function showPensum() {
-        document.getElementById('detailView').classList.remove('active');
-        document.getElementById('pensumView').classList.add('active');
-        renderCycles(); // refrescar
-    }
-
-    // ======================== IMPORTACIÓN DESDE PORTAPAPELES (formato exacto de la imagen) ========================
-    function parseTableFromClipboard(text) {
-        const lines = text.split(/\r?\n/);
-        let materiasActualizadas = 0;
-        // Buscar línea que contenga código de materia (ej "134 - Curso...")
-        for (let line of lines) {
-            // Patrón: números al inicio, luego guión, luego texto
-            let match = line.match(/^(\d{3})\s*-\s*([^0-9]+)/);
-            if (!match) continue;
-            let codigo = match[1];
-            // Extraer todos los números decimales o enteros
-            let numbers = line.match(/\d+(?:\.\d+)?/g);
-            if (!numbers || numbers.length < 13) continue;
-            // Índices según el formato de la tabla:
-            // [0]:N1_c1, [1]:N2_c1, [2]:P_c1, [3]:C1, [4]:N1_c2, [5]:N2_c2, [6]:P_c2, [7]:C2, [8]:N1_c3, [9]:N2_c3, [10]:P_c3, [11]:C3, [12]:REP, [13]:NF
-            let c1n1 = parseFloat(numbers[0]);
-            let c1n2 = parseFloat(numbers[1]);
-            let c1p  = parseFloat(numbers[2]);
-            let c2n1 = parseFloat(numbers[4]);
-            let c2n2 = parseFloat(numbers[5]);
-            let c2p  = parseFloat(numbers[6]);
-            let c3n1 = parseFloat(numbers[8]);
-            let c3n2 = parseFloat(numbers[9]);
-            let c3p  = parseFloat(numbers[10]);
-            // Buscar materia por código
-            let found = false;
-            for (let cycle of CYCLES) {
-                for (let sub of cycle.subjects) {
-                    if (sub.code === codigo) {
-                        let sd = getSubjectData(sub.num);
-                        if (!isNaN(c1n1)) sd.computos[0].lab1 = c1n1;
-                        if (!isNaN(c1n2)) sd.computos[0].lab2 = c1n2;
-                        if (!isNaN(c1p))  sd.computos[0].parcial = c1p;
-                        if (!isNaN(c2n1)) sd.computos[1].lab1 = c2n1;
-                        if (!isNaN(c2n2)) sd.computos[1].lab2 = c2n2;
-                        if (!isNaN(c2p))  sd.computos[1].parcial = c2p;
-                        if (!isNaN(c3n1)) sd.computos[2].lab1 = c3n1;
-                        if (!isNaN(c3n2)) sd.computos[2].lab2 = c3n2;
-                        if (!isNaN(c3p))  sd.computos[2].parcial = c3p;
-                        updateSubjectStatus(sub.num);
-                        materiasActualizadas++;
-                        found = true;
-                        break;
-                    }
-                }
-                if (found) break;
-            }
-        }
-        if (materiasActualizadas === 0) {
-            showToast("No se pudo interpretar la tabla. Asegúrate de copiar filas completas con código de materia (ej: 134 - Nombre) y todas las notas.", "error");
-        } else {
-            saveLocal();
-            renderCycles();
-            showToast(`✅ ${materiasActualizadas} materias actualizadas desde el portapapeles`, "success");
-        }
-    }
-
-    // ======================== SINCRONIZACIÓN CON GOOGLE SHEETS ========================
-    async function syncToSheets(manual = true) {
-        if (!config.appsScriptUrl) {
-            showToast('Configura la URL de Google Sheets primero', 'error');
-            if (manual) openConfigModal();
-            return false;
-        }
-        const syncBtn = document.getElementById('manualSyncBtn');
-        if (manual) syncBtn.classList.add('blink');
-        const statusSpan = document.getElementById('syncStatusText');
-        statusSpan.innerHTML = '<span class="status-badge status-red"></span> Sincronizando...';
-        let payload = {
-            student: currentStudent,
-            timestamp: new Date().toISOString(),
-            data: []
-        };
-        CYCLES.forEach(cycle => {
-            cycle.subjects.forEach(sub => {
-                let sd = getSubjectData(sub.num);
-                payload.data.push({
-                    num: sub.num, code: sub.code, name: sub.name, cycle: cycle.name, year: cycle.year, uv: sub.uv,
-                    computo1: calcComputo(sd.computos[0]), computo2: calcComputo(sd.computos[1]), computo3: calcComputo(sd.computos[2]),
-                    lab1_c1: sd.computos[0].lab1, lab2_c1: sd.computos[0].lab2, parcial_c1: sd.computos[0].parcial,
-                    lab1_c2: sd.computos[1].lab1, lab2_c2: sd.computos[1].lab2, parcial_c2: sd.computos[1].parcial,
-                    lab1_c3: sd.computos[2].lab1, lab2_c3: sd.computos[2].lab2, parcial_c3: sd.computos[2].parcial,
-                    finalGrade: calcFinal(sd.computos), status: sd.status
-                });
-            });
-        });
-        try {
-            await fetch(config.appsScriptUrl, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain' },
-                body: JSON.stringify(payload)
-            });
-            statusSpan.innerHTML = '<span class="status-badge status-green"></span> Sincronizado';
-            dirtyFlag = false;
-            showToast('✅ Datos enviados a Google Sheets', 'success');
-        } catch (e) {
-            statusSpan.innerHTML = '<span class="status-badge status-red"></span> Error';
-            showToast('Error al sincronizar: ' + e.message, 'error');
-        }
-        if (manual) syncBtn.classList.remove('blink');
-        setTimeout(() => {
-            if (!dirtyFlag && config.appsScriptUrl)
-                statusSpan.innerHTML = '<span class="status-badge status-green"></span> Sincronizado';
-        }, 2000);
-    }
-
-    // ======================== EXPORTAR / IMPORTAR EXCEL ========================
-    function exportToExcel() {
-        let exportData = [];
-        CYCLES.forEach(cycle => {
-            cycle.subjects.forEach(sub => {
-                let sd = getSubjectData(sub.num);
-                exportData.push({
-                    Código: sub.code,
-                    Materia: sub.name,
-                    Ciclo: cycle.name,
-                    'Comp1 Lab1': sd.computos[0].lab1,
-                    'Comp1 Lab2': sd.computos[0].lab2,
-                    'Comp1 Parcial': sd.computos[0].parcial,
-                    'Comp2 Lab1': sd.computos[1].lab1,
-                    'Comp2 Lab2': sd.computos[1].lab2,
-                    'Comp2 Parcial': sd.computos[1].parcial,
-                    'Comp3 Lab1': sd.computos[2].lab1,
-                    'Comp3 Lab2': sd.computos[2].lab2,
-                    'Comp3 Parcial': sd.computos[2].parcial,
-                    NotaFinal: sd.finalGrade !== null ? sd.finalGrade.toFixed(2) : ''
-                });
-            });
-        });
-        let ws = XLSX.utils.json_to_sheet(exportData);
-        let wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Notas');
-        XLSX.writeFile(wb, `notas_${currentStudent}_${new Date().toISOString().slice(0,19)}.xlsx`);
-        showToast('Exportado a Excel', 'success');
-    }
-
-    function importExcel(file) {
-        let reader = new FileReader();
-        reader.onload = function(e) {
-            let data = new Uint8Array(e.target.result);
-            let workbook = XLSX.read(data, { type: 'array' });
-            let sheet = workbook.Sheets[workbook.SheetNames[0]];
-            let rows = XLSX.utils.sheet_to_json(sheet);
-            rows.forEach(row => {
-                let materia = row['Materia'] || row['Código'];
-                for (let cycle of CYCLES) {
-                    for (let sub of cycle.subjects) {
-                        if (materia && (materia.includes(sub.code) || materia.toLowerCase().includes(sub.name.toLowerCase()))) {
-                            let sd = getSubjectData(sub.num);
-                            if (row['Comp1 Lab1'] !== undefined) sd.computos[0].lab1 = row['Comp1 Lab1'];
-                            if (row['Comp1 Lab2']) sd.computos[0].lab2 = row['Comp1 Lab2'];
-                            if (row['Comp1 Parcial']) sd.computos[0].parcial = row['Comp1 Parcial'];
-                            if (row['Comp2 Lab1']) sd.computos[1].lab1 = row['Comp2 Lab1'];
-                            if (row['Comp2 Lab2']) sd.computos[1].lab2 = row['Comp2 Lab2'];
-                            if (row['Comp2 Parcial']) sd.computos[1].parcial = row['Comp2 Parcial'];
-                            if (row['Comp3 Lab1']) sd.computos[2].lab1 = row['Comp3 Lab1'];
-                            if (row['Comp3 Lab2']) sd.computos[2].lab2 = row['Comp3 Lab2'];
-                            if (row['Comp3 Parcial']) sd.computos[2].parcial = row['Comp3 Parcial'];
-                            updateSubjectStatus(sub.num);
-                            break;
-                        }
-                    }
-                }
-            });
-            saveLocal();
-            renderCycles();
-            showToast('Respaldo importado correctamente', 'success');
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    // ======================== CONFIGURACIÓN Y MODALES ========================
-    function openConfigModal() {
-        document.getElementById('appsScriptUrl').value = config.appsScriptUrl || '';
-        document.getElementById('studentName').value = currentStudent;
-        document.getElementById('configModal').classList.add('active');
-    }
-    function closeConfigModal() { document.getElementById('configModal').classList.remove('active'); }
-    function saveConfig() {
-        config.appsScriptUrl = document.getElementById('appsScriptUrl').value.trim();
-        localStorage.setItem('ugb_pensum_config', JSON.stringify(config));
-        closeConfigModal();
-        showToast('Configuración guardada', 'success');
-        if (config.appsScriptUrl) document.getElementById('syncStatusText').innerHTML = '<span class="status-badge status-green"></span> Sheets listo';
-    }
-
-    function showToast(msg, type = '') {
-        let toast = document.createElement('div');
-        toast.innerText = msg;
-        toast.style.position = 'fixed';
-        toast.style.bottom = '80px';
-        toast.style.right = '20px';
-        toast.style.background = type === 'error' ? 'var(--danger)' : 'var(--blue-ugb)';
-        toast.style.color = 'white';
-        toast.style.padding = '8px 16px';
-        toast.style.borderRadius = '2rem';
-        toast.style.zIndex = '9999';
-        toast.style.fontSize = '0.875rem';
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-    }
-
-    // ======================== ZOOM Y MODO OSCURO ========================
-    function applyZoom(value) {
-        let zoomArea = document.getElementById('zoomableArea');
-        zoomArea.style.transform = `scale(${value / 100})`;
-        document.getElementById('zoomValue').innerText = value + '%';
-        localStorage.setItem('zoomLevel', value);
-    }
-    function toggleDarkMode() {
-        document.body.classList.toggle('dark');
-        localStorage.setItem('darkMode', document.body.classList.contains('dark'));
-    }
-
-    // ======================== INICIALIZACIÓN Y LOGIN ========================
-    document.getElementById('studentSelect').addEventListener('change', function() {
-        let customInput = document.getElementById('customStudent');
-        customInput.style.display = this.value === 'Otro' ? 'block' : 'none';
+// ========== SINCRONIZACIÓN CON GOOGLE SHEETS ==========
+async function syncToSheets() {
+  if (!config.appsScriptUrl) {
+    openConfig();
+    showToast('Configura la URL de Apps Script primero', 'error');
+    return;
+  }
+  showToast('⏳ Sincronizando…');
+  const payload = {
+    student: currentStudent || 'Estudiante',
+    timestamp: new Date().toISOString(),
+    data: [],
+    events: appData[currentStudent]?.events || []
+  };
+  CYCLES.forEach(cycle => {
+    cycle.subjects.forEach(sub => {
+      const sd = getSubjectData(sub.num);
+      const fg = calcFinal(sd.computos);
+      payload.data.push({
+        num: sub.num, code: sub.code, name: sub.name, cycle: cycle.name, year: cycle.year, uv: sub.uv,
+        computo1: calcComputo(sd.computos[0]), computo2: calcComputo(sd.computos[1]), computo3: calcComputo(sd.computos[2]),
+        lab1_c1: sd.computos[0].lab1, lab2_c1: sd.computos[0].lab2, parcial_c1: sd.computos[0].parcial,
+        lab1_c2: sd.computos[1].lab1, lab2_c2: sd.computos[1].lab2, parcial_c2: sd.computos[1].parcial,
+        lab1_c3: sd.computos[2].lab1, lab2_c3: sd.computos[2].lab2, parcial_c3: sd.computos[2].parcial,
+        finalGrade: fg !== null ? fg.toFixed(2) : '', status: sd.status,
+      });
     });
-    document.getElementById('loginBtn').addEventListener('click', () => {
-        let selected = document.getElementById('studentSelect').value;
-        let custom = document.getElementById('customStudent').value.trim();
-        if (selected === 'Otro' && custom !== '') currentStudent = custom;
-        else if (selected !== '' && selected !== 'Otro') currentStudent = selected;
-        else { alert('Por favor selecciona o escribe un nombre'); return; }
-        // Cargar datos del estudiante
-        loadLocal();
-        // Cargar configuración de Sheets
-        let savedCfg = localStorage.getItem('ugb_pensum_config');
-        if (savedCfg) config = JSON.parse(savedCfg);
-        if (config.appsScriptUrl) document.getElementById('syncStatusText').innerHTML = '<span class="status-badge status-green"></span> Sheets listo';
-        // Mostrar app
-        document.getElementById('loginView').style.display = 'none';
-        document.getElementById('appView').style.display = 'block';
-        renderCycles();
-        // Configurar auto-sync cada 5 segundos
-        if (autoSyncInterval) clearInterval(autoSyncInterval);
-        autoSyncInterval = setInterval(() => {
-            if (dirtyFlag && config.appsScriptUrl) syncToSheets(false);
-        }, 5000);
+  });
+  try {
+    await fetch(config.appsScriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
     });
+    document.getElementById('syncStatus').textContent = '✓ Sincronizado ' + new Date().toLocaleTimeString();
+    showToast('✓ Datos enviados a Google Sheets', 'success');
+  } catch(e) { showToast('✗ Error: ' + e.message, 'error'); }
+}
 
-    // Event listeners de la interfaz
-    document.getElementById('backToPensumBtn').addEventListener('click', showPensum);
-    document.getElementById('configSheetsBtn').addEventListener('click', openConfigModal);
-    document.getElementById('saveConfigBtn').addEventListener('click', saveConfig);
-    document.getElementById('closeConfigBtn').addEventListener('click', closeConfigModal);
-    document.getElementById('manualSyncBtn').addEventListener('click', () => syncToSheets(true));
-    document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
-    document.getElementById('pasteNotesBtn').addEventListener('click', () => document.getElementById('pasteModal').classList.add('active'));
-    document.getElementById('processPasteBtn').addEventListener('click', () => {
-        let text = document.getElementById('pasteTextarea').value;
-        if (text.trim()) parseTableFromClipboard(text);
-        else showToast('Pega algún contenido primero', 'error');
-        document.getElementById('pasteModal').classList.remove('active');
-        document.getElementById('pasteTextarea').value = '';
-    });
-    document.getElementById('closePasteModal').addEventListener('click', () => document.getElementById('pasteModal').classList.remove('active'));
-    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
-    document.getElementById('importExcelBtn').addEventListener('click', () => {
-        let input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.xlsx, .xls, .csv';
-        input.onchange = e => importExcel(e.target.files[0]);
-        input.click();
-    });
-    document.getElementById('helpBtn').addEventListener('click', () => document.getElementById('helpModal').classList.add('active'));
-    document.getElementById('closeHelpBtn').addEventListener('click', () => document.getElementById('helpModal').classList.remove('active'));
-    document.getElementById('zoomRange').addEventListener('input', (e) => applyZoom(e.target.value));
+function openConfig() {
+  document.getElementById('appsScriptUrl').value = config.appsScriptUrl || '';
+  document.getElementById('configModal').classList.add('open');
+}
+function closeConfig() { document.getElementById('configModal').classList.remove('open'); }
+function saveConfig() {
+  config.appsScriptUrl = document.getElementById('appsScriptUrl').value.trim();
+  localStorage.setItem('ugb_pensum_config', JSON.stringify(config));
+  closeConfig();
+  if (config.appsScriptUrl) document.getElementById('syncStatus').textContent = '✓ Sheets configurado';
+  showToast('✓ Configuración guardada', 'success');
+}
 
-    // Restaurar preferencias
-    if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark');
-    let zoom = localStorage.getItem('zoomLevel') || 100;
-    document.getElementById('zoomRange').value = zoom;
-    applyZoom(zoom);
+// ========== TOAST ==========
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+// ========== MODO OSCURO ==========
+function toggleDarkMode() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+}
+
+// ========== NAVEGACIÓN POR TECLADO ==========
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key.startsWith('Arrow')) {
+    const active = document.activeElement;
+    if (active && active.classList.contains('activity-input')) {
+      e.preventDefault();
+      const inputs = Array.from(document.querySelectorAll('.activity-input'));
+      const idx = inputs.indexOf(active);
+      if (idx > -1) {
+        let newIdx = idx;
+        const R = idx % 3; // 0=Lab1, 1=Lab2, 2=Parcial
+        const C = Math.floor((idx % 9) / 3); // 0=C1, 1=C2, 2=C3
+        
+        if (e.key === 'ArrowDown') {
+           newIdx = (R < 2) ? idx + 1 : idx + 7;
+        } else if (e.key === 'ArrowUp') {
+           newIdx = (R > 0) ? idx - 1 : idx - 7;
+        } else if (e.key === 'ArrowRight') {
+           if (C < 2) newIdx = idx + 3;
+        } else if (e.key === 'ArrowLeft') {
+           if (C > 0) newIdx = idx - 3;
+        }
+        
+        if (newIdx >= 0 && newIdx < inputs.length) {
+          inputs[newIdx].focus();
+          inputs[newIdx].select();
+        }
+      }
+    }
+  }
+});
+
+// ========== INICIO ==========
+init();
 </script>
 </body>
 </html>

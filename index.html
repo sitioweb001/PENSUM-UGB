@@ -46,6 +46,22 @@ body.dark {
   background: white; border-radius: 20px; padding: 40px; width: 420px; max-width: 90vw;
   box-shadow: 0 32px 80px rgba(0,0,0,0.3);
 }
+.login-logo {
+  width: 100px; height: 100px; margin: 0 auto 18px; border-radius: 28px;
+  display: flex; align-items: center; justify-content: center; background: var(--blue); color: white;
+  font-size: 38px; font-weight: 900; letter-spacing: 2px; box-shadow: 0 16px 40px rgba(30,64,175,0.18);
+}
+.login-toggle {
+  display: flex; gap: 10px; justify-content: center; margin-bottom: 18px;
+}
+.pill {
+  flex: 1; padding: 12px 14px; border-radius: 999px; border: 1px solid var(--gray-light);
+  background: var(--gray-bg); color: var(--text); font-weight: 700; cursor: pointer;
+  transition: all 0.2s ease;
+}
+.pill.active {
+  background: var(--blue); color: white; border-color: var(--blue);
+}
 .login-box h2 {
   font-size: 24px; font-weight: 800; color: var(--blue-dark); margin-bottom: 8px; text-align: center;
 }
@@ -477,13 +493,18 @@ header {
 <!-- LOGIN VIEW -->
 <div id="loginView">
   <div class="login-box">
+    <div class="login-logo"><img id="loginLogoImg" src="logo2.jpg" alt="UGB" style="height:64px; object-fit:contain;" onerror="this.style.display='none'"></div>
+    <div class="login-toggle">
+      <button id="loginModeName" class="pill active" onclick="setLoginMode('name')">Nombre</button>
+      <button id="loginModeList" class="pill" onclick="setLoginMode('list')">Lista</button>
+    </div>
     <h2>🎓 UGB Académico</h2>
-    <p>Ingeniería en Sistemas y Redes Informáticas</p>
-    <div class="login-field">
+    <p id="loginSubtitle">Ingresa nombre del estudiante</p>
+    <div class="login-field" id="loginNameField">
       <label>Nombre del estudiante</label>
       <input type="text" id="loginName" placeholder="Ej: Juan Pérez" onkeypress="if(event.key==='Enter')doLogin()">
     </div>
-    <button class="login-btn" onclick="doLogin()">Ingresar / Crear</button>
+    <button class="login-btn" id="loginButton" onclick="doLogin()">Ingresar / Crear</button>
     <div class="student-list" id="studentList"></div>
   </div>
 </div>
@@ -491,7 +512,7 @@ header {
 <!-- MAIN APP -->
 <div id="appView" style="display:none;">
 <header>
-  <div class="logo-box">UGB</div>
+  <div class="logo-box"><img id="headerLogoImg" src="Logotipo-horizontal-azul.png" alt="UGB" style="height:34px; object-fit:contain;" onerror="this.style.display='none'"></div>
   <div class="header-title">
     <h1>Ingeniería en</h1>
     <h2>Sistemas y Redes Informáticas</h2>
@@ -585,6 +606,24 @@ header {
 
 <!-- CALENDAR MODALS -->
 <div class="modal-overlay" id="calendarModal">
+<!-- ASISTENCIA MODAL -->
+<div class="modal-overlay" id="attendanceModal">
+  <div class="modal" style="width:620px; max-width:95vw;">
+    <div style="display:flex; gap:12px; align-items:center; justify-content:center; margin-bottom:12px;">
+      <img src="logo2.jpg" alt="Logo 1" style="height:56px; object-fit:contain;" />
+      <img src="Logotipo-horizontal-azul.png" alt="Logo 2" style="height:56px; object-fit:contain;" />
+    </div>
+    <h3 style="text-align:center;">DIRECCIÓN DE INTEGRACIÓN Y UNIVERSIDAD GERARDO BARRIOS</h3>
+    <p style="font-size:12px; color:#6b7280; margin-bottom:10px; text-align:center;">Marca tu asistencia diaria. Solo se permite una marca cada 24 horas.</p>
+    <div style="display:flex; gap:10px; justify-content:center; margin-bottom:12px;">
+      <button id="attendanceMarkBtn" class="modal-btn primary" onclick="markAttendance()">Marcar asistencia</button>
+      <button class="modal-btn secondary" onclick="document.getElementById('attendanceModal').classList.remove('open')">Cerrar</button>
+    </div>
+    <div style="max-height:260px; overflow:auto; margin-top:6px;">
+      <div id="attendanceHistory" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+  </div>
+</div>
   <div class="modal">
     <h3>📅 Calendario de Actividades</h3>
     <p style="font-size:12px; color:#6b7280; margin-bottom:15px;">Anota fechas importantes para tus materias.</p>
@@ -620,6 +659,11 @@ header {
       <label>Comentario (opcional)</label>
       <input type="text" id="eventComment" class="activity-input" style="width:100%; height:36px;" placeholder="Ej. Estudiar tema 4...">
     </div>
+    <div class="modal-field" style="display:flex; gap:10px; align-items:center;">
+      <label style="flex:0 0 auto;">Marcar como hecho</label>
+      <input type="checkbox" id="eventDone" style="width:20px; height:20px;" />
+      <input type="text" id="eventQuickNote" class="activity-input" style="width:100%; height:36px;" placeholder="Nota rápida (ej. Nota: 8.5)">
+    </div>
     <div class="modal-btns">
       <button class="modal-btn secondary" onclick="document.getElementById('addEventModal').classList.remove('open')">Cancelar</button>
       <button class="modal-btn primary" onclick="saveEvent()">Guardar</button>
@@ -632,9 +676,12 @@ header {
 <div class="bottom-toolbar" id="bottomBar" style="display:none;">
   <button class="tool-btn" onclick="openPasteModal()" title="Pegar notas">📋</button>
   <button class="tool-btn" onclick="openCalendarModal()" title="Calendario">📅</button>
+  <button class="tool-btn" onclick="openAttendanceModal()" title="Asistencia diaria">🎫</button>
   <button class="tool-btn" onclick="fetchFromSheets()" title="Descargar nube">⬇️</button>
   <button class="tool-btn" onclick="syncToSheets()" title="Subir nube">☁️</button>
   <button class="tool-btn" onclick="exportPDF()" title="Exportar a PDF">🖨️</button>
+  <button class="tool-btn" onclick="exportCSV()" title="Exportar CSV">⇩</button>
+  <button class="tool-btn" onclick="importCSV()" title="Importar CSV">⇧</button>
   <button class="tool-btn" onclick="toggleDarkMode()" title="Modo oscuro">🌙</button>
 </div>
 
@@ -716,6 +763,33 @@ let currentStudent = null;
 let appData = {}; // { studentName: { notas: { "01": { computos:[...], status, finalGrade } } } }
 let config = {};
 let pendingDeleteAction = null;
+let loginMode = 'name';
+
+function setLoginMode(mode) {
+  loginMode = mode;
+  // Persist preference locally and in config for sync
+  try { localStorage.setItem('ugb_login_mode', mode); } catch(e){}
+  config.loginMode = mode;
+  const nameField = document.getElementById('loginNameField');
+  const loginButton = document.getElementById('loginButton');
+  const subtitle = document.getElementById('loginSubtitle');
+  const modeNameBtn = document.getElementById('loginModeName');
+  const modeListBtn = document.getElementById('loginModeList');
+
+  if (mode === 'name') {
+    nameField.style.display = 'block';
+    loginButton.style.display = 'block';
+    subtitle.textContent = 'Ingresa nombre del estudiante';
+  } else {
+    nameField.style.display = 'none';
+    loginButton.style.display = 'none';
+    subtitle.textContent = 'Selecciona un estudiante de la lista';
+  }
+
+  modeNameBtn.classList.toggle('active', mode === 'name');
+  modeListBtn.classList.toggle('active', mode === 'list');
+  renderStudentList();
+}
 
 function init() {
   const saved = localStorage.getItem('ugb_pensum_appdata');
@@ -733,6 +807,9 @@ function init() {
   } else {
     config = { appsScriptUrl: defaultUrl };
   }
+  // restore login mode preference from config or localStorage
+  const savedLogin = config.loginMode || localStorage.getItem('ugb_login_mode');
+  if (savedLogin) loginMode = savedLogin;
   
   if(localStorage.getItem('darkMode') === 'true') { document.body.classList.add('dark'); }
   const savedZoom = localStorage.getItem('zoomLevel');
@@ -741,13 +818,19 @@ function init() {
       document.getElementById('zoomSlider').value = savedZoom; 
   }
   
+  setLoginMode(loginMode);
   renderStudentList();
 }
 
 function renderStudentList() {
   const list = document.getElementById('studentList');
   const students = Object.keys(appData);
-  if (students.length === 0) { list.innerHTML = ''; return; }
+  if (students.length === 0) {
+    list.innerHTML = loginMode === 'list'
+      ? '<div style="color:var(--gray-mid); text-align:center; padding:20px;">No hay estudiantes guardados.</div>'
+      : '';
+    return;
+  }
   let html = '<h4>Estudiantes guardados</h4>';
   students.forEach(name => {
     html += `<div class="student-chip" onclick="selectStudent('${name.replace(/'/g, "\\'")}')">
@@ -761,6 +844,10 @@ function renderStudentList() {
 function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){if(m==='&')return '&amp;';if(m==='<')return '&lt;';if(m==='>')return '&gt;';return m;}); }
 
 function doLogin() {
+  if (loginMode === 'list') {
+    showToast('Selecciona un estudiante de la lista', 'error');
+    return;
+  }
   const name = document.getElementById('loginName').value.trim();
   if (!name) { showToast('Ingresa un nombre', 'error'); return; }
   selectStudent(name);
@@ -778,6 +865,7 @@ function selectStudent(name) {
   document.getElementById('currentStudentName').textContent = '👤 ' + name;
   if (config.appsScriptUrl) document.getElementById('syncStatus').textContent = '✓ Sheets listo';
   renderPensum();
+  startAutoSyncInterval();
 }
 
 function changeStudent() {
@@ -786,10 +874,16 @@ function changeStudent() {
   document.getElementById('appView').style.display = 'none';
   document.getElementById('bottomBar').style.display = 'none';
   document.getElementById('loginName').value = '';
+  stopAutoSyncInterval();
   renderStudentList();
 }
 
 function deleteStudent(name) {
+  const password = prompt('Ingresa la contraseña para eliminar este estudiante:');
+  if (password !== '747') {
+    showToast('Contraseña incorrecta', 'error');
+    return;
+  }
   if (!confirm(`¿Eliminar todos los datos de ${name}?`)) return;
   delete appData[name];
   saveLocal();
@@ -818,6 +912,8 @@ function getSubjectData(num) {
 }
 
 let autoSyncTimer = null;
+let autoSyncInterval = null;
+let isAutoSyncing = false;
 function triggerAutoSync() {
   if (!config.appsScriptUrl || !currentStudent) return;
   clearTimeout(autoSyncTimer);
@@ -826,6 +922,23 @@ function triggerAutoSync() {
   autoSyncTimer = setTimeout(() => {
     syncToSheets(true);
   }, 2000);
+}
+
+function startAutoSyncInterval() {
+  if (!config.appsScriptUrl || !currentStudent) return;
+  stopAutoSyncInterval();
+  autoSyncInterval = setInterval(() => {
+    if (!isAutoSyncing && currentStudent && config.appsScriptUrl) {
+      isAutoSyncing = true;
+      syncToSheets(true).finally(() => { isAutoSyncing = false; });
+    }
+  }, 1000);
+  const st = document.getElementById('syncStatus'); if (st) st.textContent = '⏳ Auto-sync activo';
+}
+
+function stopAutoSyncInterval() {
+  if (autoSyncInterval) { clearInterval(autoSyncInterval); autoSyncInterval = null; }
+  const st = document.getElementById('syncStatus'); if (st) st.textContent = 'Sin sincronizar';
 }
 
 function saveLocal() {
@@ -885,16 +998,22 @@ function saveEvent() {
   const subNum = document.getElementById('eventSubject').value;
   const date = document.getElementById('eventDate').value;
   const comment = document.getElementById('eventComment').value.trim();
+  const done = document.getElementById('eventDone') ? document.getElementById('eventDone').checked : false;
+  const quickNote = document.getElementById('eventQuickNote') ? document.getElementById('eventQuickNote').value.trim() : '';
   if (!date) return showToast('Selecciona una fecha', 'error');
   
   if (!appData[currentStudent].events) appData[currentStudent].events = [];
-  appData[currentStudent].events.push({
+  const evObj = {
     id: Date.now(),
     type: currentEventType,
     subject: subNum,
     date: date,
-    comment: comment
-  });
+    comment: comment,
+    done: !!done,
+    quickNote: quickNote || ''
+  };
+  if (done) evObj.markedAt = new Date().toISOString();
+  appData[currentStudent].events.push(evObj);
   
   saveLocal();
   document.getElementById('addEventModal').classList.remove('open');
@@ -923,22 +1042,85 @@ function renderEvents() {
     CYCLES.forEach(c => c.subjects.forEach(s => { if(s.num === ev.subject) sname = s.name; }));
     
     const commentHtml = ev.comment ? `<div style="font-size:11px; color:#6b7280; font-style:italic; margin-top:3px;">"${ev.comment}"</div>` : '';
-    
+    const quickNoteHtml = ev.quickNote ? `<div style="font-size:11px; color:#065f46; font-weight:700; margin-top:4px;">${ev.quickNote}</div>` : '';
+    const doneStyle = ev.done ? 'text-decoration:line-through; opacity:0.6;' : '';
+    const markedAtHtml = ev.markedAt ? `<div style="font-size:11px; color:#6b7280; margin-top:4px;">Marcado: ${new Date(ev.markedAt).toLocaleString()}</div>` : '';
+
     html += `
       <div style="background:#f3f4f6; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-        <div style="flex:1;">
+        <div style="flex:1; ${doneStyle}">
           <div style="font-weight:bold; color:var(--blue); margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
             <span>${ev.type}</span>
             <span style="color:var(--fail); font-weight:700; font-size:12px;">📅 ${ev.date}</span>
           </div>
           <div style="font-size:11px; color:#4b5563; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${sname}</div>
           ${commentHtml}
+          ${quickNoteHtml}
+          ${markedAtHtml}
         </div>
-        <button onclick="deleteEvent(${ev.id})" style="background:transparent; border:none; color:var(--fail); cursor:pointer; font-size:16px; margin-left:10px;" title="Eliminar">🗑</button>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button onclick="toggleEventDone(${ev.id})" style="background:transparent; border:none; color:var(--blue); cursor:pointer; font-size:16px;" title="Marcar/Desmarcar">${ev.done ? '✔️' : '◻️'}</button>
+          <button onclick="deleteEvent(${ev.id})" style="background:transparent; border:none; color:var(--fail); cursor:pointer; font-size:16px; margin-left:4px;" title="Eliminar">🗑</button>
+        </div>
       </div>
     `;
   });
   list.innerHTML = html;
+}
+
+function toggleEventDone(id) {
+  const evs = appData[currentStudent].events || [];
+  const ev = evs.find(e => e.id === id);
+  if (!ev) return;
+  ev.done = !ev.done;
+  if (ev.done) ev.markedAt = new Date().toISOString();
+  else delete ev.markedAt;
+  saveLocal();
+  renderEvents();
+}
+
+function openAttendanceModal() {
+  // open attendance modal; allow opening even if no student selected
+  document.getElementById('attendanceModal').classList.add('open');
+  const btn = document.getElementById('attendanceMarkBtn');
+  if (btn) btn.disabled = !currentStudent;
+  if (!currentStudent) showToast('Selecciona un estudiante para marcar asistencia', 'error');
+  renderAttendanceHistory();
+}
+
+function markAttendance() {
+  if (!currentStudent) { showToast('Selecciona un estudiante primero', 'error'); return; }
+  if (!appData[currentStudent]) appData[currentStudent] = { notas: {}, events: [], attendance: [] };
+  if (!appData[currentStudent].attendance) appData[currentStudent].attendance = [];
+  const arr = appData[currentStudent].attendance;
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+  const last = arr.length ? arr[arr.length - 1] : null;
+  if (last && last.date === today) {
+    showToast('Ya marcaste asistencia hoy. Espera 24 horas.', 'error');
+    return;
+  }
+  const rec = { id: Date.now(), timestamp: now.toISOString(), date: today, time: now.toLocaleTimeString() };
+  arr.push(rec);
+  saveLocal();
+  renderAttendanceHistory();
+  showToast('Asistencia registrada ✓', 'success');
+}
+
+function renderAttendanceHistory() {
+  const div = document.getElementById('attendanceHistory');
+  div.innerHTML = '';
+  const arr = (appData[currentStudent] && appData[currentStudent].attendance) ? [...appData[currentStudent].attendance].reverse() : [];
+  if (arr.length === 0) {
+    div.innerHTML = '<div style="color:var(--gray-mid); text-align:center; padding:14px;">No hay registros de asistencia</div>';
+    return;
+  }
+  arr.forEach(r => {
+    const el = document.createElement('div');
+    el.style.background = '#f3f4f6'; el.style.padding = '10px'; el.style.borderRadius = '8px'; el.style.display = 'flex'; el.style.justifyContent = 'space-between'; el.style.alignItems = 'center'; el.style.fontSize = '13px';
+    el.innerHTML = `<div style="font-weight:700; color:var(--blue);">📌 ${r.date} <span style=\"font-weight:400; color:#6b7280; margin-left:8px; font-size:12px;\">${r.time}</span></div>`;
+    div.appendChild(el);
+  });
 }
 
 // ========== CÁLCULO DE NOTAS ==========
@@ -1524,10 +1706,11 @@ function exportPDF() {
   container.style.width = '1100px';
   container.style.padding = '30px';
   container.style.background = 'white';
-  container.style.position = 'absolute';
-  container.style.left = '0';
-  container.style.top = '0';
-  container.style.zIndex = '-9999';
+  container.style.position = 'fixed';
+  container.style.left = '50%';
+  container.style.transform = 'translateX(-50%)';
+  container.style.top = '20px';
+  container.style.zIndex = '9999';
   
   const header = document.createElement('div');
   header.style.textAlign = 'center';
@@ -1563,12 +1746,98 @@ function exportPDF() {
       const script = document.createElement('script');
       script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
       script.onload = () => {
-          html2pdf().set(opt).from(container).save().then(() => document.body.removeChild(container));
+          // try to inline images then generate
+          inlineImages(container).then(() => {
+            html2pdf().set(opt).from(container).save().then(() => document.body.removeChild(container));
+          }).catch(() => {
+            html2pdf().set(opt).from(container).save().then(() => document.body.removeChild(container));
+          });
       };
       document.head.appendChild(script);
   } else {
-      html2pdf().set(opt).from(container).save().then(() => document.body.removeChild(container));
+      inlineImages(container).then(() => {
+        html2pdf().set(opt).from(container).save().then(() => document.body.removeChild(container));
+      }).catch(() => {
+        html2pdf().set(opt).from(container).save().then(() => document.body.removeChild(container));
+      });
   }
+}
+
+// Try to convert <img> sources within node to data URLs to avoid CORS issues
+function inlineImages(node) {
+  const imgs = Array.from(node.querySelectorAll('img'));
+  const tasks = imgs.map(img => {
+    return new Promise((resolve) => {
+      try {
+        const src = img.getAttribute('src');
+        if (!src || src.startsWith('data:')) return resolve();
+        fetch(src).then(r => r.blob()).then(blob => {
+          const reader = new FileReader();
+          reader.onload = () => { img.src = reader.result; resolve(); };
+          reader.onerror = () => resolve();
+          reader.readAsDataURL(blob);
+        }).catch(() => resolve());
+      } catch(e) { resolve(); }
+    });
+  });
+  return Promise.all(tasks);
+}
+
+function exportCSV() {
+  if (!currentStudent) return showToast('Selecciona un estudiante', 'error');
+  const rows = [];
+  rows.push(['num','code','name','lab1_c1','lab2_c1','parcial_c1','lab1_c2','lab2_c2','parcial_c2','lab1_c3','lab2_c3','parcial_c3','finalGrade','status']);
+  CYCLES.forEach(cycle => cycle.subjects.forEach(sub => {
+    const sd = getSubjectData(sub.num);
+    rows.push([
+      sub.num, sub.code, sub.name,
+      sd.computos[0].lab1, sd.computos[0].lab2, sd.computos[0].parcial,
+      sd.computos[1].lab1, sd.computos[1].lab2, sd.computos[1].parcial,
+      sd.computos[2].lab1, sd.computos[2].lab2, sd.computos[2].parcial,
+      calcFinal(sd.computos) !== null ? calcFinal(sd.computos).toFixed(2) : '', sd.status
+    ]);
+  }));
+  const csv = rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g,'""') + '"').join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `pensum_${currentStudent || 'estudiante'}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importCSV() {
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.csv,text/csv';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target.result;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length <= 1) return showToast('CSV vacío o inválido', 'error');
+      const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
+      for (let i=1;i<lines.length;i++){
+        const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g,'').trim());
+        const row = {};
+        headers.forEach((h,idx)=> row[h]=cols[idx]);
+        const num = row.num;
+        if (!num) continue;
+        const sd = getSubjectData(num);
+        sd.computos[0].lab1 = row.lab1_c1 || '';
+        sd.computos[0].lab2 = row.lab2_c1 || '';
+        sd.computos[0].parcial = row.parcial_c1 || '';
+        sd.computos[1].lab1 = row.lab1_c2 || '';
+        sd.computos[1].lab2 = row.lab2_c2 || '';
+        sd.computos[1].parcial = row.parcial_c2 || '';
+        sd.computos[2].lab1 = row.lab1_c3 || '';
+        sd.computos[2].lab2 = row.lab2_c3 || '';
+        sd.computos[2].parcial = row.parcial_c3 || '';
+        sd.status = row.status || sd.status;
+        sd.finalGrade = row.finalGrade ? parseFloat(row.finalGrade) : sd.finalGrade;
+      }
+      saveLocal(); renderPensum(); showToast('CSV importado', 'success');
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 // ========== SINCRONIZACIÓN CON GOOGLE SHEETS ==========
@@ -1588,8 +1857,11 @@ async function syncToSheets(isAuto = false) {
     student: currentStudent || 'Estudiante',
     timestamp: new Date().toISOString(),
     data: [],
-    events: appData[currentStudent]?.events || []
+    events: appData[currentStudent]?.events || [],
+    attendance: appData[currentStudent]?.attendance || []
   };
+  // include config (login mode etc.) so other devices can restore preferences
+  payload.config = { loginMode: config.loginMode || loginMode };
   CYCLES.forEach(cycle => {
     cycle.subjects.forEach(sub => {
       const sd = getSubjectData(sub.num);
@@ -1630,6 +1902,7 @@ async function fetchFromSheets() {
     if (json.status === 'success') {
       const data = json.payload.data;
       const events = json.payload.events;
+      const remoteConfig = json.payload.config || {};
       
       if (!appData[currentStudent]) appData[currentStudent] = { notas: {}, events: [] };
       
@@ -1645,7 +1918,10 @@ async function fetchFromSheets() {
         };
       });
       appData[currentStudent].events = events || [];
-      
+      const asistencias = json.payload.asistencias || [];
+      appData[currentStudent].attendance = asistencias.map(a => ({ id: a.id, date: a.date, time: a.time, timestamp: a.timestamp }));
+      // restore remote config preferences (like login mode) if provided
+      if (remoteConfig.loginMode) { config.loginMode = remoteConfig.loginMode; localStorage.setItem('ugb_login_mode', remoteConfig.loginMode); setLoginMode(remoteConfig.loginMode); }
       saveLocal();
       renderPensum();
       showToast('✓ Datos descargados correctamente', 'success');

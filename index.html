@@ -273,6 +273,12 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   </div>
   <h2>Pénsum UGB</h2>
   <p id="loginSubtitle">Ingresa nombre del estudiante</p>
+  <div id="sheetsStatusBar" style="display:none;background:rgba(16,185,129,.13);border:1px solid rgba(16,185,129,.35);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#065f46;font-weight:600;text-align:center;">
+    🟢 Datos compartidos en la nube — todos los dispositivos ven lo mismo
+  </div>
+  <div id="sheetsOfflineBar" style="display:none;background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.4);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#92400e;font-weight:600;text-align:center;">
+    ⚠️ Sin conexión — configurar URL de Sheets para sincronizar
+  </div>
   <div class="login-toggle">
     <button class="pill active" id="loginModeName" onclick="setLoginMode('name')">Nombre</button>
     <button class="pill" id="loginModeList" onclick="setLoginMode('list')">Lista</button>
@@ -306,7 +312,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
         <div class="ham-item" onclick="openAsistencia();closeHam()">🏛 Asistencia diaria</div>
         <div class="ham-item" onclick="openHistPensum();closeHam()">📜 Historial de cambios</div>
         <div class="ham-divider"></div>
-        <div class="ham-item" onclick="fetchFromSheets();closeHam()">⬇️ Descargar desde Sheets</div>
+        <div class="ham-item" onclick="fetchFromSheets();closeHam()" style="font-weight:700;color:#1d4ed8;">🔄 Refrescar desde Sheets</div>
         <div class="ham-item" onclick="syncToSheets();closeHam()">☁️ Subir a Sheets</div>
         <div class="ham-divider"></div>
         <div class="ham-item" onclick="exportCSV();closeHam()">📊 Exportar CSV</div>
@@ -598,8 +604,9 @@ let calFilter='all', asistFilter='all', histFilter='all';
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
-function init() {
-  try { appData=JSON.parse(localStorage.getItem('ugb_pensum_appdata')||'{}'); } catch(e){appData={};}
+async function init() {
+  // Solo guardar config/tema/zoom en localStorage — los DATOS siempre vienen de Sheets
+  appData = {};
   const defUrl='https://script.google.com/macros/s/AKfycbzkLqA1uXc7ayITUEyLd5tY8fbdgSeXwnAE_9FXB0wy-wfHizaTlndMQwYqUHH62z1_6A/exec';
   try { config=JSON.parse(localStorage.getItem('ugb_pensum_config')||'{}'); if(!config.appsScriptUrl) config.appsScriptUrl=defUrl; }
   catch(e){ config={appsScriptUrl:defUrl}; }
@@ -607,8 +614,37 @@ function init() {
   document.getElementById('htmlRoot').setAttribute('data-theme',t);
   const sz=localStorage.getItem('zoomLevel');
   if(sz){ currentZoom=parseInt(sz); document.getElementById('zoomSlider').value=currentZoom; }
-  const last=localStorage.getItem('ugb_last_student');
-  if(last&&appData[last]){ selectStudent(last,false); if(config.appsScriptUrl) setTimeout(()=>fetchFromSheets(true),2200); return; }
+
+  // ── CARGAR LISTA DE ESTUDIANTES DESDE SHEETS ──
+  if (config.appsScriptUrl) {
+    _showLoading('Conectando con el servidor...', 'Cargando lista de estudiantes');
+    try {
+      const res = await Promise.race([
+        fetch(config.appsScriptUrl + '?action=list_students').then(r => r.json()),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 7000))
+      ]);
+      if (res && res.status === 'success' && res.students) {
+        res.students.forEach(name => {
+          if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
+        });
+      }
+    } catch(e) {
+      // Sin conexión — mostrar login vacío igualmente
+    }
+    _hideLoading();
+  }
+
+  // Mostrar barra de estado de Sheets
+  const bar    = document.getElementById('sheetsStatusBar');
+  const barOff = document.getElementById('sheetsOfflineBar');
+  if (config.appsScriptUrl) {
+    if (bar) bar.style.display = 'block';
+    if (barOff) barOff.style.display = 'none';
+  } else {
+    if (bar) bar.style.display = 'none';
+    if (barOff) barOff.style.display = 'block';
+  }
+
   setLoginMode(loginMode);
   renderStudentList();
 }
@@ -626,9 +662,16 @@ function setLoginMode(m) {
 function renderStudentList() {
   const list=document.getElementById('studentList');
   const students=Object.keys(appData);
-  if(!students.length){list.innerHTML=loginMode==='list'?'<div style="color:var(--gm);text-align:center;padding:16px;">No hay estudiantes guardados.</div>':'';return;}
-  let h='<div style="font-size:11px;color:var(--gm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;">Guardados</div>';
-  students.forEach(n=>{h+=`<div class="student-chip" onclick="selectStudent('${n.replace(/'/g,"\\'")}')"><span>${escapeHtml(n)}</span><button class="del-btn" onclick="event.stopPropagation();deleteStudent('${n.replace(/'/g,"\\'")}')">×</button></div>`;});
+  // Indicador de fuente de datos
+  let sourceTag = config.appsScriptUrl
+    ? '<div style="font-size:10px;color:#10b981;font-weight:600;text-align:center;margin-bottom:10px;">🟢 Conectado a Google Sheets — datos en la nube</div>'
+    : '<div style="font-size:10px;color:#f59e0b;font-weight:600;text-align:center;margin-bottom:10px;">⚠️ Sin Sheets configurado — modo local</div>';
+  if(!students.length){
+    list.innerHTML=sourceTag+(loginMode==='list'?'<div style="color:var(--gm);text-align:center;padding:16px;">No hay estudiantes en el servidor.<br><small>Ingresa un nombre y presiona Entrar para crear uno.</small></div>':'')+'';
+    return;
+  }
+  let h=sourceTag+'<div style="font-size:11px;color:var(--gm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;">Estudiantes en el servidor</div>';
+  students.forEach(n=>{h+=`<div class="student-chip" onclick="selectStudent('${n.replace(/'/g,"\\'")}')" title="Descargar datos de ${escapeHtml(n)} desde Sheets"><span>👤 ${escapeHtml(n)}</span><button class="del-btn" onclick="event.stopPropagation();deleteStudent('${n.replace(/'/g,"\\'")}')" title="Eliminar">×</button></div>`;});
   list.innerHTML=h;
 }
 
@@ -639,28 +682,105 @@ function doLogin() {
   selectStudent(n);
 }
 
-function selectStudent(name, autoSync=true) {
-  currentStudent=name;
-  localStorage.setItem('ugb_last_student',name);
-  if(!appData[name]) appData[name]={notas:{},events:[],cyclesDone:{},asistencias:{},specialCards:{},undoStack:[]};
-  if(!appData[name].cyclesDone) appData[name].cyclesDone={};
-  if(!appData[name].specialCards) appData[name].specialCards={};
-  if(!appData[name].asistencias) appData[name].asistencias={};
-  // Restaurar ciclos guardados del estudiante
-  const sd=appData[name];
-  if(sd.cycles) { try { CYCLES=JSON.parse(JSON.stringify(sd.cycles)); } catch(e){CYCLES=JSON.parse(JSON.stringify(CYCLES_DEFAULT));} }
-  else CYCLES=JSON.parse(JSON.stringify(CYCLES_DEFAULT));
-  undoStack=(sd.undoStack||[]);
-  redoStack=[];
+async function selectStudent(name) {
+  currentStudent = name;
+
+  // Inicializar estructura local
+  if (!appData[name]) appData[name] = {notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[]};
+  if (!appData[name].cyclesDone)   appData[name].cyclesDone   = {};
+  if (!appData[name].specialCards) appData[name].specialCards = {};
+  if (!appData[name].asistencias)  appData[name].asistencias  = {};
+
+  // ── PANTALLA DE CARGA ──
+  _showLoading('Cargando datos de ' + name + '...', 'Descargando desde Google Sheets');
+
+  // ── SIEMPRE DESCARGAR DESDE SHEETS (fuente de verdad) ──
+  if (config.appsScriptUrl) {
+    try {
+      const url = config.appsScriptUrl + '?student=' + encodeURIComponent(name);
+      const res = await Promise.race([
+        fetch(url).then(r => r.json()),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 9000))
+      ]);
+      if (res && res.status === 'success' && res.payload) {
+        const d = res.payload;
+        const local = appData[name];
+        // Notas
+        (d.data || []).forEach(row => {
+          local.notas[row.num] = {
+            status: row.status,
+            finalGrade: row.finalGrade === '' ? null : parseFloat(row.finalGrade),
+            computos: [
+              { lab1: row.lab1_c1, lab2: row.lab2_c1, parcial: row.parcial_c1 },
+              { lab1: row.lab1_c2, lab2: row.lab2_c2, parcial: row.parcial_c2 },
+              { lab1: row.lab1_c3, lab2: row.lab2_c3, parcial: row.parcial_c3 }
+            ]
+          };
+        });
+        // Eventos, ciclos, asistencias — Sheets tiene prioridad
+        if (d.events && d.events.length)   local.events = d.events;
+        if (d.cyclesDone)  Object.assign(local.cyclesDone,  d.cyclesDone);
+        if (d.asistencias) Object.assign(local.asistencias, d.asistencias);
+        if (d.cycles) local.cycles = d.cycles;
+        _showLoading('¡Todo al día!', 'Abriendo pénsum...');
+        await new Promise(r => setTimeout(r, 400));
+      } else {
+        _showLoading('Sin datos en Sheets', 'Iniciando pénsum vacío...');
+        await new Promise(r => setTimeout(r, 600));
+      }
+    } catch(e) {
+      _showLoading('Sin conexión', 'Usando copia local...');
+      await new Promise(r => setTimeout(r, 700));
+    }
+  } else {
+    _showLoading('Sin Sheets configurado', 'Modo local...');
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  // Restaurar ciclos
+  const sd = appData[name];
+  if (sd.cycles) { try { CYCLES = JSON.parse(JSON.stringify(sd.cycles)); } catch(e) { CYCLES = JSON.parse(JSON.stringify(CYCLES_DEFAULT)); } }
+  else CYCLES = JSON.parse(JSON.stringify(CYCLES_DEFAULT));
+  undoStack = (sd.undoStack || []);
+  redoStack = [];
   updateUndoRedoBtns();
-  saveLocal(false);
-  document.getElementById('loginView').style.display='none';
-  document.getElementById('appView').style.display='block';
-  document.getElementById('bottomBar').style.display='flex';
-  document.getElementById('currentStudentName').textContent='👤 '+name;
-  if(config.appsScriptUrl) document.getElementById('syncStatus').textContent='✓ Sheets listo';
+
+  // ── MOSTRAR APP ──
+  _hideLoading();
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').style.display   = 'block';
+  document.getElementById('bottomBar').style.display = 'flex';
+  document.getElementById('currentStudentName').textContent = '👤 ' + name;
+  if (config.appsScriptUrl) document.getElementById('syncStatus').textContent = '✓ Sheets activo';
   renderPensum();
   startAutoSyncInterval();
+}
+
+// ── LOADING HELPERS ──
+function _showLoading(msg, sub) {
+  let ov = document.getElementById('loadingOverlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'loadingOverlay';
+    ov.innerHTML = `
+      <img src="Logotipo-horizontal-azul.png" alt="UGB"
+           style="height:56px;object-fit:contain;filter:brightness(0) invert(1);opacity:.88;"
+           onerror="this.style.display='none'">
+      <div id="loadingMsg"  style="color:#fff;font-size:18px;font-weight:800;">Cargando...</div>
+      <div style="width:46px;height:46px;border:4px solid rgba(255,255,255,.22);border-top-color:#fff;
+                  border-radius:50%;animation:loadSpin .75s linear infinite;"></div>
+      <div id="loadingSubMsg" style="color:rgba(255,255,255,.6);font-size:12px;"></div>
+      <style>@keyframes loadSpin{to{transform:rotate(360deg);}}</style>`;
+    ov.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#1e3a8a,#1e40af);align-items:center;justify-content:center;flex-direction:column;gap:18px;';
+    document.body.appendChild(ov);
+  }
+  document.getElementById('loadingMsg').textContent    = msg || 'Cargando...';
+  document.getElementById('loadingSubMsg').textContent = sub || '';
+  ov.style.display = 'flex';
+}
+function _hideLoading() {
+  const ov = document.getElementById('loadingOverlay');
+  if (ov) ov.style.display = 'none';
 }
 
 function changeStudent() {
@@ -677,8 +797,10 @@ function changeStudent() {
 function deleteStudent(name) {
   const pw=prompt('Contraseña para eliminar:');
   if(pw!=='747'){showToast('Contraseña incorrecta','error');return;}
-  if(!confirm('¿Eliminar todos los datos de '+name+'?')) return;
-  delete appData[name]; saveLocal(); renderStudentList(); showToast('Eliminado','success');
+  if(!confirm('¿Eliminar TODOS los datos de '+name+' del servidor?')) return;
+  delete appData[name];
+  renderStudentList();
+  showToast('✓ Eliminado localmente. Nota: los datos en Sheets deben eliminarse manualmente desde Google Sheets.','success');
 }
 
 function getStudentData(){ return appData[currentStudent]||{notas:{}}; }
@@ -697,9 +819,10 @@ function saveLocal(triggerSync=true) {
   const sd=getStudentData();
   sd.cycles=JSON.parse(JSON.stringify(CYCLES));
   sd.undoStack=undoStack.slice(-MAX_HIST);
-  localStorage.setItem('ugb_pensum_appdata',JSON.stringify(appData));
+  // NO guardamos en localStorage — Sheets es la única fuente de verdad
+  // Solo guardamos config/tema (no datos de estudiantes)
   document.getElementById('autoSaveTick').textContent='💾 '+new Date().toLocaleTimeString();
-  if(triggerSync) triggerAutoSync();
+  if(triggerSync) triggerAutoSync(); // sube a Sheets de inmediato
 }
 
 function triggerAutoSync() {
@@ -713,12 +836,13 @@ function triggerAutoSync() {
 function startAutoSyncInterval() {
   if(!config.appsScriptUrl||!currentStudent) return;
   stopAutoSyncInterval();
+  // Subir a Sheets cada 4 segundos para mantener todos los dispositivos sincronizados
   autoSyncInterval=setInterval(()=>{
     if(!isAutoSyncing&&currentStudent&&config.appsScriptUrl){
       isAutoSyncing=true;
       syncToSheets(true).finally(()=>{isAutoSyncing=false;});
     }
-  },5000);
+  },4000);
 }
 function stopAutoSyncInterval(){if(autoSyncInterval){clearInterval(autoSyncInterval);autoSyncInterval=null;}}
 
@@ -1369,7 +1493,7 @@ function processPaste(){
 // ═══════════════════════════════════════════════════════════
 // EXPORT / IMPORT
 // ═══════════════════════════════════════════════════════════
-function exportJSON(){const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(appData));a.download='pensum_ugb_backup.json';a.click();}
+function exportJSON(){if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify({student:currentStudent,data:appData[currentStudent]||{}}));a.download='pensum_'+currentStudent.replace(/\s+/g,'_')+'_backup.json';a.click();showToast('✓ Backup descargado','success');}
 function importJSON(){
   const inp=document.createElement('input');inp.type='file';inp.accept='application/json';
   inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{appData=JSON.parse(ev.target.result);saveLocal();showToast('Importado','success');renderPensum();}catch(err){showToast('Error al importar','error');}};r.readAsText(f);};inp.click();
@@ -1457,22 +1581,25 @@ async function syncToSheets(isAuto=false){
 }
 async function fetchFromSheets(silent=false){
   if(!config.appsScriptUrl){if(!silent)showToast('Configura Sheets primero','error');return;}
-  if(!silent) showToast('⏳ Descargando...','success');
+  if(!currentStudent){if(!silent)showToast('No hay estudiante seleccionado','error');return;}
+  if(!silent) showToast('⏳ Descargando desde Sheets...','success');
   try{
     const res=await fetch(config.appsScriptUrl+'?student='+encodeURIComponent(currentStudent));
     const json=await res.json();
     if(json.status==='success'){
       const d=json.payload;
-      if(!appData[currentStudent]) appData[currentStudent]={notas:{},events:[],cyclesDone:{},asistencias:{}};
+      if(!appData[currentStudent]) appData[currentStudent]={notas:{},events:[],cyclesDone:{},asistencias:{},specialCards:{},undoStack:[]};
+      // Reemplazar completamente con datos de Sheets (Sheets = fuente de verdad)
+      appData[currentStudent].notas={};
       (d.data||[]).forEach(row=>{appData[currentStudent].notas[row.num]={status:row.status,finalGrade:row.finalGrade===''?null:parseFloat(row.finalGrade),computos:[{lab1:row.lab1_c1,lab2:row.lab2_c1,parcial:row.parcial_c1},{lab1:row.lab1_c2,lab2:row.lab2_c2,parcial:row.parcial_c2},{lab1:row.lab1_c3,lab2:row.lab2_c3,parcial:row.parcial_c3}]};});
-      appData[currentStudent].events=d.events||[];
-      Object.assign(appData[currentStudent].cyclesDone||{},d.cyclesDone||{});
-      if(d.asistencias) Object.assign(appData[currentStudent].asistencias||{},d.asistencias);
-      saveLocal(false);renderPensum();
-      if(!silent) showToast('✓ Descargado','success');
-      else document.getElementById('syncStatus').textContent='✓ Nube OK';
-    } else if(!silent) showToast('✗ '+json.message,'error');
-  }catch(e){if(!silent) showToast('✗ Error de conexión','error');}
+      if(d.events && d.events.length) appData[currentStudent].events=d.events;
+      if(d.cyclesDone) appData[currentStudent].cyclesDone=Object.assign(appData[currentStudent].cyclesDone||{},d.cyclesDone);
+      if(d.asistencias) appData[currentStudent].asistencias=Object.assign(appData[currentStudent].asistencias||{},d.asistencias);
+      renderPensum();
+      if(!silent) showToast('✓ Datos actualizados desde Sheets','success');
+      else { const st=document.getElementById('syncStatus'); if(st) st.textContent='✓ '+new Date().toLocaleTimeString(); }
+    } else if(!silent) showToast('✗ '+(json.message||'Error'),'error');
+  }catch(e){if(!silent) showToast('✗ Sin conexión a Sheets','error');}
 }
 function openConfig(){document.getElementById('appsScriptUrl').value=config.appsScriptUrl||'';document.getElementById('configModal').classList.add('open');}
 function closeConfig(){document.getElementById('configModal').classList.remove('open');}

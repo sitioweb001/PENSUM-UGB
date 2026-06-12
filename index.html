@@ -105,7 +105,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 .pensum-hint span{color:var(--blue);font-weight:600;}
 
 /* PENSUM GRID */
-.pensum-scroll-area{overflow:auto;padding:20px 22px;min-height:calc(100vh - 165px);}
+.pensum-scroll-area{overflow:auto;padding:20px 22px 80px;min-height:calc(100vh - 165px);}
 .pensum-wrapper{display:flex;flex-direction:column;width:max-content;min-width:100%;transform-origin:top left;}
 .year-row{display:grid;grid-template-columns:repeat(10,minmax(166px,176px));gap:10px;margin-bottom:6px;}
 .year-label{text-align:center;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gm);text-transform:uppercase;border-bottom:2px solid var(--gl);padding-bottom:5px;}
@@ -142,7 +142,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 
 /* CYCLE DETAIL */
 #cycleView{padding:0;}
-.cycle-view-inner{padding:20px 26px 100px;}
+.cycle-view-inner{padding:20px 26px 80px;}
 .cycle-top-bar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-bottom:20px;}
 .back-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;background:var(--card);border:1px solid var(--gl);border-radius:8px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
 .back-btn:hover{background:var(--blue);color:#fff;}
@@ -334,6 +334,8 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
         <div class="ham-divider"></div>
         <div class="ham-item" onclick="openConfig();closeHam()">⚙️ Configurar Sheets</div>
         <div class="ham-item" onclick="toggleTheme();closeHam()">🌙 Cambiar tema</div>
+        <div class="ham-divider"></div>
+        <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;">🧹 Limpiar caché y recargar</div>
         <div class="ham-divider"></div>
         <div class="ham-item danger" onclick="changeStudent();closeHam()">🚪 Cambiar estudiante</div>
       </div>
@@ -673,6 +675,15 @@ async function init() {
   renderStudentList();
 }
 
+function limpiarCache() {
+  if (!confirm('¿Limpiar caché local y recargar datos desde Sheets?\nEsto no borra datos del servidor.')) return;
+  // Borrar solo datos locales (no config ni tema)
+  localStorage.removeItem('ugb_pensum_appdata');
+  localStorage.removeItem('ugb_last_student');
+  showToast('🧹 Caché limpiado — recargando...', 'success');
+  setTimeout(() => location.reload(), 800);
+}
+
 async function recargarLista() {
   if (!config.appsScriptUrl) {
     showToast('Configura la URL de Sheets primero', 'error');
@@ -900,18 +911,90 @@ function triggerAutoSync() {
   autoSyncTimer=setTimeout(()=>syncToSheets(true),1000);
 }
 
+let autoFetchInterval = null;
+
 function startAutoSyncInterval() {
-  if(!config.appsScriptUrl||!currentStudent) return;
+  if (!config.appsScriptUrl || !currentStudent) return;
   stopAutoSyncInterval();
-  // Subir a Sheets cada 4 segundos para mantener todos los dispositivos sincronizados
-  autoSyncInterval=setInterval(()=>{
-    if(!isAutoSyncing&&currentStudent&&config.appsScriptUrl){
-      isAutoSyncing=true;
-      syncToSheets(true).finally(()=>{isAutoSyncing=false;});
+
+  // ── SUBIR cambios a Sheets cada 2s ──
+  autoSyncInterval = setInterval(() => {
+    if (!isAutoSyncing && currentStudent && config.appsScriptUrl) {
+      isAutoSyncing = true;
+      syncToSheets(true).finally(() => { isAutoSyncing = false; });
     }
-  },4000);
+  }, 2000);
+
+  // ── BAJAR cambios de otros dispositivos cada 5s ──
+  autoFetchInterval = setInterval(() => {
+    if (!isAutoSyncing && currentStudent && config.appsScriptUrl) {
+      _silentFetch();
+    }
+  }, 5000);
 }
-function stopAutoSyncInterval(){if(autoSyncInterval){clearInterval(autoSyncInterval);autoSyncInterval=null;}}
+
+function stopAutoSyncInterval() {
+  if (autoSyncInterval)  { clearInterval(autoSyncInterval);  autoSyncInterval  = null; }
+  if (autoFetchInterval) { clearInterval(autoFetchInterval); autoFetchInterval = null; }
+}
+
+// Descarga silenciosa desde Sheets y re-renderiza si hay cambios
+async function _silentFetch() {
+  try {
+    const url = config.appsScriptUrl + '?student=' + encodeURIComponent(currentStudent) + '&t=' + Date.now();
+    const res = await Promise.race([
+      fetch(url).then(r => r.json()),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))
+    ]);
+    if (res && res.status === 'success' && res.payload) {
+      const d = res.payload;
+      const local = appData[currentStudent];
+      let changed = false;
+
+      // Comparar notas
+      (d.data || []).forEach(row => {
+        const old = local.notas[row.num];
+        const newStatus = row.status;
+        const newGrade  = row.finalGrade === '' ? null : parseFloat(row.finalGrade);
+        if (!old || old.status !== newStatus || old.finalGrade !== newGrade) {
+          local.notas[row.num] = {
+            status: newStatus, finalGrade: newGrade,
+            computos: [
+              { lab1: row.lab1_c1, lab2: row.lab2_c1, parcial: row.parcial_c1 },
+              { lab1: row.lab1_c2, lab2: row.lab2_c2, parcial: row.parcial_c2 },
+              { lab1: row.lab1_c3, lab2: row.lab2_c3, parcial: row.parcial_c3 }
+            ]
+          };
+          changed = true;
+        }
+      });
+
+      // Comparar eventos
+      const remoteEvents = JSON.stringify(d.events || []);
+      if (remoteEvents !== JSON.stringify(local.events || [])) {
+        if (d.events && d.events.length) { local.events = d.events; changed = true; }
+      }
+
+      // Comparar ciclos finalizados
+      if (d.cyclesDone) {
+        Object.keys(d.cyclesDone).forEach(k => {
+          if (local.cyclesDone[k] !== d.cyclesDone[k]) {
+            local.cyclesDone[k] = d.cyclesDone[k]; changed = true;
+          }
+        });
+      }
+
+      if (changed) {
+        renderPensum();
+        const st = document.getElementById('syncStatus');
+        if (st) st.textContent = '🔄 ' + new Date().toLocaleTimeString();
+      } else {
+        const st = document.getElementById('syncStatus');
+        if (st) st.textContent = '✓ ' + new Date().toLocaleTimeString();
+      }
+    }
+  } catch(e) { /* silencioso */ }
+}
 
 // ═══════════════════════════════════════════════════════════
 // THEME & HAM
@@ -940,6 +1023,9 @@ function updateZoom(val){
   currentZoom=parseInt(val);localStorage.setItem('zoomLevel',val);
   document.getElementById('zoomLabel').textContent=val+'%';
   document.getElementById('pensumWrapper').style.zoom=val/100;
+  // Sincronizar zoom también en la vista de notas del ciclo
+  const inner = document.querySelector('.cycle-view-inner');
+  if (inner) inner.style.zoom = val/100;
 }
 
 function toggleEditMode(){
@@ -1218,6 +1304,9 @@ function openCycle(id,highlightNum=null){
   document.getElementById('cycleSubtitle').textContent=cycle.subjects.length+' asignaturas · 3 cómputos';
   document.getElementById('pensumView').classList.remove('active');
   document.getElementById('cycleView').classList.add('active');
+  // Aplicar el mismo zoom del pénsum a la vista de notas
+  const inner = document.querySelector('.cycle-view-inner');
+  if (inner) { inner.style.zoom = currentZoom / 100; }
   updateCycleDoneBtn();
   renderSubjects(cycle,highlightNum);
 }

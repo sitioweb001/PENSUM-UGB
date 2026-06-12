@@ -831,6 +831,7 @@ async function selectStudent(name) {
   document.getElementById('currentStudentName').textContent = '👤 ' + name;
   if (config.appsScriptUrl) document.getElementById('syncStatus').textContent = '✓ Sheets activo';
   renderPensum();
+  _pendingUpload = false; // recién bajamos todo, no hay nada pendiente
   startAutoSyncInterval();
 }
 
@@ -898,67 +899,91 @@ function saveLocal(triggerSync=true) {
   sd.cycles=JSON.parse(JSON.stringify(CYCLES));
   sd.undoStack=undoStack.slice(-MAX_HIST);
   // NO guardamos en localStorage — Sheets es la única fuente de verdad
-  // Solo guardamos config/tema (no datos de estudiantes)
   document.getElementById('autoSaveTick').textContent='💾 '+new Date().toLocaleTimeString();
-  if(triggerSync) triggerAutoSync(); // sube a Sheets de inmediato
+  _markDirty(); // marcar que hay cambios por subir
+  if(triggerSync) triggerAutoSync();
 }
 
 function triggerAutoSync() {
   if(!config.appsScriptUrl||!currentStudent) return;
+  _markDirty();
   clearTimeout(autoSyncTimer);
   const st=document.getElementById('syncStatus');
   if(st) st.textContent='⏳ Guardando...';
-  autoSyncTimer=setTimeout(()=>syncToSheets(true),1000);
+  autoSyncTimer=setTimeout(()=>syncToSheets(true),800);
 }
 
+// ── FLAGS SEPARADOS para subida y bajada ──
 let autoFetchInterval = null;
+let _isSyncing  = false;  // flag para SUBIR
+let _isFetching = false;  // flag para BAJAR (INDEPENDIENTE)
+let _pendingUpload = false; // hay cambios sin subir
 
 function startAutoSyncInterval() {
   if (!config.appsScriptUrl || !currentStudent) return;
   stopAutoSyncInterval();
 
-  // ── SUBIR cambios a Sheets cada 2s ──
-  autoSyncInterval = setInterval(() => {
-    if (!isAutoSyncing && currentStudent && config.appsScriptUrl) {
-      isAutoSyncing = true;
-      syncToSheets(true).finally(() => { isAutoSyncing = false; });
-    }
-  }, 2000);
+  // SUBIR a Sheets cada 3s (solo si hay cambios pendientes)
+  autoSyncInterval = setInterval(async () => {
+    if (_isSyncing || !_pendingUpload || !currentStudent || !config.appsScriptUrl) return;
+    _isSyncing = true;
+    _pendingUpload = false;
+    try { await syncToSheets(true); } catch(e) { _pendingUpload = true; }
+    finally { _isSyncing = false; }
+  }, 3000);
 
-  // ── BAJAR cambios de otros dispositivos cada 5s ──
+  // BAJAR de Sheets cada 4s (SIEMPRE, independiente de la subida)
   autoFetchInterval = setInterval(() => {
-    if (!isAutoSyncing && currentStudent && config.appsScriptUrl) {
+    if (!_isFetching && currentStudent && config.appsScriptUrl) {
       _silentFetch();
     }
-  }, 5000);
+  }, 4000);
+
+  // Primera bajada inmediata al entrar
+  setTimeout(() => _silentFetch(), 1500);
 }
 
 function stopAutoSyncInterval() {
   if (autoSyncInterval)  { clearInterval(autoSyncInterval);  autoSyncInterval  = null; }
   if (autoFetchInterval) { clearInterval(autoFetchInterval); autoFetchInterval = null; }
+  _isSyncing = false; _isFetching = false;
 }
 
-// Descarga silenciosa desde Sheets y re-renderiza si hay cambios
+// Marcar que hay cambios pendientes de subir
+function _markDirty() {
+  _pendingUpload = true;
+}
+
+// ── DESCARGA SILENCIOSA — siempre corre, nunca bloquea la subida ──
 async function _silentFetch() {
+  if (_isFetching || !currentStudent || !config.appsScriptUrl) return;
+  _isFetching = true;
   try {
     const url = config.appsScriptUrl + '?student=' + encodeURIComponent(currentStudent) + '&t=' + Date.now();
     const res = await Promise.race([
-      fetch(url).then(r => r.json()),
-      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))
+      fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
     ]);
-    if (res && res.status === 'success' && res.payload) {
-      const d = res.payload;
-      const local = appData[currentStudent];
-      let changed = false;
+    if (!res || res.status !== 'success' || !res.payload) return;
 
-      // Comparar notas
-      (d.data || []).forEach(row => {
-        const old = local.notas[row.num];
-        const newStatus = row.status;
-        const newGrade  = row.finalGrade === '' ? null : parseFloat(row.finalGrade);
-        if (!old || old.status !== newStatus || old.finalGrade !== newGrade) {
+    const d     = res.payload;
+    const local = appData[currentStudent];
+    if (!local) return;
+    let changed = false;
+
+    // ── Notas: reemplazar siempre con lo que viene de Sheets ──
+    if (d.data && d.data.length > 0) {
+      d.data.forEach(row => {
+        const remoteStatus = row.status || 'pending';
+        const remoteGrade  = (row.finalGrade === '' || row.finalGrade === null || row.finalGrade === undefined)
+                             ? null : parseFloat(row.finalGrade);
+        const cur = local.notas[row.num];
+        const curStatus = cur ? cur.status : 'pending';
+        const curGrade  = cur ? cur.finalGrade : null;
+        if (!cur || curStatus !== remoteStatus || String(curGrade) !== String(remoteGrade)) {
           local.notas[row.num] = {
-            status: newStatus, finalGrade: newGrade,
+            status: remoteStatus,
+            finalGrade: remoteGrade,
             computos: [
               { lab1: row.lab1_c1, lab2: row.lab2_c1, parcial: row.parcial_c1 },
               { lab1: row.lab1_c2, lab2: row.lab2_c2, parcial: row.parcial_c2 },
@@ -968,32 +993,39 @@ async function _silentFetch() {
           changed = true;
         }
       });
+    }
 
-      // Comparar eventos
-      const remoteEvents = JSON.stringify(d.events || []);
-      if (remoteEvents !== JSON.stringify(local.events || [])) {
-        if (d.events && d.events.length) { local.events = d.events; changed = true; }
-      }
-
-      // Comparar ciclos finalizados
-      if (d.cyclesDone) {
-        Object.keys(d.cyclesDone).forEach(k => {
-          if (local.cyclesDone[k] !== d.cyclesDone[k]) {
-            local.cyclesDone[k] = d.cyclesDone[k]; changed = true;
-          }
-        });
-      }
-
-      if (changed) {
-        renderPensum();
-        const st = document.getElementById('syncStatus');
-        if (st) st.textContent = '🔄 ' + new Date().toLocaleTimeString();
-      } else {
-        const st = document.getElementById('syncStatus');
-        if (st) st.textContent = '✓ ' + new Date().toLocaleTimeString();
+    // ── Eventos ──
+    if (d.events && d.events.length > 0) {
+      if (JSON.stringify(d.events) !== JSON.stringify(local.events || [])) {
+        local.events = d.events;
+        changed = true;
       }
     }
-  } catch(e) { /* silencioso */ }
+
+    // ── Ciclos finalizados ──
+    if (d.cyclesDone && Object.keys(d.cyclesDone).length > 0) {
+      Object.keys(d.cyclesDone).forEach(k => {
+        if (String(local.cyclesDone[k]) !== String(d.cyclesDone[k])) {
+          local.cyclesDone[k] = d.cyclesDone[k];
+          changed = true;
+        }
+      });
+    }
+
+    const st = document.getElementById('syncStatus');
+    if (changed) {
+      renderPensum();
+      if (st) st.textContent = '🔄 sync ' + new Date().toLocaleTimeString();
+    } else {
+      if (st) st.textContent = '✓ ' + new Date().toLocaleTimeString();
+    }
+  } catch(e) {
+    const st = document.getElementById('syncStatus');
+    if (st) st.textContent = '⚠️ Sin conexión';
+  } finally {
+    _isFetching = false;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════

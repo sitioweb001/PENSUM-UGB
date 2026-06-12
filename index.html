@@ -617,7 +617,7 @@ let calFilter='all', asistFilter='all', histFilter='all';
 // ═══════════════════════════════════════════════════════════
 async function init() {
   appData = {};
-  const defUrl = 'https://script.google.com/macros/s/AKfycbzkLqA1uXc7ayITUEyLd5tY8fbdgSeXwnAE_9FXB0wy-wfHizaTlndMQwYqUHH62z1_6A/exec';
+  const defUrl = 'https://script.google.com/macros/s/AKfycbznrRkpAJ6-fLRBgjhHziG9xWHBEIpTcUUCYxzvyq4AgD4KnL57ctC6agDTabf8L4bIWA/exec';
   try { config = JSON.parse(localStorage.getItem('ugb_pensum_config') || '{}'); if (!config.appsScriptUrl) config.appsScriptUrl = defUrl; }
   catch(e) { config = { appsScriptUrl: defUrl }; }
   const t = localStorage.getItem('ugb_theme') || 'light';

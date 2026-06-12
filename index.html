@@ -288,7 +288,18 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
     <input type="text" id="loginName" placeholder="Ej: José García" onkeydown="if(event.key==='Enter')doLogin()">
   </div>
   <button class="login-btn" id="loginButton" onclick="doLogin()">Ingresar →</button>
-  <div id="studentList" style="margin-top:14px;"></div>
+  <div style="display:flex;gap:8px;margin-top:14px;align-items:center;">
+    <button onclick="recargarLista()" title="Recargar lista desde Sheets"
+      style="padding:7px 12px;background:var(--bg);border:1.5px solid var(--gl);border-radius:8px;
+             font-size:12px;font-weight:700;cursor:pointer;color:var(--blue);flex-shrink:0;
+             display:flex;align-items:center;gap:5px;transition:all .2s;"
+      onmouseover="this.style.background='var(--blue)';this.style.color='#fff'"
+      onmouseout="this.style.background='var(--bg)';this.style.color='var(--blue)'">
+      🔄 Recargar
+    </button>
+    <span id="listLoadStatus" style="font-size:11px;color:var(--gm);"></span>
+  </div>
+  <div id="studentList" style="margin-top:10px;"></div>
 </div>
 </div>
 
@@ -605,48 +616,92 @@ let calFilter='all', asistFilter='all', histFilter='all';
 // INIT
 // ═══════════════════════════════════════════════════════════
 async function init() {
-  // Solo guardar config/tema/zoom en localStorage — los DATOS siempre vienen de Sheets
   appData = {};
-  const defUrl='https://script.google.com/macros/s/AKfycbzkLqA1uXc7ayITUEyLd5tY8fbdgSeXwnAE_9FXB0wy-wfHizaTlndMQwYqUHH62z1_6A/exec';
-  try { config=JSON.parse(localStorage.getItem('ugb_pensum_config')||'{}'); if(!config.appsScriptUrl) config.appsScriptUrl=defUrl; }
-  catch(e){ config={appsScriptUrl:defUrl}; }
-  const t=localStorage.getItem('ugb_theme')||'light';
-  document.getElementById('htmlRoot').setAttribute('data-theme',t);
-  const sz=localStorage.getItem('zoomLevel');
-  if(sz){ currentZoom=parseInt(sz); document.getElementById('zoomSlider').value=currentZoom; }
+  const defUrl = 'https://script.google.com/macros/s/AKfycbzkLqA1uXc7ayITUEyLd5tY8fbdgSeXwnAE_9FXB0wy-wfHizaTlndMQwYqUHH62z1_6A/exec';
+  try { config = JSON.parse(localStorage.getItem('ugb_pensum_config') || '{}'); if (!config.appsScriptUrl) config.appsScriptUrl = defUrl; }
+  catch(e) { config = { appsScriptUrl: defUrl }; }
+  const t = localStorage.getItem('ugb_theme') || 'light';
+  document.getElementById('htmlRoot').setAttribute('data-theme', t);
+  const sz = localStorage.getItem('zoomLevel');
+  if (sz) { currentZoom = parseInt(sz); document.getElementById('zoomSlider').value = currentZoom; }
 
-  // ── CARGAR LISTA DE ESTUDIANTES DESDE SHEETS ──
+  // ── CARGAR LISTA DE ESTUDIANTES DESDE SHEETS (con reintentos) ──
   if (config.appsScriptUrl) {
-    _showLoading('Conectando con el servidor...', 'Cargando lista de estudiantes');
-    try {
-      const res = await Promise.race([
-        fetch(config.appsScriptUrl + '?action=list_students').then(r => r.json()),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 7000))
-      ]);
-      if (res && res.status === 'success' && res.students) {
-        res.students.forEach(name => {
-          if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
-        });
+    _showLoading('Conectando con Google Sheets...', 'Cargando lista de estudiantes');
+    let loaded = false;
+    // Intentar hasta 3 veces con 2s entre intentos
+    for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
+      try {
+        if (attempt > 1) _showLoading('Reintentando... (' + attempt + '/3)', 'Cargando lista de estudiantes');
+        const res = await Promise.race([
+          fetch(config.appsScriptUrl + '?action=list_students&t=' + Date.now())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+        ]);
+        if (res && res.status === 'success' && Array.isArray(res.students)) {
+          res.students.forEach(name => {
+            if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
+          });
+          loaded = true;
+          const n = res.students.length;
+          _showLoading('✓ ' + n + ' estudiante' + (n===1?'':'s') + ' encontrado' + (n===1?'':'s'), 'Abriendo pantalla de login...');
+          await new Promise(r => setTimeout(r, 600));
+        }
+      } catch(e) {
+        if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
       }
-    } catch(e) {
-      // Sin conexión — mostrar login vacío igualmente
+    }
+    if (!loaded) {
+      _showLoading('⚠️ No se pudo conectar con Sheets', 'Verifica la URL en Configuración');
+      await new Promise(r => setTimeout(r, 1800));
     }
     _hideLoading();
   }
 
-  // Mostrar barra de estado de Sheets
+  // Barra de estado
   const bar    = document.getElementById('sheetsStatusBar');
   const barOff = document.getElementById('sheetsOfflineBar');
   if (config.appsScriptUrl) {
-    if (bar) bar.style.display = 'block';
+    if (bar)    bar.style.display    = 'block';
     if (barOff) barOff.style.display = 'none';
   } else {
-    if (bar) bar.style.display = 'none';
+    if (bar)    bar.style.display    = 'none';
     if (barOff) barOff.style.display = 'block';
   }
 
   setLoginMode(loginMode);
   renderStudentList();
+}
+
+async function recargarLista() {
+  if (!config.appsScriptUrl) {
+    showToast('Configura la URL de Sheets primero', 'error');
+    openConfig();
+    return;
+  }
+  const statusEl = document.getElementById('listLoadStatus');
+  if (statusEl) statusEl.textContent = '⏳ Cargando...';
+  try {
+    const res = await Promise.race([
+      fetch(config.appsScriptUrl + '?action=list_students&t=' + Date.now())
+        .then(r => r.json()),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+    ]);
+    if (res && res.status === 'success' && Array.isArray(res.students)) {
+      appData = {};
+      res.students.forEach(name => {
+        appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
+      });
+      renderStudentList();
+      if (statusEl) statusEl.textContent = '✓ ' + res.students.length + ' encontrado(s)';
+      setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+    } else {
+      if (statusEl) statusEl.textContent = '✗ Respuesta inesperada';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '✗ Sin conexión';
+    showToast('No se pudo conectar con Sheets', 'error');
+  }
 }
 
 function setLoginMode(m) {
@@ -660,19 +715,31 @@ function setLoginMode(m) {
 }
 
 function renderStudentList() {
-  const list=document.getElementById('studentList');
-  const students=Object.keys(appData);
-  // Indicador de fuente de datos
-  let sourceTag = config.appsScriptUrl
-    ? '<div style="font-size:10px;color:#10b981;font-weight:600;text-align:center;margin-bottom:10px;">🟢 Conectado a Google Sheets — datos en la nube</div>'
-    : '<div style="font-size:10px;color:#f59e0b;font-weight:600;text-align:center;margin-bottom:10px;">⚠️ Sin Sheets configurado — modo local</div>';
-  if(!students.length){
-    list.innerHTML=sourceTag+(loginMode==='list'?'<div style="color:var(--gm);text-align:center;padding:16px;">No hay estudiantes en el servidor.<br><small>Ingresa un nombre y presiona Entrar para crear uno.</small></div>':'')+'';
+  const list = document.getElementById('studentList');
+  const students = Object.keys(appData);
+  const count = students.length;
+
+  if (!count) {
+    list.innerHTML = `
+      <div style="text-align:center;padding:18px 10px;color:var(--gm);">
+        <div style="font-size:28px;margin-bottom:8px;">📭</div>
+        <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:5px;">No hay estudiantes en el servidor</div>
+        <div style="font-size:12px;">Ingresa un nombre arriba y presiona <b>Entrar</b> para crear uno.<br>El primer guardado registra al estudiante en la nube.</div>
+      </div>`;
     return;
   }
-  let h=sourceTag+'<div style="font-size:11px;color:var(--gm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;">Estudiantes en el servidor</div>';
-  students.forEach(n=>{h+=`<div class="student-chip" onclick="selectStudent('${n.replace(/'/g,"\\'")}')" title="Descargar datos de ${escapeHtml(n)} desde Sheets"><span>👤 ${escapeHtml(n)}</span><button class="del-btn" onclick="event.stopPropagation();deleteStudent('${n.replace(/'/g,"\\'")}')" title="Eliminar">×</button></div>`;});
-  list.innerHTML=h;
+
+  let h = `<div style="font-size:11px;color:var(--gm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+    👥 Estudiantes en el servidor (${count})
+  </div>`;
+  students.forEach(n => {
+    const safe = n.replace(/'/g, "\\'");
+    h += `<div class="student-chip" onclick="selectStudent('${safe}')" title="Cargar datos de ${n} desde Sheets">
+      <span>👤 ${escapeHtml(n)}</span>
+      <button class="del-btn" onclick="event.stopPropagation();deleteStudent('${safe}')" title="Eliminar">×</button>
+    </div>`;
+  });
+  list.innerHTML = h;
 }
 
 function doLogin() {
@@ -697,7 +764,7 @@ async function selectStudent(name) {
   // ── SIEMPRE DESCARGAR DESDE SHEETS (fuente de verdad) ──
   if (config.appsScriptUrl) {
     try {
-      const url = config.appsScriptUrl + '?student=' + encodeURIComponent(name);
+      const url = config.appsScriptUrl + '?student=' + encodeURIComponent(name) + '&t=' + Date.now();
       const res = await Promise.race([
         fetch(url).then(r => r.json()),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 9000))

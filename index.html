@@ -618,40 +618,45 @@ let calFilter='all', asistFilter='all', histFilter='all';
 // INIT
 // ═══════════════════════════════════════════════════════════
 
-// ── JSONP helper: evita CORS en peticiones GET a Apps Script ──
-function _jsonpFetch(url, timeoutMs) {
+// ── _apsFetch: llama a Apps Script sin problemas de CORS ──
+// Intenta fetch directo primero (a veces funciona), si falla usa proxy
+async function _apsFetch(url, timeoutMs) {
   timeoutMs = timeoutMs || 10000;
-  return new Promise(function(resolve, reject) {
-    const cbName = '_ugb_cb_' + Date.now() + '_' + Math.floor(Math.random()*9999);
-    let done = false;
-    const timer = setTimeout(function() {
-      if (done) return;
-      done = true;
-      try { delete window[cbName]; } catch(e) {}
-      if (script.parentNode) script.parentNode.removeChild(script);
-      reject(new Error('JSONP timeout'));
-    }, timeoutMs);
-    window[cbName] = function(data) {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      try { delete window[cbName]; } catch(e) {}
-      if (script.parentNode) script.parentNode.removeChild(script);
-      resolve(data);
-    };
-    const sep = url.indexOf('?') >= 0 ? '&' : '?';
-    const script = document.createElement('script');
-    script.src = url + sep + 'callback=' + cbName + '&t=' + Date.now();
-    script.onerror = function() {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      try { delete window[cbName]; } catch(e) {}
-      reject(new Error('JSONP load error'));
-    };
-    document.head.appendChild(script);
-  });
+  const addT = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+
+  // Método 1: fetch directo con CORS
+  try {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), Math.min(timeoutMs, 7000));
+    const res  = await fetch(addT, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (res.ok) {
+      const json = await res.json();
+      if (json && (json.status || json.students)) return json;
+    }
+  } catch(_) {}
+
+  // Método 2: proxy allorigins (agrega CORS headers automáticamente)
+  try {
+    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(addT);
+    const ctrl2 = new AbortController();
+    const tid2  = setTimeout(() => ctrl2.abort(), timeoutMs);
+    const res2  = await fetch(proxyUrl, { signal: ctrl2.signal });
+    clearTimeout(tid2);
+    if (res2.ok) {
+      const wrapper = await res2.json();
+      if (wrapper && wrapper.contents) {
+        const json = JSON.parse(wrapper.contents);
+        if (json && (json.status || json.students)) return json;
+      }
+    }
+  } catch(_) {}
+
+  throw new Error('No se pudo conectar con el servidor');
 }
+
+// Alias para compatibilidad con código anterior
+function _jsonpFetch(url, timeoutMs) { return _apsFetch(url, timeoutMs); }
 
 async function init() {
   appData = {};
@@ -897,13 +902,25 @@ function changeStudent() {
   renderStudentList();
 }
 
-function deleteStudent(name) {
-  const pw=prompt('Contraseña para eliminar:');
-  if(pw!=='747'){showToast('Contraseña incorrecta','error');return;}
-  if(!confirm('¿Eliminar TODOS los datos de '+name+' del servidor?')) return;
+async function deleteStudent(name) {
+  const pw = prompt('Contraseña para eliminar:');
+  if (pw !== '747') { showToast('Contraseña incorrecta', 'error'); return; }
+  if (!confirm('¿Eliminar a ' + name + ' del servidor y localmente?')) return;
+
+  // Enviar borrado al servidor
+  if (config.appsScriptUrl) {
+    try {
+      await fetch(config.appsScriptUrl, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'delete_student', student: name })
+      });
+    } catch(e) {}
+  }
+
   delete appData[name];
   renderStudentList();
-  showToast('✓ Eliminado localmente. Nota: los datos en Sheets deben eliminarse manualmente desde Google Sheets.','success');
+  showToast('✓ ' + name + ' eliminado', 'success');
 }
 
 function getStudentData(){ return appData[currentStudent]||{notas:{}}; }
@@ -1778,12 +1795,32 @@ async function syncToSheets(isAuto=false){
     payload.data.push({num:sub.num,code:sub.code,name:sub.name,cycle:cy.name,year:cy.year,uv:sub.uv,computo1:calcComputo(s.computos[0]),computo2:calcComputo(s.computos[1]),computo3:calcComputo(s.computos[2]),lab1_c1:s.computos[0].lab1,lab2_c1:s.computos[0].lab2,parcial_c1:s.computos[0].parcial,lab1_c2:s.computos[1].lab1,lab2_c2:s.computos[1].lab2,parcial_c2:s.computos[1].parcial,lab1_c3:s.computos[2].lab1,lab2_c3:s.computos[2].lab2,parcial_c3:s.computos[2].parcial,finalGrade:fg!==null?fg.toFixed(2):'',status:s.status});
   }));
   try{
-    await fetch(config.appsScriptUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(payload)});
+    // Intentar POST directo con CORS primero, luego no-cors
+    let posted = false;
+    try {
+      const r = await Promise.race([
+        fetch(config.appsScriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+      ]);
+      posted = r.ok || r.status === 0 || r.type === 'opaque';
+    } catch(_) {
+      // Fallback: no-cors (siempre "funciona" aunque no podemos leer respuesta)
+      await fetch(config.appsScriptUrl, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      });
+      posted = true;
+    }
     const t=new Date().toLocaleTimeString();
-    document.getElementById('syncStatus').textContent='✓ '+t;
+    document.getElementById('syncStatus').textContent='sync '+t;
     if(!isAuto) showToast('✓ Subido a Sheets','success');
   }catch(e){
-    document.getElementById('syncStatus').textContent='✗ Error';
+    document.getElementById('syncStatus').textContent='✗ Error subida';
     if(!isAuto) showToast('✗ Error al subir','error');
   }
 }

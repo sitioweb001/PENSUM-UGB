@@ -633,45 +633,53 @@ let calFilter='all', asistFilter='all', histFilter='all';
 // INIT
 // ═══════════════════════════════════════════════════════════
 
-// ── _apsFetch: llama a Apps Script sin problemas de CORS ──
-// Intenta fetch directo primero (a veces funciona), si falla usa proxy
-async function _apsFetch(url, timeoutMs) {
+// ── JSONP puro — el mismo patrón que funciona sin CORS ──
+// Apps Script responde: callbackName(json);
+// El <script> lo ejecuta y resuelve la Promise
+function _jsonpFetch(url, timeoutMs) {
   timeoutMs = timeoutMs || 10000;
-  const addT = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+  return new Promise(function(resolve, reject) {
+    const cbName = '_ugb_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
+    let settled = false;
 
-  // Método 1: fetch directo con CORS
-  try {
-    const ctrl = new AbortController();
-    const tid  = setTimeout(() => ctrl.abort(), Math.min(timeoutMs, 7000));
-    const res  = await fetch(addT, { signal: ctrl.signal });
-    clearTimeout(tid);
-    if (res.ok) {
-      const json = await res.json();
-      if (json && (json.status || json.students)) return json;
+    const timer = setTimeout(function() {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('timeout'));
+    }, timeoutMs);
+
+    window[cbName] = function(data) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanup();
+      resolve(data);
+    };
+
+    function cleanup() {
+      try { delete window[cbName]; } catch(e) {}
+      const s = document.getElementById(cbName);
+      if (s && s.parentNode) s.parentNode.removeChild(s);
     }
-  } catch(_) {}
 
-  // Método 2: proxy allorigins (agrega CORS headers automáticamente)
-  try {
-    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(addT);
-    const ctrl2 = new AbortController();
-    const tid2  = setTimeout(() => ctrl2.abort(), timeoutMs);
-    const res2  = await fetch(proxyUrl, { signal: ctrl2.signal });
-    clearTimeout(tid2);
-    if (res2.ok) {
-      const wrapper = await res2.json();
-      if (wrapper && wrapper.contents) {
-        const json = JSON.parse(wrapper.contents);
-        if (json && (json.status || json.students)) return json;
-      }
-    }
-  } catch(_) {}
-
-  throw new Error('No se pudo conectar con el servidor');
+    const sep = url.indexOf('?') >= 0 ? '&' : '?';
+    const script = document.createElement('script');
+    script.id  = cbName;
+    script.src = url + sep + 'callback=' + cbName;
+    script.onerror = function() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      cleanup();
+      reject(new Error('Script load error'));
+    };
+    document.head.appendChild(script);
+  });
 }
 
-// Alias para compatibilidad con código anterior
-function _jsonpFetch(url, timeoutMs) { return _apsFetch(url, timeoutMs); }
+// Alias
+function _apsFetch(url, t) { return _jsonpFetch(url, t); }
 
 
 // ══════════════════════════════════════════════════════════════

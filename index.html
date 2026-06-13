@@ -285,9 +285,23 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   </div>
   <div id="loginNameField" class="login-field">
     <label>Nombre</label>
-    <input type="text" id="loginName" placeholder="Ej: José García" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="text" id="loginName" placeholder="Ej: José García" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
   </div>
-  <button class="login-btn" id="loginButton" onclick="doLogin()">Ingresar →</button>
+  <div class="login-field" style="margin-top:10px;">
+    <label style="display:flex;align-items:center;justify-content:space-between;">
+      <span>Contraseña</span>
+      <span style="font-size:10px;color:var(--gm);font-weight:400;">🔒 cifrada — nadie más puede verla</span>
+    </label>
+    <div style="position:relative;">
+      <input type="password" id="loginPass" placeholder="Tu contraseña secreta"
+             onkeydown="if(event.key==='Enter')doLogin()"
+             style="padding-right:38px;">
+      <button onclick="togglePassVis()" title="Mostrar/ocultar"
+              style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;color:var(--gm);"
+              id="passVisBtn">👁</button>
+    </div>
+  </div>
+  <button class="login-btn" id="loginButton" onclick="doLogin()" style="margin-top:14px;">Ingresar →</button>
   <div style="display:flex;gap:8px;margin-top:14px;align-items:center;">
     <button onclick="recargarLista()" title="Recargar lista desde Sheets"
       style="padding:7px 12px;background:var(--bg);border:1.5px solid var(--gl);border-radius:8px;
@@ -335,6 +349,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
         <div class="ham-item" onclick="openConfig();closeHam()">⚙️ Configurar Sheets</div>
         <div class="ham-item" onclick="toggleTheme();closeHam()">🌙 Cambiar tema</div>
         <div class="ham-divider"></div>
+        <div class="ham-item" onclick="openChangePass()" style="color:#1d4ed8;font-weight:700;">🔑 Cambiar contraseña</div>
         <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;">🧹 Limpiar caché y recargar</div>
         <div class="ham-divider"></div>
         <div class="ham-item danger" onclick="changeStudent();closeHam()">🚪 Cambiar estudiante</div>
@@ -658,6 +673,135 @@ async function _apsFetch(url, timeoutMs) {
 // Alias para compatibilidad con código anterior
 function _jsonpFetch(url, timeoutMs) { return _apsFetch(url, timeoutMs); }
 
+
+// ══════════════════════════════════════════════════════════════
+// SISTEMA DE CONTRASEÑAS — SHA-256 en el cliente
+// La contraseña nunca viaja ni se guarda como texto plano
+// Solo el hash se compara con lo que está en Sheets
+// ══════════════════════════════════════════════════════════════
+
+// SHA-256 usando la API nativa del navegador (no se necesita librería)
+async function _sha256(text) {
+  const encoder = new TextEncoder();
+  const data    = encoder.encode(text);
+  const hashBuf = await crypto.subtle.digest('SHA-256', data);
+  // Convertir a hex string
+  return Array.from(new Uint8Array(hashBuf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Mostrar/ocultar contraseña
+function togglePassVis() {
+  const inp = document.getElementById('loginPass');
+  const btn = document.getElementById('passVisBtn');
+  if (inp.type === 'password') { inp.type = 'text';     btn.textContent = '🙈'; }
+  else                         { inp.type = 'password'; btn.textContent = '👁';  }
+}
+
+// Verificar o crear contraseña del estudiante
+// Devuelve: 'ok' | 'wrong' | 'new' (primer login, se crea)
+async function _checkPassword(studentName, plainPass) {
+  if (!plainPass) return 'empty';
+  const hash = await _sha256(studentName.toLowerCase().trim() + ':' + plainPass);
+  // El hash es específico del estudiante (se incluye el nombre para que el mismo
+  // pass en distintos usuarios genere hashes distintos)
+
+  // Pedir al servidor el hash guardado
+  try {
+    const res = await _apsFetch(
+      config.appsScriptUrl + '?action=get_hash&student=' + encodeURIComponent(studentName), 8000
+    );
+    if (res && res.status === 'success') {
+      if (!res.hash) {
+        // Primera vez — guardar hash y entrar
+        await _saveHash(studentName, hash);
+        return 'new';
+      }
+      // Comparar hash
+      return res.hash === hash ? 'ok' : 'wrong';
+    }
+  } catch(e) {}
+  return 'error';
+}
+
+// Guardar hash de contraseña en Sheets via POST
+async function _saveHash(studentName, hash) {
+  try {
+    await fetch(config.appsScriptUrl, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save_hash', student: studentName, hash: hash })
+    });
+  } catch(e) {}
+}
+
+// Mostrar modal de cambio de contraseña
+function openChangePass() {
+  closeHam();
+  const modal = document.getElementById('changePassModal');
+  if (modal) { modal.style.display = 'flex'; return; }
+  // Crear modal dinámicamente
+  const m = document.createElement('div');
+  m.id = 'changePassModal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;';
+  m.innerHTML = `
+    <div style="background:var(--modal-bg);border-radius:18px;padding:30px;width:360px;max-width:93vw;box-shadow:0 24px 60px rgba(0,0,0,.3);">
+      <h3 style="margin:0 0 6px;color:var(--blue-dk);font-size:17px;">🔑 Cambiar contraseña</h3>
+      <p style="margin:0 0 18px;font-size:12px;color:var(--gm);">La contraseña se guarda como código cifrado — nadie puede verla.</p>
+      <div class="login-field" style="margin-bottom:12px;">
+        <label>Contraseña actual</label>
+        <input type="password" id="cpOld" placeholder="Contraseña actual">
+      </div>
+      <div class="login-field" style="margin-bottom:12px;">
+        <label>Nueva contraseña</label>
+        <input type="password" id="cpNew" placeholder="Nueva contraseña">
+      </div>
+      <div class="login-field" style="margin-bottom:18px;">
+        <label>Confirmar nueva contraseña</label>
+        <input type="password" id="cpConf" placeholder="Repetir nueva contraseña">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="doChangePass()"
+          style="flex:1;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;">
+          Cambiar
+        </button>
+        <button onclick="document.getElementById('changePassModal').style.display='none'"
+          style="padding:11px 16px;background:var(--bg);border:1.5px solid var(--gl);border-radius:10px;cursor:pointer;font-size:14px;">
+          Cancelar
+        </button>
+      </div>
+      <div id="cpMsg" style="margin-top:12px;font-size:12px;text-align:center;display:none;"></div>
+    </div>`;
+  document.body.appendChild(m);
+}
+
+async function doChangePass() {
+  const oldP = document.getElementById('cpOld').value;
+  const newP = document.getElementById('cpNew').value;
+  const conf = document.getElementById('cpConf').value;
+  const msg  = document.getElementById('cpMsg');
+
+  const show = (txt, color) => {
+    msg.textContent = txt; msg.style.color = color; msg.style.display = 'block';
+  };
+
+  if (!oldP || !newP || !conf) { show('Completa todos los campos', '#ef4444'); return; }
+  if (newP !== conf)            { show('Las contraseñas nuevas no coinciden', '#ef4444'); return; }
+  if (newP.length < 4)         { show('Mínimo 4 caracteres', '#ef4444'); return; }
+
+  show('Verificando...', 'var(--gm)');
+
+  const check = await _checkPassword(currentStudent, oldP);
+  if (check === 'wrong') { show('Contraseña actual incorrecta', '#ef4444'); return; }
+  if (check === 'error') { show('Error de conexión', '#ef4444'); return; }
+
+  const newHash = await _sha256(currentStudent.toLowerCase().trim() + ':' + newP);
+  await _saveHash(currentStudent, newHash);
+  show('✓ Contraseña cambiada', '#10b981');
+  setTimeout(() => { document.getElementById('changePassModal').style.display = 'none'; }, 1500);
+}
+
 async function init() {
   appData = {};
   const defUrl = 'https://script.google.com/macros/s/AKfycbznrRkpAJ6-fLRBgjhHziG9xWHBEIpTcUUCYxzvyq4AgD4KnL57ctC6agDTabf8L4bIWA/exec';
@@ -778,7 +922,7 @@ function renderStudentList() {
   </div>`;
   students.forEach(n => {
     const safe = n.replace(/'/g, "\\'");
-    h += `<div class="student-chip" onclick="selectStudent('${safe}')" title="Cargar datos de ${n} desde Sheets">
+    h += `<div class="student-chip" onclick="loginFromList('${safe}')" title="Ingresar como ${escapeHtml(n)}">
       <span>👤 ${escapeHtml(n)}</span>
       <button class="del-btn" onclick="event.stopPropagation();deleteStudent('${safe}')" title="Eliminar">×</button>
     </div>`;
@@ -786,10 +930,51 @@ function renderStudentList() {
   list.innerHTML = h;
 }
 
-function doLogin() {
-  if(loginMode==='list'){showToast('Selecciona un estudiante de la lista','error');return;}
-  const n=document.getElementById('loginName').value.trim();
-  if(!n){showToast('Ingresa un nombre','error');return;}
+
+// Login desde la lista: pone el nombre y enfoca el password
+function loginFromList(name) {
+  document.getElementById('loginName').value = name;
+  const passEl = document.getElementById('loginPass');
+  if (passEl) {
+    passEl.value = '';
+    passEl.focus();
+    // Cambiar a modo nombre si estamos en lista
+    setLoginMode('name');
+    document.getElementById('loginName').value = name;
+  }
+  showToast('Ingresa la contraseña de ' + name, 'success');
+}
+
+async function doLogin() {
+  if (loginMode === 'list') { showToast('Selecciona un estudiante de la lista', 'error'); return; }
+  const n    = document.getElementById('loginName').value.trim();
+  const pass = document.getElementById('loginPass') ? document.getElementById('loginPass').value : '';
+  if (!n)    { showToast('Ingresa un nombre', 'error'); return; }
+  if (!pass) { showToast('Ingresa tu contraseña', 'error'); document.getElementById('loginPass').focus(); return; }
+
+  _showLoading('Verificando identidad...', 'Comprobando contraseña');
+
+  const result = await _checkPassword(n, pass);
+
+  if (result === 'wrong') {
+    _hideLoading();
+    showToast('❌ Contraseña incorrecta', 'error');
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginPass').focus();
+    return;
+  }
+  if (result === 'empty') {
+    _hideLoading();
+    showToast('Ingresa una contraseña', 'error');
+    return;
+  }
+  if (result === 'error') {
+    _hideLoading();
+    showToast('⚠️ No se pudo verificar — sin conexión', 'error');
+    return;
+  }
+  // 'ok' o 'new' — entrar
+  if (result === 'new') showToast('✓ Contraseña creada — guárdala bien', 'success');
   selectStudent(n);
 }
 
@@ -898,6 +1083,7 @@ function changeStudent() {
   document.getElementById('appView').style.display='none';
   document.getElementById('bottomBar').style.display='none';
   document.getElementById('loginName').value='';
+  const _pEl=document.getElementById('loginPass'); if(_pEl)_pEl.value='';
   stopAutoSyncInterval();
   renderStudentList();
 }

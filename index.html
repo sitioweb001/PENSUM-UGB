@@ -1279,6 +1279,22 @@ function calcComputo(c){const l1=parseFloat(c.lab1),l2=parseFloat(c.lab2),p=pars
 function calcFinal(computos){const s=computos.map(calcComputo);if(!s.some(x=>x!==null))return null;return s.reduce((a,b)=>a+(b===null?0:b),0)/3;}
 function getStatus(grade,computos){if(grade===null){return(computos||[]).some(c=>c.lab1!==''||c.lab2!==''||c.parcial!=='')?'inprogress':'pending';}return grade>=6.0?'pass':'fail';}
 
+// Versión que usa el status/finalGrade guardado en Sheets como respaldo
+function getEffectiveGrade(subData) {
+  const calc = calcFinal(subData.computos);
+  if (calc !== null) return calc;
+  if (subData.finalGrade !== null && subData.finalGrade !== undefined && subData.finalGrade !== '')
+    return parseFloat(subData.finalGrade);
+  return null;
+}
+function getEffectiveStatus(subData) {
+  const calc = calcFinal(subData.computos);
+  if (calc !== null) return getStatus(calc, subData.computos);
+  // Sin cómputos: usar el status guardado en Sheets
+  if (subData.status && subData.status !== 'pending') return subData.status;
+  return getStatus(null, subData.computos);
+}
+
 // ═══════════════════════════════════════════════════════════
 // PENSUM RENDER
 // ═══════════════════════════════════════════════════════════
@@ -1334,16 +1350,19 @@ function renderPensum(){
 
     cycle.subjects.forEach(sub=>{
       const subData=getSubjectData(sub.num);
-      const grade=calcFinal(subData.computos);
-      const status=getStatus(grade,subData.computos);
+      const grade=getEffectiveGrade(subData);
+      const status=getEffectiveStatus(subData);
       const isSpecial=!!(sd.specialCards&&sd.specialCards[sub.num]);
       const progress=grade!==null?Math.round((grade/10)*100):0;
 
       const card=document.createElement('div');
-      card.className='subject-card'+(isSpecial?' status-special':'')+(grade===null&&!isSpecial?' no-grade':'');
+      card.className='subject-card'+(isSpecial?' status-special':'')+(grade===null&&status==='pending'&&!isSpecial?' no-grade':'');
       card.dataset.num=sub.num;
       card.dataset.cycleId=cycle.id;
       if(grade!==null&&!isSpecial) card.style.background=`linear-gradient(to right,rgba(16,185,129,.42) ${progress}%,rgba(239,68,68,.35) ${progress}%)`;
+      else if(status==='pass'&&!isSpecial) card.style.background='rgba(16,185,129,.35)';
+      else if(status==='fail'&&!isSpecial) card.style.background='rgba(239,68,68,.25)';
+      else if(status==='inprogress'&&!isSpecial) card.style.background='rgba(251,191,36,.25)';
 
       // CTRL+2CLICS = poner/quitar 6.0
       // CTRL+SHIFT+CLIC = marcar especial (amarillo)
@@ -1478,8 +1497,7 @@ function updateStats(){
   CYCLES.forEach(c=>c.subjects.forEach(sub=>{
     total++;
     const sd=getSubjectData(sub.num);
-    const g=calcFinal(sd.computos);
-    const s=getStatus(g,sd.computos);
+    const s=getEffectiveStatus(sd);
     if(s==='pass')pass++;else if(s==='fail')fail++;else if(s==='inprogress')prog++;else pend++;
   }));
   document.getElementById('statPass').textContent=pass;
@@ -1557,8 +1575,8 @@ function openCycle(id,highlightNum=null){
   const cycle=CYCLES.find(c=>c.id===id);
   const sd=getStudentData();
   const isDone=!!(sd.cyclesDone&&sd.cyclesDone[id]);
-  const allPass=cycle.subjects.every(s=>getStatus(calcFinal(getSubjectData(s.num).computos),getSubjectData(s.num).computos)==='pass');
-  const started=cycle.subjects.some(s=>getStatus(calcFinal(getSubjectData(s.num).computos),getSubjectData(s.num).computos)!=='pending');
+  const allPass=cycle.subjects.every(s=>getEffectiveStatus(getSubjectData(s.num))==='pass');
+  const started=cycle.subjects.some(s=>getEffectiveStatus(getSubjectData(s.num))!=='pending');
   let badge='';
   if(isDone) badge=`<span style="background:var(--pass);color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">✅ Finalizado</span>`;
   else if(allPass) badge=`<span style="background:var(--pass);color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">100%</span>`;
@@ -1590,8 +1608,8 @@ function renderSubjects(cycle,highlightNum=null){
     const row=document.createElement('div');
     row.className='subject-row'; row.id='srow-'+sub.num;
     if(highlightNum===sub.num) row.classList.add('open');
-    const grade=calcFinal(subData.computos);
-    const status=isSpecial?'special':getStatus(grade,subData.computos);
+    const grade=getEffectiveGrade(subData);
+    const status=isSpecial?'special':getEffectiveStatus(subData);
     const chipCls={pass:'chip-pass',fail:'chip-fail',inprogress:'chip-inprogress',pending:'chip-pending',special:'chip-special'}[status];
     const chipTxt={pass:'Aprobada',fail:'Reprobada',inprogress:'En curso',pending:'Pendiente',special:'Especial ⭐'}[status];
     const gradeTrunc=grade!==null?Math.floor(grade*10)/10:null;

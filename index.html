@@ -105,7 +105,8 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 .pensum-hint span{color:var(--blue);font-weight:600;}
 
 /* PENSUM GRID */
-.pensum-scroll-area{overflow:auto;padding:20px 22px 80px;min-height:calc(100vh - 165px);}
+.pensum-scroll-area{overflow:auto;padding:20px 22px 80px;min-height:calc(100vh - 165px);
+  -webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
 .pensum-wrapper{display:flex;flex-direction:column;width:max-content;min-width:100%;transform-origin:top left;}
 .year-row{display:grid;grid-template-columns:repeat(10,minmax(166px,176px));gap:10px;margin-bottom:6px;}
 .year-label{text-align:center;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gm);text-transform:uppercase;border-bottom:2px solid var(--gl);padding-bottom:5px;}
@@ -142,11 +143,18 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 
 /* CYCLE DETAIL */
 #cycleView{padding:0;}
-.cycle-view-inner{padding:20px 26px 80px;}
+.cycle-view-inner{padding:20px 26px 80px;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
 .cycle-top-bar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-bottom:20px;}
 .back-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;background:var(--card);border:1px solid var(--gl);border-radius:8px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;}
 .back-btn:hover{background:var(--blue);color:#fff;}
-.cycle-done-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 16px;border-radius:20px;border:2px solid var(--pass);background:transparent;color:var(--pass);font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;}
+.cycle-done-btn{
+  padding:9px 18px;border-radius:999px;border:2px solid var(--pass);
+  background:transparent;color:var(--pass);font-weight:700;cursor:pointer;
+  font-size:13px;transition:all .2s;display:flex;align-items:center;gap:7px;
+}
+.cycle-done-btn:hover{background:var(--pass);color:#fff;}
+.cycle-done-btn.done{background:var(--pass);color:#fff;}
+.cycle-done-btn.done:hover{background:#dc2626;border-color:#dc2626;color:#fff;}
 .cycle-done-btn.done{background:var(--pass);color:#fff;}
 .cycle-done-btn:hover{opacity:.82;}
 .clear-cycle-btn{margin-left:auto;padding:7px 14px;background:var(--fail);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:12px;transition:all .15s;}
@@ -350,6 +358,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
         <div class="ham-item" onclick="toggleTheme();closeHam()">🌙 Cambiar tema</div>
         <div class="ham-divider"></div>
         <div class="ham-item" onclick="openChangePass()" style="color:#1d4ed8;font-weight:700;">🔑 Cambiar contraseña</div>
+        <div class="ham-item" onclick="openDeleteDataModal()" style="color:#dc2626;font-weight:700;">🗑️ Borrar datos</div>
         <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;">🧹 Limpiar caché y recargar</div>
         <div class="ham-divider"></div>
         <div class="ham-item danger" onclick="changeStudent();closeHam()">🚪 Cambiar estudiante</div>
@@ -864,6 +873,206 @@ async function init() {
   renderStudentList();
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// BORRAR DATOS — modal granular por categoría
+// ══════════════════════════════════════════════════════════════
+function openDeleteDataModal() {
+  closeHam();
+  // Cerrar si ya existe
+  const existing = document.getElementById('deleteDataModal');
+  if (existing) { existing.remove(); }
+
+  const students = Object.keys(appData);
+  const studentOpts = students.map(s =>
+    `<option value="${s}">${s}</option>`
+  ).join('');
+
+  const m = document.createElement('div');
+  m.id = 'deleteDataModal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:12px;';
+  m.innerHTML = `
+    <div style="background:var(--modal-bg);border-radius:18px;padding:26px;width:420px;max-width:96vw;
+                max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.35);">
+      <h3 style="margin:0 0 4px;color:#dc2626;font-size:17px;">🗑️ Borrar datos</h3>
+      <p style="margin:0 0 16px;font-size:12px;color:var(--gm);">Selecciona estudiante y qué datos eliminar. Esta acción también borra en el servidor.</p>
+
+      <!-- Selector de estudiante -->
+      <div class="login-field" style="margin-bottom:14px;">
+        <label>Estudiante</label>
+        <select id="ddStudent" onchange="ddUpdateSections()"
+          style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--gl);
+                 background:var(--bg);color:var(--text);font-size:14px;">
+          <option value="">-- Selecciona --</option>
+          ${studentOpts}
+          <option value="__all__" style="color:#dc2626;font-weight:700;">⚠️ TODOS los estudiantes</option>
+        </select>
+      </div>
+
+      <!-- Secciones a borrar -->
+      <div id="ddSections" style="display:none;">
+        <p style="font-size:12px;font-weight:700;color:var(--text);margin:0 0 8px;">¿Qué deseas borrar?</p>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1.5px solid var(--gl);cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="ddNotas" style="width:16px;height:16px;accent-color:#dc2626;">
+            <span>📊 Notas y cómputos</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1.5px solid var(--gl);cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="ddCalendario" style="width:16px;height:16px;accent-color:#dc2626;">
+            <span>📅 Eventos del calendario</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1.5px solid var(--gl);cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="ddCiclos" style="width:16px;height:16px;accent-color:#dc2626;">
+            <span>✅ Ciclos finalizados</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1.5px solid var(--gl);cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="ddEspecial" style="width:16px;height:16px;accent-color:#dc2626;">
+            <span>⭐ Marcas especiales</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1.5px solid var(--gl);cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="ddAsistencias" style="width:16px;height:16px;accent-color:#dc2626;">
+            <span>📋 Asistencias</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:2px solid #dc2626;cursor:pointer;font-size:13px;background:rgba(220,38,38,.05);"
+                 onclick="ddToggleAll(this)">
+            <input type="checkbox" id="ddTodo" style="width:16px;height:16px;accent-color:#dc2626;">
+            <span style="color:#dc2626;font-weight:700;">🗑️ TODO (eliminar estudiante completo)</span>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button onclick="ddConfirm()"
+            style="flex:1;padding:11px;background:#dc2626;color:#fff;border:none;border-radius:10px;
+                   font-weight:700;cursor:pointer;font-size:14px;">
+            Borrar seleccionado
+          </button>
+          <button onclick="document.getElementById('deleteDataModal').remove()"
+            style="padding:11px 16px;background:var(--bg);border:1.5px solid var(--gl);
+                   border-radius:10px;cursor:pointer;font-size:14px;">
+            Cancelar
+          </button>
+        </div>
+        <div id="ddMsg" style="margin-top:10px;font-size:12px;text-align:center;display:none;"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  // Cerrar al hacer clic fuera
+  m.addEventListener('click', e => { if(e.target===m) m.remove(); });
+}
+
+function ddUpdateSections() {
+  const sel = document.getElementById('ddStudent').value;
+  document.getElementById('ddSections').style.display = sel ? 'block' : 'none';
+}
+
+function ddToggleAll(label) {
+  const cb = document.getElementById('ddTodo');
+  // El check ya cambió, propagar a los demás
+  setTimeout(() => {
+    const checked = cb.checked;
+    ['ddNotas','ddCalendario','ddCiclos','ddEspecial','ddAsistencias'].forEach(id => {
+      document.getElementById(id).checked = checked;
+    });
+  }, 0);
+}
+
+async function ddConfirm() {
+  const student = document.getElementById('ddStudent').value;
+  const delNotas      = document.getElementById('ddNotas').checked;
+  const delCalendario = document.getElementById('ddCalendario').checked;
+  const delCiclos     = document.getElementById('ddCiclos').checked;
+  const delEspecial   = document.getElementById('ddEspecial').checked;
+  const delAsistencias= document.getElementById('ddAsistencias').checked;
+  const delTodo       = document.getElementById('ddTodo').checked;
+  const msg           = document.getElementById('ddMsg');
+
+  const show = (txt, color) => {
+    msg.textContent = txt; msg.style.color = color; msg.style.display = 'block';
+  };
+
+  if (!student) { show('Selecciona un estudiante', '#dc2626'); return; }
+  if (!delNotas && !delCalendario && !delCiclos && !delEspecial && !delAsistencias && !delTodo) {
+    show('Selecciona al menos un tipo de dato', '#dc2626'); return;
+  }
+
+  const targets = student === '__all__' ? Object.keys(appData) : [student];
+  const what = delTodo ? 'TODO el perfil' :
+    [delNotas&&'notas',delCalendario&&'calendario',delCiclos&&'ciclos',
+     delEspecial&&'especiales',delAsistencias&&'asistencias'].filter(Boolean).join(', ');
+
+  const confirmMsg = student === '__all__'
+    ? `¿Borrar ${what} de TODOS los estudiantes (${targets.length})?\nEsto también borrará en el servidor.`
+    : `¿Borrar ${what} de "${student}"?\nEsto también borrará en el servidor.`;
+
+  if (!confirm(confirmMsg)) return;
+  show('⏳ Borrando...', 'var(--gm)');
+
+  for (const name of targets) {
+    if (!appData[name]) continue;
+
+    if (delTodo) {
+      // Eliminar estudiante completo del servidor
+      if (config.appsScriptUrl) {
+        try {
+          await fetch(config.appsScriptUrl, {
+            method:'POST', mode:'no-cors',
+            headers:{'Content-Type':'text/plain'},
+            body: JSON.stringify({ action:'delete_student', student: name })
+          });
+        } catch(e) {}
+      }
+      delete appData[name];
+    } else {
+      const sd = appData[name];
+      if (delNotas)       { sd.notas = {}; }
+      if (delCalendario)  { sd.events = []; }
+      if (delCiclos)      { sd.cyclesDone = {}; }
+      if (delEspecial)    { sd.specialCards = {}; }
+      if (delAsistencias) { sd.asistencias = {}; }
+      // Subir el estado limpio al servidor
+      if (name === currentStudent) {
+        _markDirty();
+        await syncToSheets(true);
+      } else if (config.appsScriptUrl) {
+        // Para otros estudiantes: enviar payload vacío
+        try {
+          await fetch(config.appsScriptUrl, {
+            method:'POST', mode:'no-cors',
+            headers:{'Content-Type':'text/plain'},
+            body: JSON.stringify({
+              student: name,
+              data: [],
+              events: sd.events||[],
+              cyclesDone: sd.cyclesDone||{},
+              asistencias: sd.asistencias||{},
+              specialCards: sd.specialCards||{}
+            })
+          });
+        } catch(e) {}
+      }
+    }
+  }
+
+  // Si el usuario actual fue borrado, volver al login
+  if (delTodo && targets.includes(currentStudent)) {
+    show('✓ Datos borrados. Volviendo al login...', '#10b981');
+    setTimeout(() => {
+      document.getElementById('deleteDataModal').remove();
+      changeStudent();
+    }, 1200);
+    return;
+  }
+
+  // Actualizar vista si el usuario actual fue afectado
+  if (targets.includes(currentStudent)) {
+    renderPensum();
+    updateStats();
+  }
+  renderStudentList();
+  show('✓ Borrado completado', '#10b981');
+  setTimeout(() => document.getElementById('deleteDataModal').remove(), 1500);
+}
+
 function limpiarCache() {
   if (!confirm('¿Limpiar caché local y recargar datos desde Sheets?\nEsto no borra datos del servidor.')) return;
   // Borrar solo datos locales (no config ni tema)
@@ -1021,6 +1230,7 @@ async function selectStudent(name) {
         if (d.events && d.events.length)   local.events = d.events;
         if (d.cyclesDone)  Object.assign(local.cyclesDone,  d.cyclesDone);
         if (d.asistencias) Object.assign(local.asistencias, d.asistencias);
+        if (d.specialCards) local.specialCards = d.specialCards;
         if (d.cycles) local.cycles = d.cycles;
         _showLoading('¡Todo al día!', 'Abriendo pénsum...');
         await new Promise(r => setTimeout(r, 400));
@@ -1084,6 +1294,174 @@ function _hideLoading() {
   if (ov) ov.style.display = 'none';
 }
 
+// ══════════════════════════════════════════════════════════════
+// MODAL BORRAR DATOS — selección granular por usuario y tipo
+// ══════════════════════════════════════════════════════════════
+function openDeleteDataModal() {
+  closeHam();
+  // Remover modal anterior si existe
+  const old = document.getElementById('deleteDataModal');
+  if (old) old.remove();
+
+  const students = Object.keys(appData);
+  const currentSt = currentStudent || '';
+
+  const studentOptions = students.map(s =>
+    `<label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;
+      background:${s===currentSt?'rgba(30,64,175,.08)':'transparent'};margin-bottom:4px;font-size:13px;">
+      <input type="checkbox" class="del-student-cb" value="${s.replace(/"/g,'&quot;')}"
+        ${s===currentSt?'checked':''} style="width:15px;height:15px;accent-color:#1d4ed8;">
+      <span>👤 ${s}</span>
+    </label>`
+  ).join('');
+
+  const m = document.createElement('div');
+  m.id = 'deleteDataModal';
+  m.style.cssText = 'position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;';
+  m.innerHTML = `
+    <div style="background:var(--modal-bg);border-radius:20px;padding:28px;width:420px;max-width:95vw;
+                max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.4);">
+      <h3 style="margin:0 0 4px;color:#dc2626;font-size:18px;">🗑️ Borrar datos</h3>
+      <p style="margin:0 0 18px;font-size:12px;color:var(--gm);">Selecciona qué datos eliminar. Esta acción borrará del servidor.</p>
+
+      <!-- Selección de estudiantes -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--gm);text-transform:uppercase;
+                    letter-spacing:.5px;margin-bottom:8px;">Estudiante(s)</div>
+        <div style="border:1.5px solid var(--gl);border-radius:10px;padding:8px;max-height:140px;overflow-y:auto;">
+          ${students.length ? studentOptions : '<div style="color:var(--gm);text-align:center;padding:12px;font-size:12px;">No hay estudiantes</div>'}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <button onclick="document.querySelectorAll('.del-student-cb').forEach(c=>c.checked=true)"
+            style="flex:1;padding:5px;font-size:11px;border:1px solid var(--gl);border-radius:6px;cursor:pointer;background:var(--bg);color:var(--text);">
+            Todos
+          </button>
+          <button onclick="document.querySelectorAll('.del-student-cb').forEach(c=>c.checked=false)"
+            style="flex:1;padding:5px;font-size:11px;border:1px solid var(--gl);border-radius:6px;cursor:pointer;background:var(--bg);color:var(--text);">
+            Ninguno
+          </button>
+        </div>
+      </div>
+
+      <!-- Qué datos borrar -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:700;color:var(--gm);text-transform:uppercase;
+                    letter-spacing:.5px;margin-bottom:8px;">Datos a borrar</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          ${[
+            ['del-notas','📝 Notas y cómputos'],
+            ['del-calendar','📅 Calendario'],
+            ['del-cycles','✅ Ciclos finalizados'],
+            ['del-asist','🕐 Asistencias'],
+            ['del-special','⭐ Especiales'],
+            ['del-all','🗑️ TODO (incluye cuenta)'],
+          ].map(([id,lbl])=>`
+            <label style="display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:8px;
+              border:1.5px solid var(--gl);cursor:pointer;font-size:12px;font-weight:600;
+              ${id==='del-all'?'grid-column:1/-1;border-color:#dc2626;color:#dc2626;':''}" >
+              <input type="checkbox" id="${id}" style="width:14px;height:14px;
+                accent-color:${id==='del-all'?'#dc2626':'#1d4ed8'};">
+              ${lbl}
+            </label>`).join('')}
+        </div>
+        <p style="font-size:10px;color:#dc2626;margin:8px 0 0;">
+          ⚠️ "TODO" elimina la cuenta del estudiante del servidor permanentemente.
+        </p>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button onclick="ejecutarBorrado()"
+          style="flex:1;padding:12px;background:#dc2626;color:#fff;border:none;border-radius:10px;
+                 font-weight:800;cursor:pointer;font-size:14px;">
+          🗑️ Borrar selección
+        </button>
+        <button onclick="document.getElementById('deleteDataModal').remove()"
+          style="padding:12px 16px;background:var(--bg);border:1.5px solid var(--gl);
+                 border-radius:10px;cursor:pointer;font-size:14px;">
+          Cancelar
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+  // Cerrar al hacer clic fuera
+  m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+}
+
+async function ejecutarBorrado() {
+  const selected = [...document.querySelectorAll('.del-student-cb:checked')].map(c => c.value);
+  if (!selected.length) { showToast('Selecciona al menos un estudiante','error'); return; }
+
+  const delNotas   = document.getElementById('del-notas')?.checked;
+  const delCal     = document.getElementById('del-calendar')?.checked;
+  const delCiclos  = document.getElementById('del-cycles')?.checked;
+  const delAsist   = document.getElementById('del-asist')?.checked;
+  const delSpecial = document.getElementById('del-special')?.checked;
+  const delAll     = document.getElementById('del-all')?.checked;
+
+  if (!delNotas && !delCal && !delCiclos && !delAsist && !delSpecial && !delAll) {
+    showToast('Selecciona qué datos borrar','error'); return;
+  }
+
+  const tipos = [];
+  if (delAll)     tipos.push('cuenta completa');
+  else {
+    if (delNotas)   tipos.push('notas');
+    if (delCal)     tipos.push('calendario');
+    if (delCiclos)  tipos.push('ciclos');
+    if (delAsist)   tipos.push('asistencias');
+    if (delSpecial) tipos.push('especiales');
+  }
+
+  if (!confirm(`¿Borrar ${tipos.join(', ')} de:
+${selected.join(', ')}?
+
+Esta acción NO se puede deshacer.`)) return;
+
+  document.getElementById('deleteDataModal').remove();
+  _showLoading('Borrando datos...', 'Conectando con el servidor');
+
+  for (const name of selected) {
+    if (!appData[name]) appData[name] = {notas:{},events:[],cyclesDone:{},asistencias:{},specialCards:{},undoStack:[]};
+    const sd = appData[name];
+
+    if (delAll) {
+      // Borrar cuenta completa del servidor
+      try {
+        await fetch(config.appsScriptUrl, {
+          method:'POST', mode:'no-cors',
+          headers:{'Content-Type':'text/plain'},
+          body: JSON.stringify({ action:'delete_student', student: name })
+        });
+      } catch(e) {}
+      delete appData[name];
+      if (currentStudent === name) { currentStudent = null; }
+    } else {
+      // Borrar solo lo seleccionado localmente
+      if (delNotas)   { sd.notas = {}; sd.undoStack = []; }
+      if (delCal)     { sd.events = []; }
+      if (delCiclos)  { sd.cyclesDone = {}; }
+      if (delAsist)   { sd.asistencias = {}; }
+      if (delSpecial) { sd.specialCards = {}; }
+      // Subir cambios al servidor
+      try {
+        await syncToSheets(true);
+      } catch(e) {}
+    }
+  }
+
+  _hideLoading();
+
+  // Si el usuario actual fue eliminado completamente, volver al login
+  if (!currentStudent || !appData[currentStudent]) {
+    showToast('✓ Datos borrados — volviendo al login','success');
+    setTimeout(() => changeStudent(), 800);
+  } else {
+    renderPensum();
+    renderStudentList();
+    showToast('✓ Datos borrados correctamente','success');
+  }
+}
+
 function changeStudent() {
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
@@ -1145,7 +1523,7 @@ function triggerAutoSync() {
   clearTimeout(autoSyncTimer);
   const st=document.getElementById('syncStatus');
   if(st) st.textContent='⏳ Guardando...';
-  autoSyncTimer=setTimeout(()=>syncToSheets(true),800);
+  autoSyncTimer=setTimeout(()=>syncToSheets(true),400);
 }
 
 // ── FLAGS SEPARADOS para subida y bajada ──
@@ -1158,24 +1536,24 @@ function startAutoSyncInterval() {
   if (!config.appsScriptUrl || !currentStudent) return;
   stopAutoSyncInterval();
 
-  // SUBIR a Sheets cada 3s (solo si hay cambios pendientes)
+  // SUBIR a Sheets cada 1.5s (solo si hay cambios pendientes)
   autoSyncInterval = setInterval(async () => {
     if (_isSyncing || !_pendingUpload || !currentStudent || !config.appsScriptUrl) return;
     _isSyncing = true;
     _pendingUpload = false;
     try { await syncToSheets(true); } catch(e) { _pendingUpload = true; }
     finally { _isSyncing = false; }
-  }, 3000);
+  }, 1500);
 
-  // BAJAR de Sheets cada 4s (SIEMPRE, independiente de la subida)
+  // BAJAR de Sheets cada 2.5s (SIEMPRE, independiente de la subida)
   autoFetchInterval = setInterval(() => {
     if (!_isFetching && currentStudent && config.appsScriptUrl) {
       _silentFetch();
     }
-  }, 4000);
+  }, 2500);
 
   // Primera bajada inmediata al entrar
-  setTimeout(() => _silentFetch(), 1500);
+  setTimeout(() => _silentFetch(), 800);
 }
 
 function stopAutoSyncInterval() {
@@ -1234,14 +1612,25 @@ async function _silentFetch() {
       }
     }
 
-    // ── Ciclos finalizados ──
-    if (d.cyclesDone && Object.keys(d.cyclesDone).length > 0) {
-      Object.keys(d.cyclesDone).forEach(k => {
-        if (String(local.cyclesDone[k]) !== String(d.cyclesDone[k])) {
-          local.cyclesDone[k] = d.cyclesDone[k];
-          changed = true;
-        }
-      });
+    // ── Ciclos finalizados — comparar JSON completo ──
+    if (d.cyclesDone !== undefined) {
+      const remCD = JSON.stringify(d.cyclesDone || {});
+      const locCD = JSON.stringify(local.cyclesDone || {});
+      if (remCD !== locCD) {
+        local.cyclesDone = d.cyclesDone || {};
+        changed = true;
+      }
+    }
+
+    // ── SpecialCards (amarillo) ──
+    if (d.specialCards) {
+      if (!local.specialCards) local.specialCards = {};
+      const remSC = JSON.stringify(d.specialCards);
+      const locSC = JSON.stringify(local.specialCards);
+      if (remSC !== locSC) {
+        local.specialCards = d.specialCards;
+        changed = true;
+      }
     }
 
     const st = document.getElementById('syncStatus');
@@ -1556,9 +1945,18 @@ function toggleCycleDone(){
   if(!currentCycleId||!currentStudent) return;
   const sd=getStudentData();
   if(!sd.cyclesDone) sd.cyclesDone={};
-  sd.cyclesDone[currentCycleId]=!sd.cyclesDone[currentCycleId];
-  saveLocal();updateCycleDoneBtn();
-  showToast(sd.cyclesDone[currentCycleId]?'✅ Ciclo finalizado':'↩ Ciclo desmarcado','success');
+  const wasDone = !!sd.cyclesDone[currentCycleId];
+  if(wasDone){
+    if(!confirm('¿Desmarcar este ciclo como finalizado?\nEl ciclo volverá a estado normal.')) return;
+    // Eliminar la clave completamente para que se detecte el cambio
+    delete sd.cyclesDone[currentCycleId];
+    saveLocal(); updateCycleDoneBtn(); renderPensum();
+    showToast('↩ Ciclo desmarcado — ya no figura como finalizado','success');
+  } else {
+    sd.cyclesDone[currentCycleId] = true;
+    saveLocal(); updateCycleDoneBtn(); renderPensum();
+    showToast('✅ Ciclo marcado como finalizado','success');
+  }
 }
 function updateCycleDoneBtn(){
   const sd=getStudentData();
@@ -1567,7 +1965,8 @@ function updateCycleDoneBtn(){
   if(!btn) return;
   btn.classList.toggle('done',done);
   document.getElementById('cycleDoneIcon').textContent=done?'✅':'☐';
-  document.getElementById('cycleDoneText').textContent=done?'Ciclo Finalizado':'Marcar finalizado';
+  document.getElementById('cycleDoneText').textContent=done?'✓ Finalizado — clic para deshacer':'Marcar finalizado';
+  if(btn) btn.title=done?'Clic para desmarcar este ciclo':'Marcar este ciclo como finalizado';
 }
 
 function openCycle(id,highlightNum=null){
@@ -2001,7 +2400,7 @@ async function syncToSheets(isAuto=false){
   if(!isAuto) showToast('⏳ Sincronizando...','success');
   else{const st=document.getElementById('syncStatus');if(st)st.textContent='⏳ Subiendo...';}
   const sd=getStudentData();
-  const payload={student:currentStudent,timestamp:new Date().toISOString(),data:[],events:sd.events||[],cyclesDone:sd.cyclesDone||{},asistencias:sd.asistencias||{},cyclesOrder:CYCLES.map(c=>({id:c.id,subjects:c.subjects.map(s=>s.num)}))};
+  const payload={student:currentStudent,timestamp:new Date().toISOString(),data:[],events:sd.events||[],cyclesDone:sd.cyclesDone||{},asistencias:sd.asistencias||{},specialCards:sd.specialCards||{},cyclesOrder:CYCLES.map(c=>({id:c.id,subjects:c.subjects.map(s=>s.num)}))};
   CYCLES.forEach(cy=>cy.subjects.forEach(sub=>{
     const s=getSubjectData(sub.num);const fg=calcFinal(s.computos);
     payload.data.push({num:sub.num,code:sub.code,name:sub.name,cycle:cy.name,year:cy.year,uv:sub.uv,computo1:calcComputo(s.computos[0]),computo2:calcComputo(s.computos[1]),computo3:calcComputo(s.computos[2]),lab1_c1:s.computos[0].lab1,lab2_c1:s.computos[0].lab2,parcial_c1:s.computos[0].parcial,lab1_c2:s.computos[1].lab1,lab2_c2:s.computos[1].lab2,parcial_c2:s.computos[1].parcial,lab1_c3:s.computos[2].lab1,lab2_c3:s.computos[2].lab2,parcial_c3:s.computos[2].parcial,finalGrade:fg!==null?fg.toFixed(2):'',status:s.status});

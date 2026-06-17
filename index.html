@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UGB — Pénsum INGs. SISTEMAS Y CIVIL </title>
+<title>UGB — Pénsum Ing. Sistemas y Redes</title>
 <link rel="icon" type="image/png" href="Logotipo-horizontal-azul.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -40,6 +40,7 @@ body.printing #printArea{display:block!important;position:fixed;inset:0;z-index:
 
 /* LOGIN */
 #loginView{position:fixed;inset:0;background:linear-gradient(135deg,var(--blue-dk),var(--blue));display:flex;align-items:center;justify-content:center;z-index:1000;}
+#careerSelectView{position:fixed;inset:0;background:linear-gradient(135deg,var(--blue-dk),var(--blue));display:flex;align-items:center;justify-content:center;z-index:1000;}
 .login-box{background:var(--modal-bg);border-radius:20px;padding:38px;width:420px;max-width:93vw;box-shadow:0 32px 80px rgba(0,0,0,.3);}
 .login-logo-wrap{text-align:center;margin-bottom:18px;}
 .login-logo-wrap img{max-width:230px;max-height:88px;object-fit:contain;}
@@ -274,12 +275,50 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 </style>
 </head>
 <body>
-<div id="loginView">
+<div id="careerSelectView">
+<div class="login-box" style="text-align:center;">
+  <div class="login-logo-wrap">
+    <img src="Logotipo-horizontal-azul.png" alt="UGB" onerror="this.parentElement.innerHTML='<div style=\'width:90px;height:90px;border-radius:24px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:900;margin:0 auto 18px\'>UGB</div>'">
+  </div>
+  <h2>Pénsum UGB</h2>
+  <p style="margin-bottom:22px;">Selecciona tu carrera</p>
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <button onclick="chooseCareer('sistemas')"
+      style="padding:18px;border-radius:14px;border:2px solid var(--gl);background:var(--card);
+             cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;transition:all .2s;"
+      onmouseover="this.style.borderColor='var(--blue)';this.style.background='rgba(30,64,175,.05)'"
+      onmouseout="this.style.borderColor='var(--gl)';this.style.background='var(--card)'">
+      <span style="font-size:28px;">💻</span>
+      <span>
+        <div style="font-weight:800;font-size:14px;color:var(--text);">Ingeniería en Sistemas y Redes Informáticas</div>
+        <div style="font-size:11px;color:var(--gm);">VIGENCIA DEL CICLO I-2024 AL CICLO I I-2028</div>
+      </span>
+    </button>
+    <button onclick="chooseCareer('civil')"
+      style="padding:18px;border-radius:14px;border:2px solid var(--gl);background:var(--card);
+             cursor:pointer;text-align:left;display:flex;align-items:center;gap:14px;transition:all .2s;"
+      onmouseover="this.style.borderColor='var(--blue)';this.style.background='rgba(30,64,175,.05)'"
+      onmouseout="this.style.borderColor='var(--gl)';this.style.background='var(--card)'">
+      <span style="font-size:28px;">🏗️</span>
+      <span>
+        <div style="font-weight:800;font-size:14px;color:var(--text);">Ingeniería Civil</div>
+        <div style="font-size:11px;color:var(--gm);">VIGENCIA DEL CICLO I-2023 AL CICLO I I-2027</div>
+      </span>
+    </button>
+  </div>
+</div>
+</div>
+
+<div id="loginView" style="display:none;">
 <div class="login-box">
   <div class="login-logo-wrap">
     <img src="Logotipo-horizontal-azul.png" alt="UGB" onerror="this.parentElement.innerHTML='<div style=\'width:90px;height:90px;border-radius:24px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:900;margin:0 auto 18px\'>UGB</div>'">
   </div>
   <h2>Pénsum UGB</h2>
+  <p style="font-size:11px;color:var(--gm);margin-bottom:2px;">
+    <span id="careerBadge" style="background:var(--blue);color:#fff;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;"></span>
+    <a href="javascript:void(0)" onclick="backToCareerSelect()" style="color:var(--blue);text-decoration:none;font-weight:600;margin-left:6px;">cambiar</a>
+  </p>
   <p id="loginSubtitle">Ingresa nombre del estudiante</p>
   <div id="sheetsStatusBar" style="display:none;background:rgba(16,185,129,.13);border:1px solid rgba(16,185,129,.35);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#065f46;font-weight:600;text-align:center;">
     🟢 Datos compartidos en la nube — todos los dispositivos ven lo mismo
@@ -331,8 +370,8 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
     <img src="Logotipo-horizontal-azul.png" alt="UGB" onerror="this.outerHTML='<span style=\'font-weight:900;font-size:18px;\'>UGB</span>'">
   </div>
   <div class="header-title" style="margin-left:10px;">
-    <h1>Ingeniería en</h1>
-    <h2>Sistemas y Redes Informáticas</h2>
+    <h1 id="careerHeaderLine1">Ingeniería en</h1>
+    <h2 id="careerHeaderLine2">Sistemas y Redes Informáticas</h2>
   </div>
   <div class="header-right">
     <span class="sync-status" id="syncStatus"></span>
@@ -361,6 +400,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
         <div class="ham-item" onclick="openDeleteDataModal()" style="color:#dc2626;font-weight:700;">🗑️ Borrar datos</div>
         <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;">🧹 Limpiar caché y recargar</div>
         <div class="ham-divider"></div>
+        <div class="ham-item" onclick="changeStudent();backToCareerSelect();closeHam()" style="color:var(--blue);font-weight:700;">🎓 Cambiar carrera</div>
         <div class="ham-item danger" onclick="changeStudent();closeHam()">🚪 Cambiar estudiante</div>
       </div>
     </div>
@@ -542,7 +582,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 // ═══════════════════════════════════════════════════════════
 // PENSUM DATA
 // ═══════════════════════════════════════════════════════════
-const CYCLES_DEFAULT = [
+const CYCLES_SISTEMAS = [
   {id:1,name:"Ciclo I",   year:"I AÑO",  subjects:[{num:"01",code:"482",name:"Matemática Computacional I",prereq:"Br.",uv:4},{num:"02",code:"712",name:"Sistemas Operativos",prereq:"Br.",uv:4},{num:"03",code:"601",name:"Principios de Física",prereq:"Br.",uv:4},{num:"04",code:"346",name:"Fundamentos de Programación",prereq:"Br.",uv:4},{num:"05",code:"134",name:"Curso Superior de Gramática",prereq:"Br.",uv:4}]},
   {id:2,name:"Ciclo II",  year:"I AÑO",  subjects:[{num:"06",code:"483",name:"Matemática Computacional II",prereq:"01",uv:4},{num:"07",code:"719",name:"Sociología General",prereq:"Br.",uv:4},{num:"08",code:"600",name:"Principios de Electrónica",prereq:"03",uv:4},{num:"09",code:"608",name:"Programación Computacional I",prereq:"04",uv:4},{num:"10",code:"1180",name:"Educación Ciudadana",prereq:"Br.",uv:4}]},
   {id:3,name:"Ciclo III", year:"II AÑO", subjects:[{num:"11",code:"484",name:"Matemática Computacional III",prereq:"06",uv:4},{num:"12",code:"33",name:"Administración de Bases de Datos I",prereq:"02",uv:4},{num:"13",code:"1035",name:"Electrónica Análoga",prereq:"08",uv:4},{num:"14",code:"609",name:"Programación Computacional II",prereq:"09",uv:4},{num:"15",code:"1011",name:"Infraestructura Tecnológica",prereq:"02",uv:4}]},
@@ -557,8 +597,106 @@ const CYCLES_DEFAULT = [
   {id:12,name:"Técnica Electiva II", year:"ASIGNATURAS ELECTIVAS", subjects:[{num:"52",code:"1209",name:"Sistemas Inteligentes",prereq:"31",uv:4},{num:"53",code:"1210",name:"Desarrollo de Videojuegos",prereq:"26",uv:4},{num:"54",code:"1211",name:"Informática en la Nube",prereq:"34",uv:4}]},
 ];
 
+const CYCLES_CIVIL = [
+  {id:1,name:"Ciclo I",   year:"I AÑO",  subjects:[
+    {num:"01",code:"486",name:"Matemática I",prereq:"Br.",uv:4},
+    {num:"02",code:"598",name:"Principios de Computación",prereq:"Br.",uv:4},
+    {num:"03",code:"134",name:"Curso Superior de Gramática",prereq:"Br.",uv:4},
+    {num:"04",code:"210",name:"Dibujo y Geometría Descriptiva",prereq:"Br.",uv:4},
+    {num:"05",code:"433",name:"Introducción a la Ingeniería",prereq:"Br.",uv:4}
+  ]},
+  {id:2,name:"Ciclo II",  year:"I AÑO",  subjects:[
+    {num:"06",code:"487",name:"Matemática II",prereq:"01",uv:4},
+    {num:"07",code:"532",name:"Diseño por Computadora I",prereq:"02",uv:4},
+    {num:"08",code:"603",name:"Principios Generales de Economía",prereq:"Br.",uv:4},
+    {num:"09",code:"271",name:"Estadística",prereq:"Br.",uv:4},
+    {num:"10",code:"320",name:"Física I",prereq:"01",uv:4}
+  ]},
+  {id:3,name:"Ciclo III", year:"II AÑO", subjects:[
+    {num:"11",code:"488",name:"Matemática III",prereq:"06",uv:4},
+    {num:"12",code:"841",name:"Diseño por Computadora II",prereq:"07",uv:4},
+    {num:"13",code:"754",name:"Topografía I",prereq:"01 y 04",uv:4},
+    {num:"14",code:"493",name:"Mecánica de Sólidos I",prereq:"10",uv:4},
+    {num:"15",code:"321",name:"Física II",prereq:"10",uv:4}
+  ]},
+  {id:4,name:"Ciclo IV",  year:"II AÑO", subjects:[
+    {num:"16",code:"489",name:"Matemática IV",prereq:"11",uv:4},
+    {num:"17",code:"842",name:"Propiedades Físico Químicas de los Materiales",prereq:"10",uv:4},
+    {num:"18",code:"755",name:"Topografía II",prereq:"13",uv:4},
+    {num:"19",code:"494",name:"Mecánica de Sólidos II",prereq:"14",uv:4},
+    {num:"20",code:"532",name:"Métodos y Técnicas de Investigación",prereq:"09",uv:4}
+  ]},
+  {id:5,name:"Ciclo V",   year:"III AÑO",subjects:[
+    {num:"21",code:"492",name:"Mecánica de Fluidos",prereq:"19",uv:4},
+    {num:"22",code:"402",name:"Ingeniería de Materiales",prereq:"17",uv:4},
+    {num:"23",code:"406",name:"Geología Aplicada",prereq:"17",uv:4},
+    {num:"24",code:"355",name:"Mecánica de Sólidos III",prereq:"19",uv:4},
+    {num:"25",code:"495",name:"Ingeniería Económica",prereq:"06",uv:4}
+  ]},
+  {id:6,name:"Ciclo VI",  year:"III AÑO",subjects:[
+    {num:"26",code:"362",name:"Hidráulica",prereq:"21",uv:4},
+    {num:"27",code:"566",name:"Planeamiento de Obras",prereq:"22",uv:4},
+    {num:"28",code:"857",name:"Mecánica de Suelos",prereq:"23",uv:4},
+    {num:"29",code:"499",name:"Mecánica Estructural",prereq:"24",uv:4},
+    {num:"30",code:"408",name:"Inglés",prereq:"Br.",uv:4}
+  ]},
+  {id:7,name:"Ciclo VII", year:"IV AÑO", subjects:[
+    {num:"31",code:"1",name:"Abastecimiento de Agua y Alcantarillado",prereq:"18 y 26",uv:4},
+    {num:"32",code:"567",name:"Costos y Presupuestos",prereq:"29",uv:4},
+    {num:"33",code:"1200",name:"Mecánica de Suelos Aplicada",prereq:"28",uv:4},
+    {num:"34",code:"84",name:"Comportamiento Estructural",prereq:"29",uv:4},
+    {num:"35",code:"363",name:"Hidrología",prereq:"09 y 26",uv:4}
+  ]},
+  {id:8,name:"Ciclo VIII",year:"IV AÑO", subjects:[
+    {num:"36",code:"407",name:"Ingeniería Sanitaria",prereq:"17 y 26",uv:4},
+    {num:"37",code:"568",name:"Gerencia de Proyectos",prereq:"32",uv:4},
+    {num:"38",code:"401",name:"Ingeniería de Carreteras",prereq:"18 y 25",uv:4},
+    {num:"39",code:"278",name:"Estructuras de Concreto",prereq:"34",uv:4},
+    {num:"40",code:"453",name:"Legislación y Ética Profesional",prereq:"20 U.V.",uv:4}
+  ]},
+  {id:9,name:"Ciclo IX",  year:"V AÑO",  subjects:[
+    {num:"41",code:"389",name:"Evaluación de Impacto Ambiental",prereq:"40",uv:4},
+    {num:"42",code:"3303",name:"Estructuras de Acero",prereq:"34",uv:4},
+    {num:"43",code:"558",name:"Pavimentos",prereq:"38",uv:4},
+    {num:"44",code:"566",name:"Técnica Electiva I",prereq:"Rev.Prer.",uv:4},
+    {num:"45",code:"3332",name:"Práctica Profesional",prereq:"140 U.V.",uv:4}
+  ]},
+  {id:10,name:"Ciclo X",  year:"V AÑO",  subjects:[
+    {num:"46",code:"335",name:"Técnica Electiva II",prereq:"Rev.Prer.",uv:4},
+    {num:"47",code:"96",name:"Formulación y Evaluación de Proyectos",prereq:"38",uv:4},
+    {num:"48",code:"—",name:"Construcción de Carreteras",prereq:"25 y 32",uv:4},
+    {num:"49",code:"—",name:"Electiva Humanística",prereq:"Br.",uv:4}
+  ]},
+  {id:11,name:"Asignaturas Electivas", year:"ASIGNATURAS ELECTIVAS", subjects:[
+    {num:"50",code:"3335",name:"Construcción Sostenible",prereq:"32",uv:4},
+    {num:"51",code:"543",name:"Obras Hidráulicas",prereq:"26",uv:4},
+    {num:"52",code:"845",name:"Instalación en Edificaciones",prereq:"27",uv:4},
+    {num:"53",code:"843",name:"Supervisión de Obras",prereq:"37",uv:4},
+    {num:"54",code:"3333",name:"Gestión de Riesgo",prereq:"40 y 41",uv:4},
+    {num:"55",code:"3334",name:"Sismología",prereq:"23 y 24",uv:4},
+    {num:"56",code:"686",name:"Saneamiento Ambiental",prereq:"36",uv:4},
+    {num:"57",code:"719",name:"Sociología General",prereq:"Br.",uv:4},
+    {num:"58",code:"641",name:"Psicología General",prereq:"Br.",uv:4}
+  ]},
+];
+
+const CAREERS = {
+  sistemas: { label: "Ingeniería en Sistemas y Redes Informáticas", headerL1: "Ingeniería en", headerL2: "Sistemas y Redes Informáticas", cycles: CYCLES_SISTEMAS },
+  civil:    { label: "Ingeniería Civil", headerL1: "Ingeniería", headerL2: "Civil", cycles: CYCLES_CIVIL }
+};
+
 // CYCLES es mutable (se puede reordenar en modo edición)
-let CYCLES = JSON.parse(JSON.stringify(CYCLES_DEFAULT));
+// currentCareer determina qué pénsum se usa: 'sistemas' o 'civil'
+let currentCareer = localStorage.getItem('ugb_career') || 'sistemas';
+let CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles));
+
+// Construye la llave usada en el servidor (Sheets) — incluye la carrera
+// para que cada carrera tenga sus propios datos sin mezclarse,
+// pero el nombre que ve el usuario en la UI sigue siendo limpio.
+function _serverKey(name, career) {
+  const c = career || currentCareer;
+  return name + '__' + c;
+}
 
 // ═══════════════════════════════════════════════════════════
 // UNDO/REDO STACK (para cambios de posición del pénsum)
@@ -831,15 +969,37 @@ async function init() {
   const sz = localStorage.getItem('zoomLevel');
   if (sz) { currentZoom = parseInt(sz); document.getElementById('zoomSlider').value = currentZoom; }
 
-  // ── CARGAR LISTA DE ESTUDIANTES DESDE SHEETS (con reintentos) ──
+  // Mostrar pantalla de selección de carrera — la lista de estudiantes
+  // se carga después, una vez elegida la carrera, en chooseCareer()
+  document.getElementById('careerSelectView').style.display = 'flex';
+}
+
+// El usuario eligió una carrera — cargar su pénsum y la lista de estudiantes
+async function chooseCareer(career) {
+  currentCareer = career;
+  localStorage.setItem('ugb_career', career);
+  CYCLES = JSON.parse(JSON.stringify(CAREERS[career].cycles));
+
+  document.getElementById('careerSelectView').style.display = 'none';
+  document.getElementById('loginView').style.display = 'flex';
+
+  const badge = document.getElementById('careerBadge');
+  if (badge) badge.textContent = CAREERS[career].label;
+  const h1 = document.getElementById('careerHeaderLine1');
+  const h2 = document.getElementById('careerHeaderLine2');
+  if (h1) h1.textContent = CAREERS[career].headerL1;
+  if (h2) h2.textContent = CAREERS[career].headerL2;
+
+  appData = {};
+
+  // ── CARGAR LISTA DE ESTUDIANTES DE ESTA CARRERA ──
   if (config.appsScriptUrl) {
-    _showLoading('Conectando con Google Sheets...', 'Cargando lista de estudiantes');
+    _showLoading('Conectando con Google Sheets...', 'Cargando estudiantes de ' + CAREERS[career].label);
     let loaded = false;
-    // Intentar hasta 3 veces con 2s entre intentos
     for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
       try {
         if (attempt > 1) _showLoading('Reintentando... (' + attempt + '/3)', 'Cargando lista de estudiantes');
-        const res = await _jsonpFetch(config.appsScriptUrl + '?action=list_students', 10000);
+        const res = await _jsonpFetch(config.appsScriptUrl + '?action=list_students&career=' + career, 10000);
         if (res && res.status === 'success' && Array.isArray(res.students)) {
           res.students.forEach(name => {
             if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
@@ -847,7 +1007,7 @@ async function init() {
           loaded = true;
           const n = res.students.length;
           _showLoading('✓ ' + n + ' estudiante' + (n===1?'':'s') + ' encontrado' + (n===1?'':'s'), 'Abriendo pantalla de login...');
-          await new Promise(r => setTimeout(r, 600));
+          await new Promise(r => setTimeout(r, 500));
         }
       } catch(e) {
         if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
@@ -855,12 +1015,11 @@ async function init() {
     }
     if (!loaded) {
       _showLoading('⚠️ No se pudo conectar con Sheets', 'Verifica la URL en Configuración');
-      await new Promise(r => setTimeout(r, 1800));
+      await new Promise(r => setTimeout(r, 1500));
     }
     _hideLoading();
   }
 
-  // Barra de estado
   const bar    = document.getElementById('sheetsStatusBar');
   const barOff = document.getElementById('sheetsOfflineBar');
   if (config.appsScriptUrl) {
@@ -874,6 +1033,13 @@ async function init() {
   setLoginMode(loginMode);
   renderStudentList();
 }
+
+// Volver a la pantalla de selección de carrera
+function backToCareerSelect() {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('careerSelectView').style.display = 'flex';
+}
+
 
 
 // ══════════════════════════════════════════════════════════════
@@ -1019,7 +1185,7 @@ async function ddConfirm() {
           await fetch(config.appsScriptUrl, {
             method:'POST', mode:'no-cors',
             headers:{'Content-Type':'text/plain'},
-            body: JSON.stringify({ action:'delete_student', student: name })
+            body: JSON.stringify({ action:'delete_student', student: _serverKey(name) })
           });
         } catch(e) {}
       }
@@ -1093,7 +1259,7 @@ async function recargarLista() {
   const statusEl = document.getElementById('listLoadStatus');
   if (statusEl) statusEl.textContent = '⏳ Cargando...';
   try {
-    const res = await _jsonpFetch(config.appsScriptUrl + '?action=list_students', 10000);
+    const res = await _jsonpFetch(config.appsScriptUrl + '?action=list_students&career=' + currentCareer, 10000);
     if (res && res.status === 'success' && Array.isArray(res.students)) {
       appData = {};
       res.students.forEach(name => {
@@ -1212,7 +1378,7 @@ async function selectStudent(name) {
   // ── SIEMPRE DESCARGAR DESDE SHEETS (fuente de verdad) ──
   if (config.appsScriptUrl) {
     try {
-      const res = await _jsonpFetch(config.appsScriptUrl + '?student=' + encodeURIComponent(name), 9000);
+      const res = await _jsonpFetch(config.appsScriptUrl + '?student=' + encodeURIComponent(_serverKey(name)), 9000);
       if (res && res.status === 'success' && res.payload) {
         const d = res.payload;
         const local = appData[name];
@@ -1251,8 +1417,8 @@ async function selectStudent(name) {
 
   // Restaurar ciclos
   const sd = appData[name];
-  if (sd.cycles) { try { CYCLES = JSON.parse(JSON.stringify(sd.cycles)); } catch(e) { CYCLES = JSON.parse(JSON.stringify(CYCLES_DEFAULT)); } }
-  else CYCLES = JSON.parse(JSON.stringify(CYCLES_DEFAULT));
+  if (sd.cycles) { try { CYCLES = JSON.parse(JSON.stringify(sd.cycles)); } catch(e) { CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles)); } }
+  else CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles));
   undoStack = (sd.undoStack || []);
   redoStack = [];
   updateUndoRedoBtns();
@@ -1432,7 +1598,7 @@ Esta acción NO se puede deshacer.`)) return;
         await fetch(config.appsScriptUrl, {
           method:'POST', mode:'no-cors',
           headers:{'Content-Type':'text/plain'},
-          body: JSON.stringify({ action:'delete_student', student: name })
+          body: JSON.stringify({ action:'delete_student', student: _serverKey(name) })
         });
       } catch(e) {}
       delete appData[name];
@@ -1487,7 +1653,7 @@ async function deleteStudent(name) {
       await fetch(config.appsScriptUrl, {
         method: 'POST', mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'delete_student', student: name })
+        body: JSON.stringify({ action: 'delete_student', student: _serverKey(name) })
       });
     } catch(e) {}
   }
@@ -1533,6 +1699,7 @@ let autoFetchInterval = null;
 let _isSyncing  = false;  // flag para SUBIR
 let _isFetching = false;  // flag para BAJAR (INDEPENDIENTE)
 let _pendingUpload = false; // hay cambios sin subir
+let _calendarModalOpen = false; // evita que el auto-fetch reescriba el calendario mientras el usuario lo edita
 
 function startAutoSyncInterval() {
   if (!config.appsScriptUrl || !currentStudent) return;
@@ -1540,16 +1707,18 @@ function startAutoSyncInterval() {
 
   // SUBIR a Sheets cada 1.5s (solo si hay cambios pendientes)
   autoSyncInterval = setInterval(async () => {
-    if (_isSyncing || !_pendingUpload || !currentStudent || !config.appsScriptUrl) return;
+    if (_isSyncing || _isFetching || !_pendingUpload || !currentStudent || !config.appsScriptUrl) return;
     _isSyncing = true;
     _pendingUpload = false;
     try { await syncToSheets(true); } catch(e) { _pendingUpload = true; }
     finally { _isSyncing = false; }
   }, 1500);
 
-  // BAJAR de Sheets cada 2.5s (SIEMPRE, independiente de la subida)
+  // BAJAR de Sheets cada 2.5s — NUNCA mientras hay una subida en curso,
+  // porque el GS borra y reescribe la hoja (clearContents + setValues),
+  // y leer a mitad de esa operación devuelve datos vacíos/parciales.
   autoFetchInterval = setInterval(() => {
-    if (!_isFetching && currentStudent && config.appsScriptUrl) {
+    if (!_isFetching && !_isSyncing && currentStudent && config.appsScriptUrl) {
       _silentFetch();
     }
   }, 2500);
@@ -1574,7 +1743,7 @@ async function _silentFetch() {
   if (_isFetching || !currentStudent || !config.appsScriptUrl) return;
   _isFetching = true;
   try {
-    const res = await _jsonpFetch(config.appsScriptUrl + '?student=' + encodeURIComponent(currentStudent), 8000);
+    const res = await _jsonpFetch(config.appsScriptUrl + '?student=' + encodeURIComponent(_serverKey(currentStudent)), 8000);
     if (!res || res.status !== 'success' || !res.payload) return;
 
     const d     = res.payload;
@@ -1606,32 +1775,48 @@ async function _silentFetch() {
       });
     }
 
-    // ── Eventos ──
-    if (d.events && d.events.length > 0) {
-      if (JSON.stringify(d.events) !== JSON.stringify(local.events || [])) {
-        local.events = d.events;
-        changed = true;
+    // ── Eventos (calendario) ──
+    // Defensa: no sobrescribir con vacío si localmente había eventos,
+    // y nunca tocar mientras el usuario tiene el modal de calendario abierto.
+    if (d.events !== undefined && !_calendarModalOpen) {
+      const remoteHasEvents = d.events && d.events.length > 0;
+      const localHasEvents  = local.events && local.events.length > 0;
+      if (remoteHasEvents || !localHasEvents) {
+        if (JSON.stringify(d.events || []) !== JSON.stringify(local.events || [])) {
+          local.events = d.events || [];
+          changed = true;
+        }
       }
     }
 
     // ── Ciclos finalizados — comparar JSON completo ──
+    // Defensa: si el servidor devuelve {} pero localmente había datos,
+    // probablemente se leyó a mitad de una escritura en el GS — ignorar.
     if (d.cyclesDone !== undefined) {
-      const remCD = JSON.stringify(d.cyclesDone || {});
-      const locCD = JSON.stringify(local.cyclesDone || {});
-      if (remCD !== locCD) {
-        local.cyclesDone = d.cyclesDone || {};
-        changed = true;
+      const remoteHasData = d.cyclesDone && Object.keys(d.cyclesDone).length > 0;
+      const localHasData  = local.cyclesDone && Object.keys(local.cyclesDone).length > 0;
+      if (remoteHasData || !localHasData) {
+        const remCD = JSON.stringify(d.cyclesDone || {});
+        const locCD = JSON.stringify(local.cyclesDone || {});
+        if (remCD !== locCD) {
+          local.cyclesDone = d.cyclesDone || {};
+          changed = true;
+        }
       }
     }
 
     // ── SpecialCards (amarillo) ──
-    if (d.specialCards) {
+    if (d.specialCards !== undefined) {
       if (!local.specialCards) local.specialCards = {};
-      const remSC = JSON.stringify(d.specialCards);
-      const locSC = JSON.stringify(local.specialCards);
-      if (remSC !== locSC) {
-        local.specialCards = d.specialCards;
-        changed = true;
+      const remoteHasSC = d.specialCards && Object.keys(d.specialCards).length > 0;
+      const localHasSC  = Object.keys(local.specialCards).length > 0;
+      if (remoteHasSC || !localHasSC) {
+        const remSC = JSON.stringify(d.specialCards || {});
+        const locSC = JSON.stringify(local.specialCards);
+        if (remSC !== locSC) {
+          local.specialCards = d.specialCards || {};
+          changed = true;
+        }
       }
     }
 
@@ -2151,8 +2336,8 @@ function filterByPeriod(arr, dateField, period){
 // ═══════════════════════════════════════════════════════════
 // CALENDAR
 // ═══════════════════════════════════════════════════════════
-function openCalendarModal(){document.getElementById('calendarModal').classList.add('open');renderEvents();}
-function closeCalendarModal(){document.getElementById('calendarModal').classList.remove('open');}
+function openCalendarModal(){_calendarModalOpen=true;document.getElementById('calendarModal').classList.add('open');renderEvents();}
+function closeCalendarModal(){_calendarModalOpen=false;document.getElementById('calendarModal').classList.remove('open');}
 
 function setCalFilter(f,btn){
   calFilter=f;
@@ -2402,7 +2587,7 @@ async function syncToSheets(isAuto=false){
   if(!isAuto) showToast('⏳ Sincronizando...','success');
   else{const st=document.getElementById('syncStatus');if(st)st.textContent='⏳ Subiendo...';}
   const sd=getStudentData();
-  const payload={student:currentStudent,timestamp:new Date().toISOString(),data:[],events:sd.events||[],cyclesDone:sd.cyclesDone||{},asistencias:sd.asistencias||{},specialCards:sd.specialCards||{},cyclesOrder:CYCLES.map(c=>({id:c.id,subjects:c.subjects.map(s=>s.num)}))};
+  const payload={student:_serverKey(currentStudent),displayName:currentStudent,career:currentCareer,timestamp:new Date().toISOString(),data:[],events:sd.events||[],cyclesDone:sd.cyclesDone||{},asistencias:sd.asistencias||{},specialCards:sd.specialCards||{},cyclesOrder:CYCLES.map(c=>({id:c.id,subjects:c.subjects.map(s=>s.num)}))};
   CYCLES.forEach(cy=>cy.subjects.forEach(sub=>{
     const s=getSubjectData(sub.num);
     const fg=getEffectiveGrade(s);
@@ -2444,7 +2629,7 @@ async function fetchFromSheets(silent=false){
   if(!currentStudent){if(!silent)showToast('No hay estudiante seleccionado','error');return;}
   if(!silent) showToast('⏳ Descargando desde Sheets...','success');
   try{
-    const json=await _jsonpFetch(config.appsScriptUrl+'?student='+encodeURIComponent(currentStudent), 9000);
+    const json=await _jsonpFetch(config.appsScriptUrl+'?student='+encodeURIComponent(_serverKey(currentStudent)), 9000);
     if(json.status==='success'){
       const d=json.payload;
       if(!appData[currentStudent]) appData[currentStudent]={notas:{},events:[],cyclesDone:{},asistencias:{},specialCards:{},undoStack:[]};

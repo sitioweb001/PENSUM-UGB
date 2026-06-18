@@ -290,8 +290,8 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
       onmouseout="this.style.borderColor='var(--gl)';this.style.background='var(--card)'">
       <span style="font-size:28px;">💻</span>
       <span>
-        <div style="font-weight:800;font-size:14px;color:var(--text);">Ingeniería en Sistemas y Redes Informáticas</div>
-        <div style="font-size:11px;color:var(--gm);">VIGENCIA DEL CICLO I-2024 AL CICLO I I-2028</div>
+        <div style="font-weight:800;font-size:14px;color:var(--text);">Ingeniería en Sistemas</div>
+        <div style="font-size:11px;color:var(--gm);">y Redes Informáticas</div>
       </span>
     </button>
     <button onclick="chooseCareer('civil')"
@@ -302,7 +302,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
       <span style="font-size:28px;">🏗️</span>
       <span>
         <div style="font-weight:800;font-size:14px;color:var(--text);">Ingeniería Civil</div>
-        <div style="font-size:11px;color:var(--gm);">VIGENCIA DEL CICLO I-2023 AL CICLO I I-2027</div>
+        <div style="font-size:11px;color:var(--gm);">Plan vigente 2023-2027</div>
       </span>
     </button>
   </div>
@@ -1366,11 +1366,9 @@ async function doLogin() {
 async function selectStudent(name) {
   currentStudent = name;
 
-  // Inicializar estructura local
-  if (!appData[name]) appData[name] = {notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[]};
-  if (!appData[name].cyclesDone)   appData[name].cyclesDone   = {};
-  if (!appData[name].specialCards) appData[name].specialCards = {};
-  if (!appData[name].asistencias)  appData[name].asistencias  = {};
+  // NO inicializar con vacío antes de descargar — si los datos vienen de Sheets
+  // y aquí ponemos vacío primero, un fallo de red deja el pénsum en blanco.
+  // Inicializamos solo como fallback al final si la descarga falla.
 
   // ── PANTALLA DE CARGA ──
   _showLoading('Cargando datos de ' + name + '...', 'Descargando desde Google Sheets');
@@ -1414,6 +1412,12 @@ async function selectStudent(name) {
     _showLoading('Sin Sheets configurado', 'Modo local...');
     await new Promise(r => setTimeout(r, 300));
   }
+
+  // Inicializar estructura solo si no se cargó nada de Sheets (fallback)
+  if (!appData[name]) appData[name] = {notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[]};
+  if (!appData[name].cyclesDone)   appData[name].cyclesDone   = {};
+  if (!appData[name].specialCards) appData[name].specialCards = {};
+  if (!appData[name].asistencias)  appData[name].asistencias  = {};
 
   // Restaurar ciclos
   const sd = appData[name];
@@ -1900,6 +1904,10 @@ function renderPensum(){
   wrapper.innerHTML='';
   const sd=getStudentData();
 
+  // Separar ciclos normales de electivas
+  const normalCycles  = CYCLES.filter(c => c.year !== 'ASIGNATURAS ELECTIVAS');
+  const electiveCycles = CYCLES.filter(c => c.year === 'ASIGNATURAS ELECTIVAS');
+
   const yearRow=document.createElement('div');
   yearRow.className='year-row';
   ['I AÑO','','II AÑO','','III AÑO','','IV AÑO','','V AÑO',''].forEach((y,i)=>{
@@ -1912,7 +1920,7 @@ function renderPensum(){
   const grid=document.createElement('div');
   grid.className='pensum-grid';
 
-  CYCLES.forEach(cycle=>{
+  function buildCycleCol(cycle) {
     const col=document.createElement('div');
     col.className='cycle-col';
     col.dataset.cycleId=cycle.id;
@@ -1940,27 +1948,19 @@ function renderPensum(){
       else if(status==='fail'&&!isSpecial) card.style.background=`linear-gradient(to right,rgba(16,185,129,.42) 40%,rgba(239,68,68,.35) 40%)`;
       else if(status==='inprogress'&&!isSpecial) card.style.background='rgba(251,191,36,.25)';
 
-      // CTRL+2CLICS = poner/quitar 6.0
-      // CTRL+SHIFT+CLIC = marcar especial (amarillo)
       card.addEventListener('click',e=>{
-        if(e.ctrlKey && e.shiftKey){
-          toggleSpecialCard(sub.num); return;
-        }
+        if(e.ctrlKey && e.shiftKey){ toggleSpecialCard(sub.num); return; }
         if(e.ctrlKey){
           const k=sub.num;
           ctrlClickCounts[k]=(ctrlClickCounts[k]||0)+1;
           clearTimeout(ctrlClickTimers[k]);
           ctrlClickTimers[k]=setTimeout(()=>{ctrlClickCounts[k]=0;},500);
-          if(ctrlClickCounts[k]>=2){
-            ctrlClickCounts[k]=0;
-            fillWithSix(sub.num);
-          }
+          if(ctrlClickCounts[k]>=2){ ctrlClickCounts[k]=0; fillWithSix(sub.num); }
           return;
         }
         openCycle(cycle.id,sub.num);
       });
 
-      // Drag in edit mode
       if(editModeActive){
         card.draggable=true;
         card.addEventListener('dragstart',e=>{
@@ -2001,7 +2001,6 @@ function renderPensum(){
       col.appendChild(card);
     });
 
-    // Column drop zone
     if(editModeActive){
       col.addEventListener('dragover',e=>{e.preventDefault();col.style.outline='2px dashed var(--blue)';});
       col.addEventListener('dragleave',()=>col.style.outline='');
@@ -2013,12 +2012,84 @@ function renderPensum(){
         moveSubjectToCycle(fromNum,fromCid,cycle.id);
       });
     }
+    return col;
+  }
 
-    grid.appendChild(col);
-  });
+  // ── CICLOS NORMALES ──
+  normalCycles.forEach(cycle => grid.appendChild(buildCycleCol(cycle)));
 
   wrapper.appendChild(yearRow);
   wrapper.appendChild(grid);
+
+  // ── ASIGNATURAS ELECTIVAS (sección horizontal separada debajo) ──
+  if (electiveCycles.length > 0) {
+    const elecSection = document.createElement('div');
+    elecSection.style.cssText = 'margin-top:28px;';
+
+    const elecTitle = document.createElement('div');
+    elecTitle.style.cssText = 'text-align:center;margin-bottom:14px;';
+    elecTitle.innerHTML = '<span style="background:var(--blue);color:#fff;padding:7px 28px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:2px;">ASIGNATURAS ELECTIVAS</span>';
+    elecSection.appendChild(elecTitle);
+
+    const elecGrid = document.createElement('div');
+    elecGrid.style.cssText = 'display:flex;flex-direction:row;gap:10px;flex-wrap:wrap;justify-content:center;';
+
+    electiveCycles.forEach(cycle => {
+      const groupWrap = document.createElement('div');
+      groupWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:6px;';
+
+      const groupLabel = document.createElement('div');
+      groupLabel.style.cssText = 'font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--gm);text-transform:uppercase;text-align:center;';
+      groupLabel.textContent = cycle.name;
+      groupWrap.appendChild(groupLabel);
+
+      const cardsRow = document.createElement('div');
+      cardsRow.style.cssText = 'display:flex;flex-direction:row;gap:8px;flex-wrap:wrap;justify-content:center;';
+
+      cycle.subjects.forEach(sub => {
+        const subData=getSubjectData(sub.num);
+        const grade=getEffectiveGrade(subData);
+        const status=getEffectiveStatus(subData);
+        const isSpecial=!!(sd.specialCards&&sd.specialCards[sub.num]);
+        const progress=grade!==null?Math.round((grade/10)*100):0;
+
+        const card=document.createElement('div');
+        card.className='subject-card'+(isSpecial?' status-special':'')+(grade===null&&status==='pending'&&!isSpecial?' no-grade':'');
+        card.dataset.num=sub.num;
+        card.dataset.cycleId=cycle.id;
+        card.style.width='130px';
+        if(grade!==null&&!isSpecial) card.style.background=`linear-gradient(to right,rgba(16,185,129,.42) ${progress}%,rgba(239,68,68,.35) ${progress}%)`;
+        else if(status==='pass'&&!isSpecial) card.style.background=`linear-gradient(to right,rgba(16,185,129,.42) 60%,rgba(239,68,68,.35) 60%)`;
+        else if(status==='fail'&&!isSpecial) card.style.background=`linear-gradient(to right,rgba(16,185,129,.42) 40%,rgba(239,68,68,.35) 40%)`;
+        else if(status==='inprogress'&&!isSpecial) card.style.background='rgba(251,191,36,.25)';
+
+        card.addEventListener('click',e=>{ openCycle(cycle.id,sub.num); });
+        const gradeDisp=grade!==null?`<span class="card-grade-inline grade-${isSpecial?'prog':status}">${Math.floor(grade*10)/10}</span>`:'';
+        card.innerHTML=`
+          <div class="card-status-left status-${isSpecial?'special':status}"></div>
+          <div class="card-top-bar">
+            <div style="display:flex;gap:6px;align-items:center;"><span>${sub.num}</span><span style="opacity:.8;font-weight:500;">${sub.code}</span></div>
+            ${gradeDisp}
+          </div>
+          <div class="card-body">
+            <div class="card-name">${escapeHtml(sub.name)}</div>
+            <div class="card-extra">${isSpecial?'⭐ Especial':'Ciclo Extraordinario'}</div>
+          </div>
+          <div class="card-bottom">
+            <span>${sub.prereq}</span><span></span>
+            <span>${sub.uv} UV</span>
+          </div>`;
+        cardsRow.appendChild(card);
+      });
+
+      groupWrap.appendChild(cardsRow);
+      elecGrid.appendChild(groupWrap);
+    });
+
+    elecSection.appendChild(elecGrid);
+    wrapper.appendChild(elecSection);
+  }
+
   document.getElementById('pensumWrapper').style.zoom=currentZoom/100;
   updateStats();
 }

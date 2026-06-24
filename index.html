@@ -71,12 +71,13 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 
 /* ── INDICADOR DE SINCRONIZACIÓN (esquina, siempre visible) ── */
 #syncQueueBadge{
-  position:fixed; left:16px; bottom:16px; z-index:5000;
+  position:fixed; left:50%; bottom:70px; transform:translateX(-50%); z-index:5000;
   display:none; align-items:center; gap:10px;
   background:var(--card); border:1.5px solid var(--gl); border-radius:14px;
   padding:10px 16px; box-shadow:0 8px 24px rgba(0,0,0,.18);
   font-size:13px; font-weight:700; color:var(--text);
   transition:all .25s ease;
+  max-width:calc(100vw - 32px); white-space:nowrap;
 }
 #syncQueueBadge.show{display:flex;}
 #syncQueueBadge .sq-spinner{
@@ -93,6 +94,22 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 #syncQueueBadge .sq-count{
   font-size:10px;font-weight:800;background:var(--blue);color:#fff;
   border-radius:999px;padding:1px 7px;margin-left:2px;
+}
+@media (max-width:480px){
+  #syncQueueBadge{font-size:11px;padding:8px 12px;bottom:64px;}
+}
+/* ── DESTELLO VERDE AL GUARDAR (pantalla completa, sutil) ── */
+#syncFlash{
+  position:fixed; inset:0; z-index:4999; pointer-events:none;
+  background:rgba(16,185,129,.16); opacity:0;
+}
+#syncFlash.flash{
+  animation:syncFlashAnim .9s ease-out;
+}
+@keyframes syncFlashAnim{
+  0%{opacity:0;}
+  15%{opacity:1;}
+  100%{opacity:0;}
 }
 .ham-wrap{position:relative;}
 .ham-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;width:40px;height:40px;border-radius:8px;cursor:pointer;font-size:19px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
@@ -316,8 +333,8 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
       onmouseout="this.style.borderColor='var(--gl)';this.style.background='var(--card)'">
       <span style="font-size:28px;">💻</span>
       <span>
-        <div style="font-weight:800;font-size:14px;color:var(--text);">Ingeniería en Sistemas</div>
-        <div style="font-size:11px;color:var(--gm);">y Redes Informáticas</div>
+        <div style="font-weight:800;font-size:14px;color:var(--text);">Ingeniería en Sistemas y Redes Informáticas</div>
+        <div style="font-size:11px;color:var(--gm);"> VIGENCIA DEL CICLO I-2024 AL CICLO II - 2028</div>
       </span>
     </button>
     <button onclick="chooseCareer('civil')"
@@ -330,6 +347,15 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
         <div style="font-weight:800;font-size:14px;color:var(--text);">Ingeniería Civil</div>
         <div style="font-size:11px;color:var(--gm);">Plan vigente 2023-2027</div>
       </span>
+    </button>
+    <button onclick="openAdvanced()"
+      style="padding:13px;border-radius:14px;border:2px dashed rgba(124,58,237,.5);background:rgba(124,58,237,.06);
+             cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;
+             transition:all .2s;margin-top:6px;"
+      onmouseover="this.style.background='rgba(124,58,237,.14)'"
+      onmouseout="this.style.background='rgba(124,58,237,.06)'">
+      <span style="font-size:18px;">🚀</span>
+      <span style="font-weight:800;font-size:13px;color:#7c3aed;letter-spacing:1px;">ADVANCED</span>
     </button>
   </div>
 </div>
@@ -426,8 +452,11 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
         <div class="ham-item" onclick="openDeleteDataModal()" style="color:#dc2626;font-weight:700;">🗑️ Borrar datos</div>
         <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;">🧹 Limpiar caché y recargar</div>
         <div class="ham-divider"></div>
+        <div class="ham-item" onclick="openAdvanced();closeHam()" style="color:#7c3aed;font-weight:800;">🚀 ADVANCED</div>
+        <div class="ham-divider"></div>
         <div class="ham-item" onclick="changeStudent();backToCareerSelect();closeHam()" style="color:var(--blue);font-weight:700;">🎓 Cambiar carrera</div>
         <div class="ham-item danger" onclick="changeStudent();closeHam()">🚪 Cambiar estudiante</div>
+        <div class="ham-item danger" onclick="cerrarSesion();closeHam()" style="font-weight:800;">🔒 Cerrar sesión</div>
       </div>
     </div>
   </div>
@@ -610,6 +639,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   <span id="sqText">Guardando...</span>
   <span class="sq-count" id="sqCount" style="display:none;"></span>
 </div>
+<div id="syncFlash"></div>
 <div id="printArea"></div>
 
 <script>
@@ -1696,6 +1726,29 @@ function changeStudent() {
   renderStudentList();
 }
 
+// Abre el horario en una pestaña nueva (archivo independiente, misma carpeta).
+// Intenta primero "horario.html" (nombre indicado); si no existe, usa "horarios.html".
+function openAdvanced(){
+  fetch('horario.html', { method: 'HEAD' })
+    .then(r => { window.open(r.ok ? 'horario.html' : 'horarios.html', '_blank'); })
+    .catch(() => { window.open('horarios.html', '_blank'); });
+}
+
+// Cierra sesión por completo: limpia el estudiante actual y vuelve
+// hasta la pantalla de selección de carrera (no solo al login).
+function cerrarSesion(){
+  if(!confirm('¿Cerrar sesión? Volverás a la pantalla de selección de carrera.')) return;
+  currentStudent=null;
+  localStorage.removeItem('ugb_last_student');
+  localStorage.removeItem('ugb_career');
+  stopAutoSyncInterval();
+  document.getElementById('appView').style.display='none';
+  document.getElementById('bottomBar').style.display='none';
+  document.getElementById('loginView').style.display='none';
+  document.getElementById('careerSelectView').style.display='flex';
+  showToast('✓ Sesión cerrada','success');
+}
+
 async function deleteStudent(name) {
   const pw = prompt('Contraseña para eliminar:');
   if (pw !== '747') { showToast('Contraseña incorrecta', 'error'); return; }
@@ -1777,6 +1830,13 @@ function _updateSyncBadge(state, extra) {
     count.style.display = 'none';
     clearTimeout(_syncBadgeHideTimer);
     _syncBadgeHideTimer = setTimeout(() => { badge.classList.remove('show'); }, 2200);
+    // Destello verde sutil en toda la pantalla
+    const flash = document.getElementById('syncFlash');
+    if (flash) {
+      flash.classList.remove('flash');
+      void flash.offsetWidth; // forzar reflow para poder reiniciar la animación
+      flash.classList.add('flash');
+    }
   } else if (state === 'err') {
     badge.classList.add('err');
     text.textContent = '⚠️ Error al guardar — reintentando...';
@@ -2234,10 +2294,23 @@ function renderPensum(){
 
 function fillWithSix(num){
   const sd=getSubjectData(num);
-  const allSix=sd.computos.every(c=>parseFloat(c.lab1)===6&&parseFloat(c.lab2)===6&&parseFloat(c.parcial)===6);
-  for(let i=0;i<3;i++){sd.computos[i]={lab1:allSix?'':6,lab2:allSix?'':6,parcial:allSix?'':6};}
+  // Usar la nota EFECTIVA (la que realmente se ve en pantalla), no solo
+  // los cómputos crudos — si la materia tiene finalGrade=6 sin cómputos
+  // detallados, allSix debe seguir detectando que "ya está en 6".
+  const effGrade=getEffectiveGrade(sd);
+  const isCurrentlySix = effGrade !== null && Math.abs(effGrade - 6) < 0.01;
+  if(isCurrentlySix){
+    // Limpiar todo: cómputos, finalGrade y status
+    for(let i=0;i<3;i++){sd.computos[i]={lab1:'',lab2:'',parcial:''};}
+    sd.finalGrade=null;
+    sd.status='pending';
+  } else {
+    for(let i=0;i<3;i++){sd.computos[i]={lab1:6,lab2:6,parcial:6};}
+    sd.finalGrade=6;
+    sd.status='pass';
+  }
   saveLocal();renderPensum();
-  showToast(allSix?'Notas limpiadas':'✓ Materia rellenada con 6.0','success');
+  showToast(isCurrentlySix?'Notas limpiadas':'✓ Materia rellenada con 6.0','success');
 }
 
 function toggleSpecialCard(num){

@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -749,7 +748,66 @@ function enterApp(){
   S.cmpCarrera=null; S.cmpGrupo=null;
   renderSchedule();
   goView('app');
+  _notifyParentSelected(c, dbKey, g);
 }
+
+// Aplica una selección ya conocida (carrera/ciclo/grupo) sin pasar por los
+// <select> — se usa cuando el padre (INDEX_FINAL.html) nos manda por
+// postMessage el horario que el alumno ya había guardado antes, para que
+// esta página salte derecho a la tabla en vez de volver a preguntar.
+// También deja los <select> sincronizados por si el alumno usa "Comparar"
+// u otra función que lea su valor.
+function applyPreselect(carrera, dbKey, grupo){
+  if(!carrera || !dbKey || !grupo) return false;
+  const entry = getDB(dbKey);
+  if(!entry || !entry.grupos || !entry.grupos[grupo]) return false; // dato guardado ya no existe (cambió el pénsum) — se ignora y se deja elegir de nuevo
+
+  const selCarrera = document.getElementById('selCarrera');
+  if (selCarrera) { selCarrera.value = carrera; onCarreraChange(); }
+  const meta = CICLOS_META[carrera] || [];
+  if (meta.length > 1) {
+    const selCiclo = document.getElementById('selCiclo');
+    if (selCiclo) { selCiclo.value = dbKey; onCicloChange(); }
+  }
+  const selGrupo = document.getElementById('selGrupo');
+  if (selGrupo) selGrupo.value = grupo + '|' + dbKey;
+
+  if(!DB[dbKey]) DB[dbKey] = entry;
+  S.myCarrera = dbKey; S.myGrupo = grupo;
+  S.cmpCarrera = null; S.cmpGrupo = null;
+  renderSchedule();
+  goView('app');
+  return true;
+}
+
+// ═══════════════════════════════════════════════
+// PUENTE CON EL PADRE (postMessage)
+// Solo tiene efecto si esta página está embebida en un <iframe> (el botón
+// flotante "¿Dónde estoy?" del pénsum). Si se abre suelta en su propia
+// pestaña (como hacía antes con "ADVANCED"), estos mensajes simplemente no
+// tienen destinatario y la página funciona exactamente igual que siempre.
+// ═══════════════════════════════════════════════
+function _isEmbedded(){ try { return window.self !== window.top; } catch(e) { return true; } }
+
+function _notifyParentSelected(carrera, dbKey, grupo){
+  if(_isEmbedded() && window.parent){
+    window.parent.postMessage({ source:'ugb_horario', type:'selected', horario:{ carrera:carrera, dbKey:dbKey, grupo:grupo } }, '*');
+  }
+}
+
+window.addEventListener('message', function(event){
+  const msg = event.data;
+  if(!msg || msg.source !== 'ugb_horario') return;
+  if(msg.type === 'preselect' && msg.horario){
+    applyPreselect(msg.horario.carrera, msg.horario.dbKey, msg.horario.grupo);
+  }
+});
+
+window.addEventListener('load', function(){
+  if(_isEmbedded() && window.parent){
+    window.parent.postMessage({ source:'ugb_horario', type:'ready' }, '*');
+  }
+});
 
 // ═══════════════════════════════════════════════
 // COLOR MAP

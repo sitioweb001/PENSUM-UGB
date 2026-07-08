@@ -451,7 +451,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
         <div class="ham-divider"></div>
         <div class="ham-item" onclick="openChangePass()" style="color:#1d4ed8;font-weight:700;">🔑 Cambiar contraseña</div>
         <div class="ham-item" onclick="openDeleteDataModal()" style="color:#dc2626;font-weight:700;">🗑️ Borrar datos</div>
-        <div class="ham-item" onclick="eliminarListaDeCuentas()" style="color:#991b1b;font-weight:700;">🧹 Eliminar lista de cuentas</div>
+        <div class="ham-item" onclick="toggleAccountListVisibility()" style="color:#991b1b;font-weight:700;">👁️ Mostrar/ocultar lista de cuentas</div>
         <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;">🧹 Limpiar caché y recargar</div>
         <div class="ham-divider"></div>
         <div class="ham-item" onclick="openAdvanced();closeHam()" style="color:#7c3aed;font-weight:800;">🚀 ADVANCED</div>
@@ -507,6 +507,10 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 </div>
 </div><!-- /appView -->
 
+<!-- Botón flotante "¿Dónde estoy?" — abre el horario de clases del
+     estudiante (registrado una sola vez, ver openDondeEstoy()) -->
+<button id="dondeEstoyFab" onclick="openDondeEstoy()" title="¿Dónde estoy? — Mi horario" style="display:none;position:fixed;right:18px;bottom:78px;z-index:200;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-dk));color:#fff;border:none;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:23px;align-items:center;justify-content:center;cursor:pointer;">📍</button>
+
 <div class="bottom-toolbar" id="bottomBar" style="display:none;">
   <button class="tool-btn" onclick="openPasteModal()" title="Pegar notas">📋</button>
   <button class="tool-btn" onclick="openCalendarModal()" title="Calendario">📅</button>
@@ -519,6 +523,19 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 </div>
 
 <!-- MODALS -->
+<div class="modal-overlay" id="dondeEstoyModal">
+  <div class="modal" style="width:96vw;max-width:1100px;height:90vh;max-height:92vh;padding:0;overflow:hidden;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--gl);flex-shrink:0;">
+      <h3 style="margin:0;font-size:15px;">📍 ¿Dónde estoy?</h3>
+      <div style="display:flex;gap:8px;">
+        <button class="modal-btn secondary" id="dondeEstoyEditBtn" onclick="editarHorario()" style="display:none;padding:6px 12px;font-size:12px;">✏️ Editar horario</button>
+        <button class="modal-btn secondary" onclick="closeDondeEstoy()" style="padding:6px 12px;font-size:12px;">Cerrar ✕</button>
+      </div>
+    </div>
+    <iframe id="dondeEstoyFrame" title="Horario" style="flex:1;border:none;width:100%;background:#fff;"></iframe>
+  </div>
+</div>
+
 <div class="modal-overlay" id="configModal">
   <div class="modal">
     <h3>⚙️ Configurar Google Sheets</h3>
@@ -839,6 +856,7 @@ function saveHistToLocal() {
 // ═══════════════════════════════════════════════════════════
 let currentStudent=null, appData={}, config={};
 let pendingDeleteAction=null, loginMode='name';
+let accountListVisible=true; // ajuste global (Sheets) — ver toggleAccountListVisibility()
 let currentZoom=85, currentCycleId=null;
 let autoSyncTimer=null;
 let editModeActive=false;
@@ -1080,6 +1098,7 @@ async function chooseCareer(career) {
           res.students.forEach(name => {
             if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
           });
+          if (typeof res.showAccountList === 'boolean') accountListVisible = res.showAccountList;
           loaded = true;
           const n = res.students.length;
           _showLoading('✓ ' + n + ' estudiante' + (n===1?'':'s') + ' encontrado' + (n===1?'':'s'), 'Abriendo pantalla de login...');
@@ -1107,6 +1126,7 @@ async function chooseCareer(career) {
   }
 
   setLoginMode(loginMode);
+  applyAccountListVisibility();
   renderStudentList();
 }
 
@@ -1119,41 +1139,43 @@ function backToCareerSelect() {
 
 
 
-// Borra TODA la lista de estudiantes del login (solo de la carrera activa).
-// No borra notas/calendario en el servidor — solo el registro de login y
-// las contraseñas, para que cada estudiante deba registrarse de nuevo.
-async function eliminarListaDeCuentas() {
+// Muestra u oculta el listado de cuentas (chips con nombres) que aparece
+// en la pantalla de login. Es un ajuste GLOBAL (se guarda en Sheets, no en
+// este dispositivo) protegido con la misma contraseña de administrador.
+// Ya NO borra ninguna cuenta ni ningún dato — solo controla si se ve o no.
+// Aplica a ambas carreras por igual (un solo interruptor para todo el libro).
+function applyAccountListVisibility() {
+  const pillList = document.getElementById('loginModeList');
+  const listBox  = document.getElementById('studentList');
+  if (pillList) pillList.style.display = accountListVisible ? '' : 'none';
+  if (listBox)  listBox.style.display  = accountListVisible ? '' : 'none';
+  if (!accountListVisible && loginMode === 'list') setLoginMode('name');
+}
+
+async function toggleAccountListVisibility() {
   closeHam();
-  const pw = prompt('Contraseña de administrador para eliminar la lista de cuentas:');
+  const pw = prompt('Contraseña de administrador para ' + (accountListVisible ? 'ocultar' : 'mostrar') + ' la lista de cuentas:');
   if (pw !== '747') {
     if (pw !== null) showToast('Contraseña incorrecta', 'error');
     return;
   }
-  if (!confirm('¿Eliminar TODA la lista de cuentas de "' + CAREERS[currentCareer].label + '"?\n\nCada estudiante deberá volver a registrarse con su nombre y contraseña.\nLos datos de notas NO se borran — si alguien vuelve a entrar con el mismo nombre, sus notas reaparecen.')) return;
-
   if (!config.appsScriptUrl) { showToast('No hay Sheets configurado', 'error'); return; }
 
-  _showLoading('Eliminando lista de cuentas...', 'Esto no borra las notas guardadas');
+  const newValue = !accountListVisible;
+  _showLoading(newValue ? 'Mostrando lista de cuentas...' : 'Ocultando lista de cuentas...', 'Esto no borra ninguna cuenta ni ningún dato');
   try {
     await fetch(config.appsScriptUrl, {
       method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'delete_all_students', career: currentCareer })
+      body: JSON.stringify({ action: 'set_account_list_visibility', value: newValue })
     });
   } catch(e) {}
   _hideLoading();
 
-  // Limpiar localmente: la lista del login queda vacía de inmediato
-  appData = {};
-  if (currentStudent) {
-    currentStudent = null;
-    stopAutoSyncInterval();
-    document.getElementById('appView').style.display = 'none';
-    document.getElementById('bottomBar').style.display = 'none';
-    document.getElementById('loginView').style.display = 'flex';
-  }
+  accountListVisible = newValue;
+  applyAccountListVisibility();
   renderStudentList();
-  showToast('✓ Lista de cuentas eliminada — el login está vacío', 'success');
+  showToast(newValue ? '✓ Lista de cuentas visible para todos' : '✓ Lista de cuentas oculta para todos', 'success');
 }
 
 function limpiarCache() {
@@ -1180,6 +1202,7 @@ async function recargarLista() {
       res.students.forEach(name => {
         appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
       });
+      if (typeof res.showAccountList === 'boolean') { accountListVisible = res.showAccountList; applyAccountListVisibility(); }
       renderStudentList();
       if (statusEl) statusEl.textContent = '✓ ' + res.students.length + ' encontrado(s)';
       setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
@@ -1320,6 +1343,7 @@ async function selectStudent(name) {
         if (d.asistencias) Object.assign(local.asistencias, d.asistencias);
         if (d.specialCards) local.specialCards = d.specialCards;
         if (d.cycles) local.cycles = d.cycles;
+        local.horario = d.horario || local.horario || null;
         _downloadOk = true;
         _showLoading('¡Todo al día!', 'Abriendo pénsum...');
         await new Promise(r => setTimeout(r, 400));
@@ -1351,6 +1375,7 @@ async function selectStudent(name) {
   document.getElementById('appView').style.display   = 'block';
   document.getElementById('bottomBar').style.display = 'flex';
   document.getElementById('currentStudentName').textContent = '👤 ' + name;
+  refreshDondeEstoyUI();
 
   if (config.appsScriptUrl && !_downloadOk) {
     // La descarga falló — la cola de subida nunca se activa sola (solo
@@ -1360,7 +1385,7 @@ async function selectStudent(name) {
     showToast('⚠️ No se pudo descargar tu información. Revisa tu conexión y usa "Refrescar desde Sheets" antes de editar.', 'error');
     renderPensum();
     autoFetchInterval = setInterval(() => {
-      if (!_isFetching && !_syncInFlight && currentStudent && config.appsScriptUrl) _silentFetch();
+      if (!_isFetching && !_syncInFlight && _queuePendingSync === 0 && currentStudent && config.appsScriptUrl) _silentFetch();
     }, 3000);
     return;
   }
@@ -1574,15 +1599,22 @@ function changeStudent() {
   document.getElementById('loginName').value='';
   const _pEl=document.getElementById('loginPass'); if(_pEl)_pEl.value='';
   stopAutoSyncInterval();
+  closeDondeEstoy();
+  document.getElementById('dondeEstoyFab').style.display='none';
   renderStudentList();
 }
 
-// Abre el horario en una pestaña nueva (archivo independiente, misma carpeta).
-// Intenta primero "horario.html" (nombre indicado); si no existe, usa "horarios.html".
+// Abre el horario en una pestaña nueva, sin pasar por el login de estudiante
+// (útil para consultar horarios generales antes de entrar). Usa la misma
+// ruta ?page=horario que sirve el <iframe> del botón flotante "¿Dónde
+// estoy?" — un archivo suelto como "horario.html" NO es accesible desde un
+// despliegue de Apps Script (todo pasa por doGet), por eso antes fallaba.
 function openAdvanced(){
-  fetch('horario.html', { method: 'HEAD' })
-    .then(r => { window.open(r.ok ? 'horario.html' : 'horarios.html', '_blank'); })
-    .catch(() => { window.open('horarios.html', '_blank'); });
+  if (!config.appsScriptUrl) {
+    try { config = JSON.parse(localStorage.getItem('ugb_pensum_config') || '{}'); } catch(e) {}
+  }
+  if (!config.appsScriptUrl) { alert('Configura primero la URL de Google Sheets (⚙️ Configurar Sheets).'); return; }
+  window.open(config.appsScriptUrl.replace(/\/exec.*$/, '/exec') + '?page=horario', '_blank');
 }
 
 // Cierra sesión por completo: limpia el estudiante actual y vuelve
@@ -1593,6 +1625,8 @@ function cerrarSesion(){
   localStorage.removeItem('ugb_last_student');
   localStorage.removeItem('ugb_career');
   stopAutoSyncInterval();
+  closeDondeEstoy();
+  document.getElementById('dondeEstoyFab').style.display='none';
   document.getElementById('appView').style.display='none';
   document.getElementById('bottomBar').style.display='none';
   document.getElementById('loginView').style.display='none';
@@ -1760,8 +1794,11 @@ function startAutoSyncInterval() {
   // BAJAR de Sheets cada 3s — NUNCA mientras hay una subida en curso,
   // porque el GS borra y reescribe la hoja (clearContents + setValues),
   // y leer a mitad de esa operación devuelve datos vacíos/parciales.
+  // Tampoco mientras haya cambios locales sin subir todavía (ver nota en
+  // _silentFetch) — si no, una bajada puede pisar un cambio que el usuario
+  // acaba de hacer y que todavía no salió hacia Sheets.
   autoFetchInterval = setInterval(() => {
-    if (!_isFetching && !_syncInFlight && currentStudent && config.appsScriptUrl) {
+    if (!_isFetching && !_syncInFlight && _queuePendingSync === 0 && currentStudent && config.appsScriptUrl) {
       _silentFetch();
     }
   }, 3000);
@@ -1776,12 +1813,26 @@ function stopAutoSyncInterval() {
 }
 
 // ── DESCARGA SILENCIOSA — siempre corre, nunca bloquea la subida ──
+// IMPORTANTE — CORRECCIÓN DE CARRERA (bug de cambios que "se quitan solos"):
+// Antes esta función solo evitaba pisarse con una subida YA EN VUELO
+// (_syncInFlight). Pero entre que el usuario hace un cambio y que ese
+// cambio realmente empieza a subirse, hay una ventana de ~350ms (el
+// debounce de triggerAutoSync) donde _syncInFlight sigue siendo false.
+// Si el intervalo de bajada caía justo en esa ventana, descargaba el
+// estado VIEJO del servidor y lo aplicaba encima del cambio local recién
+// hecho, borrándolo antes de que se subiera. Por eso ahora también se
+// respeta _queuePendingSync (cambios en cola esperando subir).
 async function _silentFetch() {
-  if (_isFetching || !currentStudent || !config.appsScriptUrl) return;
+  if (_isFetching || _syncInFlight || _queuePendingSync > 0 || !currentStudent || !config.appsScriptUrl) return;
   _isFetching = true;
   try {
     const res = await _jsonpFetch(config.appsScriptUrl + '?student=' + encodeURIComponent(_serverKey(currentStudent)), 20000);
     if (!res || res.status !== 'success' || !res.payload) return;
+
+    // Si mientras esperábamos la respuesta el usuario hizo un cambio nuevo
+    // (quedó en cola para subir), este snapshot ya está desactualizado —
+    // lo descartamos en vez de aplicarlo, para no pisar el cambio pendiente.
+    if (_queuePendingSync > 0 || _syncInFlight) return;
 
     const d     = res.payload;
     const local = appData[currentStudent];
@@ -1870,6 +1921,17 @@ async function _silentFetch() {
           local.asistencias = d.asistencias || {};
           changed = true;
         }
+      }
+    }
+
+    // ── Horario ("¿Dónde estoy?") — por si se guardó desde otro dispositivo ──
+    if (d.horario !== undefined) {
+      const remH = JSON.stringify(d.horario || null);
+      const locH = JSON.stringify(local.horario || null);
+      if (remH !== locH) {
+        local.horario = d.horario || null;
+        changed = true;
+        if (typeof onHorarioSynced === 'function') onHorarioSynced();
       }
     }
 
@@ -2804,6 +2866,102 @@ function saveConfig(){
   if(config.appsScriptUrl) document.getElementById('syncStatus').textContent='✓ Sheets configurado';
   showToast('✓ Configuración guardada','success');
 }
+
+// ═══════════════════════════════════════════════════════════
+// "¿DÓNDE ESTOY?" — horario de clases embebido (horarios.html)
+// ─────────────────────────────────────────────────────────────
+// El horario vive en un <iframe> que apunta al mismo despliegue de Apps
+// Script (?page=horario). Se comunican por postMessage porque son dos
+// documentos separados — ver el bloque equivalente dentro de horarios.html
+// (busca "PUENTE CON EL PADRE").
+//
+// Flujo:
+//  1. Primera vez que el alumno entra: el iframe no recibe preselección
+//     → le pide elegir carrera/ciclo/grupo normalmente.
+//  2. Cuando elige, horarios.html manda {type:'selected', horario:{...}}
+//     → aquí lo guardamos en Sheets (una sola vez, no en cada clic).
+//  3. Próxima vez: en cuanto el iframe avisa que está listo, le mandamos
+//     esa selección guardada y salta directo al horario — no vuelve a
+//     preguntar ciclo/grupo.
+//  4. "✏️ Editar horario" limpia lo guardado y recarga el iframe desde
+//     cero para que pueda elegir de nuevo.
+// ═══════════════════════════════════════════════════════════
+let _dondeEstoyFrameLoaded = false;
+
+function _dondeEstoyUrl(bust) {
+  const base = config.appsScriptUrl.replace(/\/exec.*$/, '/exec');
+  return base + '?page=horario&embed=1' + (bust ? ('&t=' + Date.now()) : '');
+}
+
+// Se llama al terminar de cargar (login) y cada vez que llega un horario
+// nuevo por sync — solo controla si el botón flotante y el de "editar" se ven.
+function refreshDondeEstoyUI() {
+  const sd  = getStudentData();
+  const fab = document.getElementById('dondeEstoyFab');
+  const editBtn = document.getElementById('dondeEstoyEditBtn');
+  if (fab) fab.style.display = currentStudent ? 'flex' : 'none';
+  if (editBtn) editBtn.style.display = (sd && sd.horario && sd.horario.grupo) ? '' : 'none';
+}
+function onHorarioSynced() { refreshDondeEstoyUI(); }
+
+function openDondeEstoy() {
+  if (!config.appsScriptUrl) { showToast('Configura la URL de Sheets primero', 'error'); openConfig(); return; }
+  document.getElementById('dondeEstoyModal').classList.add('open');
+  refreshDondeEstoyUI();
+  if (!_dondeEstoyFrameLoaded) {
+    document.getElementById('dondeEstoyFrame').src = _dondeEstoyUrl(false);
+    _dondeEstoyFrameLoaded = true;
+  }
+}
+function closeDondeEstoy() {
+  document.getElementById('dondeEstoyModal').classList.remove('open');
+}
+
+async function editarHorario() {
+  if (!confirm('¿Editar horario?\n\nVas a poder elegir de nuevo ciclo y grupo. Tu horario actual se reemplazará cuando elijas el nuevo.')) return;
+  const sd = getStudentData();
+  sd.horario = null;
+  document.getElementById('dondeEstoyEditBtn').style.display = 'none';
+  await guardarHorarioEnServidor(null);
+  // Recargar el iframe desde cero para que su estado interno (S) se resetee
+  // y vuelva a mostrar el selector de carrera/ciclo/grupo.
+  document.getElementById('dondeEstoyFrame').src = _dondeEstoyUrl(true);
+}
+
+async function guardarHorarioEnServidor(horario) {
+  if (!currentStudent || !config.appsScriptUrl) return;
+  try {
+    await fetch(config.appsScriptUrl, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save_horario', student: _serverKey(currentStudent), horario: horario })
+    });
+  } catch(e) {}
+}
+
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg || msg.source !== 'ugb_horario') return;
+
+  if (msg.type === 'ready') {
+    // El iframe terminó de cargar y ya tiene su listener puesto —
+    // si el alumno ya había elegido horario antes, se lo mandamos ahora.
+    const sd = getStudentData();
+    const frame = document.getElementById('dondeEstoyFrame');
+    if (sd && sd.horario && sd.horario.grupo && frame && frame.contentWindow) {
+      frame.contentWindow.postMessage({ source: 'ugb_horario', type: 'preselect', horario: sd.horario }, '*');
+    }
+    return;
+  }
+
+  if (msg.type === 'selected' && msg.horario && msg.horario.grupo) {
+    const sd = getStudentData();
+    sd.horario = msg.horario;
+    refreshDondeEstoyUI();
+    guardarHorarioEnServidor(msg.horario);
+    showToast('✓ Horario guardado — no se te volverá a preguntar', 'success');
+  }
+});
 
 // ═══════════════════════════════════════════════════════════
 // TOAST

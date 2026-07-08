@@ -2718,8 +2718,12 @@ async function syncToSheets(isAuto=false){
     payload.data.push({num:sub.num,code:sub.code,name:sub.name,cycle:cy.name,year:cy.year,uv:sub.uv,computo1:calcComputo(s.computos[0]),computo2:calcComputo(s.computos[1]),computo3:calcComputo(s.computos[2]),lab1_c1:s.computos[0].lab1,lab2_c1:s.computos[0].lab2,parcial_c1:s.computos[0].parcial,lab1_c2:s.computos[1].lab1,lab2_c2:s.computos[1].lab2,parcial_c2:s.computos[1].parcial,lab1_c3:s.computos[2].lab1,lab2_c3:s.computos[2].lab2,parcial_c3:s.computos[2].parcial,finalGrade:fg!==null?fg.toFixed(2):'',status:effStatus});
   }));
   try{
-    // Intentar POST directo con CORS primero, luego no-cors
-    let posted = false;
+    // Intentar POST directo con CORS primero, leyendo la respuesta REAL del
+    // servidor. Apps Script siempre responde HTTP 200 aunque haya habido un
+    // error interno (hoja no encontrada, script sin vincular, etc.), así que
+    // "r.ok" NO es suficiente para saber si de verdad se guardó. Hay que
+    // parsear el JSON y revisar el campo status.
+    let serverOk = false, serverMsg = '';
     try {
       const r = await Promise.race([
         fetch(config.appsScriptUrl, {
@@ -2729,22 +2733,34 @@ async function syncToSheets(isAuto=false){
         }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
       ]);
-      posted = r.ok || r.status === 0 || r.type === 'opaque';
+      try {
+        const j = await r.json();
+        serverOk = !!(j && j.status === 'success');
+        serverMsg = (j && j.message) ? j.message : '';
+      } catch(parseErr) {
+        // No se pudo leer el cuerpo (respuesta opaca por CORS) — nos
+        // conformamos con saber que la petición llegó sin error de red.
+        serverOk = r.ok || r.status === 0 || r.type === 'opaque';
+      }
     } catch(_) {
-      // Fallback: no-cors (siempre "funciona" aunque no podemos leer respuesta)
+      // Fallback: no-cors. No podemos leer la respuesta, así que no podemos
+      // confirmar el guardado real, pero al menos la petición salió.
       await fetch(config.appsScriptUrl, {
         method: 'POST', mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload)
       });
-      posted = true;
+      serverOk = true;
+    }
+    if (!serverOk) {
+      throw new Error(serverMsg || 'El servidor de Sheets respondió con un error al guardar');
     }
     const t=new Date().toLocaleTimeString();
     document.getElementById('syncStatus').textContent='sync '+t;
     if(!isAuto) showToast('✓ Subido a Sheets','success');
   }catch(e){
     document.getElementById('syncStatus').textContent='✗ Error subida';
-    if(!isAuto) showToast('✗ Error al subir','error');
+    if(!isAuto) showToast('✗ Error al subir'+(e && e.message ? ': '+e.message : ''),'error');
     throw e; // re-lanzar para que la cola de sincronización pueda reintentar
   }
 }

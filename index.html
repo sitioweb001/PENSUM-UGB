@@ -1610,9 +1610,8 @@ function changeStudent() {
 // estoy?" — un archivo suelto como "horario.html" NO es accesible desde un
 // despliegue de Apps Script (todo pasa por doGet), por eso antes fallaba.
 function openAdvanced(){
-  if (!config.appsScriptUrl) {
-    try { config = JSON.parse(localStorage.getItem('ugb_pensum_config') || '{}'); } catch(e) {}
-  }
+  window.open('https://sitioweb001.github.io/PENSUM-UGB/horarios.html', '_blank');
+}
   if (!config.appsScriptUrl) { alert('Configura primero la URL de Google Sheets (⚙️ Configurar Sheets).'); return; }
   window.open(config.appsScriptUrl.replace(/\/exec.*$/, '/exec') + '?page=horario', '_blank');
 }

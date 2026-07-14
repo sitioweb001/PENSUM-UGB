@@ -1,80 +1,92 @@
-# 📘 Archivo 1: Sistema Integrado UGB (Pénsum y Horarios)
+# UGB Pénsum — 100% Firebase (arranque desde cero)
 
-<div style="background-color: #1e40af; color: white; padding: 15px; border-radius: 8px; text-align: center;">
-  <h2>Manual de Usuario y Estructura Técnica</h2>
-  <p>Ingeniería en Sistemas y Redes / Ingeniería Civil (Sede San Miguel)</p>
-</div>
+`INDEX_FINAL.html` ya quedó conectado a Firebase. Google Sheets y Apps Script
+quedaron completamente fuera del camino — ya no hace falta desplegar nada en
+Apps Script para que esto funcione.
 
----
+## Archivos y qué hace cada uno
 
-## 📑 Índice
-1. [Estructura del Sistema](#1-estructura-del-sistema)
-2. [Manual de Instrucciones](#2-manual-de-instrucciones)
-3. [Atajos y Herramientas](#3-atajos-y-herramientas)
-4. [Tabla de Estados y Colores](#4-tabla-de-estados-y-colores)
+| Archivo | Rol |
+|---|---|
+| `INDEX_FINAL.html` | Frontend. Ya editado: login, notas, calendario, horario — todo habla directo con Firestore en tiempo real. |
+| `horarios.html` | Visor de horario standalone, sin cambios (no depende de Sheets ni de Firebase). |
+| `firebase-init.js` | Conexión a Firebase (Firestore + Auth anónima). Ya tiene tus credenciales de `ugb-pensum`. |
+| `firebase-db.js` | Todas las funciones de guardar/leer/escuchar datos en Firestore. |
+| `Logotipo-horizontal-azul.png`, `logo2.png` | Logos que usa `INDEX_FINAL.html`. |
+| `PLAN_MIGRACION_FIREBASE.md` | El plan original de 3 fases — ya ejecutado, queda como referencia. |
+| `migrar-exportar.gs`, `migrar-importar.html` | **Ya no los necesitas** — eran para traer datos viejos de Sheets. Como decidiste arrancar todo nuevo, quedan sin usar. Bórralos o guárdalos por si acaso, no afectan nada si no los tocas. |
 
----
+## Qué cambió dentro de `INDEX_FINAL.html`
 
-## 1. Estructura del Sistema
+- `syncToSheets()` / `fetchFromSheets()` — mismos nombres de función (para no
+  tener que tocar los demás 3000 líneas del archivo que ya los llamaban), pero
+  por dentro ahora escriben/leen Firestore en vez de Apps Script.
+- El polling cada 3 segundos desapareció por completo. Ahora hay un listener
+  en tiempo real (`onSnapshot`) — en cuanto guardas algo en un dispositivo,
+  aparece solo en los demás, sin esperar ni recargar.
+- Login/contraseña — mismo hash SHA-256 de antes (nombre+contraseña), ahora
+  guardado en el documento del estudiante en Firestore.
+- El modal viejo de "Configurar Google Sheets" ya no existe.
+- **Doble clic en el logo** (login o header) → verifica/inicializa la base
+  de datos en Firestore, con el progreso en la consola del navegador (F12).
+  También disponible desde el menú ☰ → "⚙️ Verificar base de datos".
+- El botón "¿Dónde estoy?" ahora siempre usa `horarios.html` directo (mismo
+  origen), en vez de pasar por Apps Script — así se evita el bloqueo de
+  cookies de terceros que daba problemas antes.
 
-La arquitectura y flujo de ejecución del sistema web y Google Apps Script se divide lógicamente en la siguiente secuencia:
+## Cómo desplegarlo (arranque limpio)
 
-### 🔹 VARIABLES (Assignments)
-Se declaran e inicializan en memoria los estados globales antes de cualquier renderizado:
-* **`appData` / `S`**: Objetos centrales que almacenan el estado del estudiante actual, materias inscritas (`enrolled`), eventos y asistencias.
-* **Constantes de Entorno**: Definición de `BLOQUES` de tiempo, `DIAS` de la semana y los planes de estudio (`CYCLES_SISTEMAS`, `CYCLES_CIVIL`).
-* **Configuración**: Inicialización de la URL del Web App de Google Sheets y preferencias locales (zoom, tema oscuro/claro).
+No necesitas Apps Script para nada de esto. Sube estos 5 archivos juntos a
+cualquier hosting estático:
 
-### 🔹 ENTRADA (Inputs/Selection)
-El sistema captura las acciones y condiciones proporcionadas por el usuario:
-* **Login Seguro**: Captura del nombre y la contraseña secreta, la cual es procesada inmediatamente en un hash SHA-256 localmente.
-* **Selección de Contexto**: El usuario selecciona la carrera, ciclo y grupo mediante los selectores (`selCarrera`, `selCiclo`, `selGrupo`).
-* **Interacción Directa**: Captura de eventos de teclado (atajos) y eventos de *drag-and-drop* para reordenar las materias del pénsum.
+1. `INDEX_FINAL.html`
+2. `horarios.html`
+3. `firebase-init.js`
+4. `firebase-db.js`
+5. `Logotipo-horizontal-azul.png` y `logo2.png`
 
-### 🔹 SALIDA (Outputs)
-Se muestran los resultados procesados al final del flujo:
-* **Renderizado Dinámico**: Generación del grid interactivo del pénsum y la tabla visual del horario según la entrada del usuario.
-* **Exportación y Reportes**: Generación de archivos PDF (comprobantes de inscripción), archivos CSV/JSON y renderizado de tickets de encuentro.
-* **Sincronización en la Nube**: Envío del payload final a Google Sheets y despliegue del estado de guardado (✅ / ⚠️) en la interfaz.
+**Opción recomendada — Firebase Hosting** (mismo ecosistema, gratis para este tamaño de app):
+```bash
+npm install -g firebase-tools
+firebase login
+firebase init hosting   # elige el proyecto "ugb-pensum", carpeta pública = la que tenga estos archivos
+firebase deploy
+```
+Te va a dar una URL tipo `https://ugb-pensum.web.app` — esa es la que compartes
+con los estudiantes.
 
----
+**Alternativas igual de válidas:** GitHub Pages, Netlify, Vercel, o incluso
+abrir `INDEX_FINAL.html` con doble clic desde tu computadora (funciona local
+también, ya que todo lo de Firebase se conecta por https, no por rutas locales).
 
-## 2. Manual de Instrucciones
+## Primer uso
 
-### 🔸 A. Acceso y Sincronización
-1. **Seleccionar Carrera:** Al iniciar, elige entre *Ing. Sistemas y Redes* o *Ing. Civil*.
-2. **Ingreso:** Escribe tu nombre y una contraseña. El sistema creará tu perfil automáticamente si es tu primera vez. 
-3. **Nube:** Todas tus acciones (ingresar notas, marcar eventos) se sincronizan automáticamente con Google Sheets cada 3 segundos.
+1. Abre la URL de tu hosting (o el archivo local).
+2. Doble clic en el logo → confirma → revisa la consola (F12): debe decir
+   "Base de datos lista".
+3. Elige carrera, crea tu primera cuenta (nombre + contraseña) — como es
+   la primera vez, el sistema la crea sola.
+4. Guarda una nota y ábrelo en otro dispositivo/pestaña: debe aparecer sin
+   recargar.
 
-### 🔸 B. Gestión del Pénsum
-1. **Modo Edición:** Haz clic en <span style="color: #3b82f6; font-weight: bold;">✏️ Editar Pénsum</span> para habilitar la función de arrastrar y soltar materias entre ciclos.
-2. **Registro de Notas:** Haz clic sobre cualquier tarjeta de materia para abrir el panel de cómputos. Ingresa las notas de Laboratorios (30%) y Parciales (40%). El sistema calcula automáticamente el promedio final.
-3. **Historial:** Usa los botones de **Deshacer (↩)** y **Rehacer (↪)** o accede al menú ☰ para ver el historial completo de cambios y restaurar versiones anteriores.
+## Verificación
 
-### 🔸 C. Gestión de Horarios y Quedar
-1. **Inscripción:** Dirígete a *Inscribir materias*, selecciona tu grupo y marca las materias que cursarás.
-2. **Vista de Horario:** En *Ver mi horario*, visualizarás tus clases organizadas por bloques de tiempo.
-3. **Módulo "¿Dónde debo estar?":** Haz clic en el botón flotante 🕒 para que el sistema calcule tu ubicación actual según la hora real.
-4. **Quedar / Tickets:** Genera un ticket de encuentro comparando tu horario con el de otro grupo para encontrar bloques libres y descárgalo como imagen.
+- [ ] Consola del navegador no muestra errores al cargar.
+- [ ] Doble clic en el logo → log de inicialización visible.
+- [ ] Cuenta nueva se crea y el login funciona.
+- [ ] Guardar una nota se refleja en otro dispositivo sin recargar (esto es
+      justo lo que antes fallaba).
+- [ ] Firebase Console → Firestore → colección `estudiantes` va llenándose
+      a medida que la gente usa el sistema.
+- [ ] "¿Dónde estoy?" abre el horario sin pantalla en blanco.
 
----
+## Pendiente / a tu criterio
 
-## 3. Atajos y Herramientas
-
-> 💡 **Tip de Productividad:** Usa estos comandos rápidos al hacer clic sobre una materia en el Pénsum:
-
-* **`Ctrl + Doble Clic`**: Rellena automáticamente la materia con 6.0 en todos los cómputos.
-* **`Ctrl + Shift + Clic`**: Marca una asignatura como "Especial" (fondo amarillo).
-* **`Ctrl + Z` / `Ctrl + Y`**: Deshacer y Rehacer.
-
----
-
-## 4. Tabla de Estados y Colores
-
-| Estado de Materia | Indicador Visual | Acción Recomendada |
-| :--- | :--- | :--- |
-| **Aprobada** | <span style="color: #10b981; font-weight: bold;">🟩 Verde (#10b981)</span> | Ninguna, materia superada. |
-| **Reprobada** | <span style="color: #ef4444; font-weight: bold;">🟥 Rojo (#ef4444)</span> | Programar en ciclo extraordinario. |
-| **En Curso** | <span style="color: #f59e0b; font-weight: bold;">🟧 Naranja (#f59e0b)</span> | Mantener notas actualizadas. |
-| **Pendiente** | <span style="color: #9ca3af; font-weight: bold;">⬜ Gris (#9ca3af)</span> | Inscribir en próximos ciclos. |
-| **Especial** | <span style="background-color: rgba(245,158,11,0.18); color: #92400e; padding: 2px 5px; border-radius: 4px;">⭐ Fondo Ámbar</span> | Prestar atención a prerrequisitos. |
+- Las reglas de seguridad de Firestore actuales (`allow read, write: if
+  request.auth != null`) son mínimas — cualquier usuario autenticado
+  anónimamente puede leer/escribir cualquier documento. Para más adelante,
+  podrías restringir por `request.auth.uid` si migras a contraseñas reales
+  de Firebase Auth en vez del hash propio — no es urgente para arrancar.
+- `codigo_gs_UGB.gs` (el backend viejo de Apps Script) y todo lo relacionado
+  a Sheets queda completamente en desuso. Puedes archivar ese proyecto de
+  Apps Script o dejarlo apagado, ya no lo toca nada de este sistema.

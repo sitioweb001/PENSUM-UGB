@@ -44,6 +44,7 @@ export async function crearOCargarEstudiante(nombre, carrera) {
       horario: null,
       cyclesDone: {},
       specialCards: {},
+      pensumCycles: null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
@@ -71,7 +72,7 @@ export async function guardarPasswordHash(nombre, carrera, hash) {
 export async function eliminarEstudiante(nombre, carrera) {
   const id = studentId(nombre, carrera);
   // Borra subcolecciones primero (Firestore no borra en cascada solo).
-  for (const sub of ['notas', 'eventos', 'asistencias']) {
+  for (const sub of ['notas', 'eventos', 'asistencias', 'pensumHistorial']) {
     const snap = await getDocs(collection(db, 'estudiantes', id, sub));
     const batch = writeBatch(db);
     snap.docs.forEach(d => batch.delete(d.ref));
@@ -93,6 +94,44 @@ export async function guardarCiclosDone(nombre, carrera, cyclesDone) {
 export async function guardarEspeciales(nombre, carrera, specialCards) {
   const ref = doc(db, 'estudiantes', studentId(nombre, carrera));
   await updateDoc(ref, { specialCards, updatedAt: serverTimestamp() });
+}
+
+// ============================================================
+// PÉNSUM EDITADO ("✏️ Editar Pénsum" — arrastrar materias entre ciclos)
+// + HISTORIAL DE CAMBIOS. Antes NADA de esto llegaba a Firestore: el botón
+// modificaba solo la variable CYCLES en memoria y escribía a una llave de
+// localStorage que ningún código volvía a leer — por eso los cambios se
+// perdían al recargar y el historial siempre decía "No hay cambios
+// registrados aún". Ahora:
+//   - pensumCycles: la disposición actual (snapshot único) va en el doc
+//     principal del estudiante, igual que horario/cyclesDone.
+//   - pensumHistorial: un doc por cada cambio (mismo patrón atómico de
+//     notas/eventos), para no arriesgar el límite de 1MB de un documento
+//     metiendo hasta 60 snapshots completos dentro de un solo campo.
+// ============================================================
+
+export async function guardarPensumCycles(nombre, carrera, cycles) {
+  const ref = doc(db, 'estudiantes', studentId(nombre, carrera));
+  await updateDoc(ref, { pensumCycles: cycles || null, updatedAt: serverTimestamp() });
+}
+
+export async function guardarPensumHistorial(nombre, carrera, undoStackArray) {
+  const id   = studentId(nombre, carrera);
+  const col  = collection(db, 'estudiantes', id, 'pensumHistorial');
+  const prev = await getDocs(col);
+  const tsNuevos = new Set((undoStackArray || []).map(h => String(h.ts)));
+
+  const batch = writeBatch(db);
+  prev.docs.forEach(d => { if (!tsNuevos.has(d.id)) batch.delete(d.ref); });
+  (undoStackArray || []).forEach(h => batch.set(doc(col, String(h.ts)), h));
+  await batch.commit();
+}
+
+export function escucharPensumHistorial(nombre, carrera, callback) {
+  const col = collection(db, 'estudiantes', studentId(nombre, carrera), 'pensumHistorial');
+  return onSnapshot(col, (snap) => {
+    callback(snap.docs.map(d => d.data()).sort((a, b) => (a.ts||'').localeCompare(b.ts||'')));
+  });
 }
 
 // ============================================================
@@ -153,6 +192,25 @@ export async function guardarAsistencia(nombre, carrera, fecha, registro) {
   await setDoc(ref, registro);
 }
 
+// guardarAsistencias (PLURAL) — sube TODO el mapa de asistencias de una vez,
+// mismo patrón atómico que guardarNotas/guardarEventos (writeBatch: borra lo
+// que ya no está, escribe lo que sí). Esta es la que debe llamar syncToSheets;
+// sin ella, marcarAsistencia() solo guardaba en memoria local y nunca subía
+// nada a Firestore — por eso la asistencia "no se registraba".
+export async function guardarAsistencias(nombre, carrera, asistenciasObj) {
+  const id   = studentId(nombre, carrera);
+  const col  = collection(db, 'estudiantes', id, 'asistencias');
+  const prev = await getDocs(col);
+  const fechasNuevas = new Set(Object.keys(asistenciasObj || {}));
+
+  const batch = writeBatch(db);
+  prev.docs.forEach(d => { if (!fechasNuevas.has(d.id)) batch.delete(d.ref); });
+  Object.entries(asistenciasObj || {}).forEach(([fecha, registro]) => {
+    batch.set(doc(col, fecha), registro);
+  });
+  await batch.commit();
+}
+
 export function escucharAsistencias(nombre, carrera, callback) {
   const col = collection(db, 'estudiantes', studentId(nombre, carrera), 'asistencias');
   return onSnapshot(col, (snap) => {
@@ -169,11 +227,12 @@ export function escucharAsistencias(nombre, carrera, callback) {
 
 export async function cargarEstudianteUnaVez(nombre, carrera) {
   const id = studentId(nombre, carrera);
-  const [perfilSnap, notasSnap, eventosSnap, asistSnap] = await Promise.all([
+  const [perfilSnap, notasSnap, eventosSnap, asistSnap, histSnap] = await Promise.all([
     getDoc(doc(db, 'estudiantes', id)),
     getDocs(collection(db, 'estudiantes', id, 'notas')),
     getDocs(collection(db, 'estudiantes', id, 'eventos')),
-    getDocs(collection(db, 'estudiantes', id, 'asistencias'))
+    getDocs(collection(db, 'estudiantes', id, 'asistencias')),
+    getDocs(collection(db, 'estudiantes', id, 'pensumHistorial'))
   ]);
 
   const asistencias = {};
@@ -183,7 +242,8 @@ export async function cargarEstudianteUnaVez(nombre, carrera) {
     perfil: perfilSnap.exists() ? perfilSnap.data() : null,
     notas: notasSnap.docs.map(d => d.data()),
     eventos: eventosSnap.docs.map(d => d.data()),
-    asistencias
+    asistencias,
+    pensumHistorial: histSnap.docs.map(d => d.data()).sort((a, b) => (a.ts||'').localeCompare(b.ts||''))
   };
 }
 
@@ -194,16 +254,17 @@ export async function cargarEstudianteUnaVez(nombre, carrera) {
 // o cerrar sesión).
 // ============================================================
 
-export function escucharEstudiante(nombre, carrera, { onPerfil, onNotas, onEventos, onAsistencias }) {
+export function escucharEstudiante(nombre, carrera, { onPerfil, onNotas, onEventos, onAsistencias, onPensumHistorial }) {
   const id = studentId(nombre, carrera);
   const unsubs = [];
 
   unsubs.push(onSnapshot(doc(db, 'estudiantes', id), (snap) => {
     if (snap.exists() && onPerfil) onPerfil(snap.data());
   }));
-  if (onNotas)       unsubs.push(escucharNotas(nombre, carrera, onNotas));
-  if (onEventos)     unsubs.push(escucharEventos(nombre, carrera, onEventos));
-  if (onAsistencias) unsubs.push(escucharAsistencias(nombre, carrera, onAsistencias));
+  if (onNotas)           unsubs.push(escucharNotas(nombre, carrera, onNotas));
+  if (onEventos)         unsubs.push(escucharEventos(nombre, carrera, onEventos));
+  if (onAsistencias)     unsubs.push(escucharAsistencias(nombre, carrera, onAsistencias));
+  if (onPensumHistorial) unsubs.push(escucharPensumHistorial(nombre, carrera, onPensumHistorial));
 
   return () => unsubs.forEach(u => u());
 }

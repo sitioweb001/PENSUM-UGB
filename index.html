@@ -115,12 +115,31 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 .ham-wrap{position:relative;}
 .ham-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;width:40px;height:40px;border-radius:8px;cursor:pointer;font-size:19px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
 .ham-btn:hover{background:rgba(255,255,255,.28);}
-.ham-menu{position:absolute;top:46px;right:0;background:var(--modal-bg);border:1px solid var(--gl);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);min-width:230px;z-index:500;display:none;max-height:calc(100vh - 70px);overflow-y:auto;}
-.ham-menu.open{display:block;}
-.ham-item{padding:10px 16px;display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);transition:background .15s;}
-.ham-item:hover{background:var(--bg);}
-.ham-item.danger:hover{background:#fee2e2;color:#991b1b;}
-.ham-divider{height:1px;background:var(--gl);}
+
+/* ── SIDE MENU (drawer, estilo horarios.html) ── */
+.side-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;display:none;backdrop-filter:blur(2px);}
+.side-overlay.on{display:block;}
+.ham-menu{position:fixed;top:0;left:0;width:290px;max-width:86vw;height:100%;background:var(--modal-bg);
+  z-index:1000;transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;box-shadow:4px 0 28px rgba(0,0,0,.22);}
+.ham-menu.open{display:flex;transform:translateX(0);}
+.side-head{background:var(--hdr);padding:20px 16px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.side-head-info{display:flex;align-items:center;gap:10px;}
+.side-head-info img{height:34px;width:auto;filter:brightness(0) invert(1);}
+.side-head-info .side-head-txt div:first-child{color:#fff;font-weight:800;font-size:13px;line-height:1.2;}
+.side-head-info .side-head-txt div:last-child{color:rgba(255,255,255,.65);font-size:10px;margin-top:2px;}
+.side-close{color:#fff;font-size:20px;cursor:pointer;line-height:1;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;flex-shrink:0;}
+.side-close:hover{background:rgba(255,255,255,.15);}
+.side-body{flex:1;overflow-y:auto;padding:8px 0 14px;}
+.side-label{padding:14px 16px 6px;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--gm);text-transform:uppercase;}
+.ham-item{padding:11px 16px;display:flex;align-items:center;gap:11px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text);border-left:3px solid transparent;transition:background .15s,border-color .15s;}
+.ham-item .ham-ico{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+.ham-item:hover{background:var(--bg);border-left-color:var(--blue);}
+.ham-item.danger:hover{background:#fee2e2;color:#991b1b;border-left-color:#dc2626;}
+.ham-divider{height:1px;background:var(--gl);margin:8px 0;}
+.side-foot{padding:12px 16px;border-top:1px solid var(--gl);font-size:10px;color:var(--gm);text-align:center;flex-shrink:0;}
+.side-foot b{color:var(--blue);}
+@media(max-width:480px){.ham-menu{width:270px;}}
 
 /* VIEWS */
 .view{display:none;}.view.active{display:block;}
@@ -299,7 +318,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 
 /* ASISTENCIA */
 .asist-logos{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:13px;padding-bottom:13px;border-bottom:1px solid var(--gl);}
-.asist-logos img{height:48px;object-fit:contain;}
+.asist-logos img{height:72px;object-fit:contain;}
 .asist-hoy-box{background:var(--comp-bg);border-radius:12px;padding:14px;text-align:center;margin-bottom:13px;}
 .asist-mark-btn{width:100%;padding:13px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;}
 .asist-mark-btn:hover:not(:disabled){background:var(--blue-dk);}
@@ -373,10 +392,10 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
     <a href="javascript:void(0)" onclick="backToCareerSelect()" style="color:var(--blue);text-decoration:none;font-weight:600;margin-left:6px;">cambiar</a>
   </p>
   <p id="loginSubtitle">Ingresa nombre del estudiante</p>
-  <div id="sheetsStatusBar" style="display:none;background:rgba(16,185,129,.13);border:1px solid rgba(16,185,129,.35);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#065f46;font-weight:600;text-align:center;">
+  <div id="firebaseStatusBar" style="display:none;background:rgba(16,185,129,.13);border:1px solid rgba(16,185,129,.35);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#065f46;font-weight:600;text-align:center;">
     🟢 Datos compartidos en la nube — todos los dispositivos ven lo mismo
   </div>
-  <div id="sheetsOfflineBar" style="display:none;background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.4);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#92400e;font-weight:600;text-align:center;">
+  <div id="firebaseOfflineBar" style="display:none;background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.4);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#92400e;font-weight:600;text-align:center;">
     ⚠️ Sin conexión con Firebase
   </div>
   <div class="login-toggle">
@@ -419,6 +438,9 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 
 <div id="appView" style="display:none;">
 <header>
+  <div class="ham-wrap">
+    <button class="ham-btn" onclick="toggleHam()" title="Menú">☰</button>
+  </div>
   <div class="logo-wrap">
     <img src="Logotipo-horizontal-azul.png" alt="UGB" onerror="this.outerHTML='<span style=\'font-weight:900;font-size:18px;\'>UGB</span>'">
   </div>
@@ -429,40 +451,63 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   <div class="header-right">
     <span class="sync-status" id="syncStatus"></span>
     <span style="font-size:12px;font-weight:600;opacity:.9;color:#fff;" id="currentStudentName"></span>
-    <div class="ham-wrap">
-      <button class="ham-btn" onclick="toggleHam()" title="Menú">☰</button>
-      <div class="ham-menu" id="hamMenu">
-        <div class="ham-item" onclick="openPasteModal();closeHam()">📋 Pegar notas del portal</div>
-        <div class="ham-item" onclick="openCalendarModal();closeHam()">📅 Calendario</div>
-        <div class="ham-item" onclick="openAsistencia();closeHam()">🏛 Asistencia diaria</div>
-        <div class="ham-item" onclick="openHistPensum();closeHam()">📜 Historial de cambios</div>
-        <div class="ham-divider"></div>
-        <div class="ham-item" onclick="fetchFromSheets();closeHam()" style="font-weight:700;color:#1d4ed8;">🔄 Refrescar desde Firebase</div>
-        <div class="ham-item" onclick="syncToSheets();closeHam()">☁️ Subir a Firebase</div>
-        <div class="ham-divider"></div>
-        <div class="ham-item" onclick="exportCSV();closeHam()">📊 Exportar CSV</div>
-        <div class="ham-item" onclick="importCSV();closeHam()">📁 Importar CSV</div>
-        <div class="ham-item" onclick="exportJSON();closeHam()">💾 Exportar JSON</div>
-        <div class="ham-item" onclick="importJSON();closeHam()">📂 Importar JSON</div>
-        <div class="ham-item" onclick="exportPDF();closeHam()">🖨️ Imprimir / PDF</div>
-        <div class="ham-divider"></div>
-        <div class="ham-item" onclick="abrirModoAvanzado();closeHam()">⚙️ Verificar base de datos</div>
-        <div class="ham-item" onclick="toggleTheme();closeHam()">🌙 Cambiar tema</div>
-        <div class="ham-divider"></div>
-        <div class="ham-item" onclick="openChangePass()" style="color:#1d4ed8;font-weight:700;">🔑 Cambiar contraseña</div>
-        <div class="ham-item" onclick="openDeleteDataModal()" style="color:#dc2626;font-weight:700;">🗑️ Borrar datos</div>
-        <div class="ham-item" onclick="toggleAccountListVisibility()" style="color:#991b1b;font-weight:700;">👁️ Mostrar/ocultar lista de cuentas</div>
-        <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;">🧹 Limpiar caché y recargar</div>
-        <div class="ham-divider"></div>
-        <div class="ham-item" onclick="openAdvanced();closeHam()" style="color:#7c3aed;font-weight:800;">🚀 ADVANCED</div>
-        <div class="ham-divider"></div>
-        <div class="ham-item" onclick="changeStudent();backToCareerSelect();closeHam()" style="color:var(--blue);font-weight:700;">🎓 Cambiar carrera</div>
-        <div class="ham-item danger" onclick="changeStudent();closeHam()">🚪 Cambiar estudiante</div>
-        <div class="ham-item danger" onclick="cerrarSesion();closeHam()" style="font-weight:800;">🔒 Cerrar sesión</div>
-      </div>
-    </div>
   </div>
 </header>
+
+<div class="side-overlay" id="sideOverlay" onclick="closeHam()"></div>
+<div class="ham-menu" id="hamMenu">
+  <div class="side-head">
+    <div class="side-head-info">
+      <img src="Logotipo-horizontal-azul.png" alt="UGB" onerror="this.style.display='none'">
+      <div class="side-head-txt">
+        <div>UGB Pénsum</div>
+        <div id="sideCareerSub">Ciclo II 2026</div>
+      </div>
+    </div>
+    <div class="side-close" onclick="closeHam()">✕</div>
+  </div>
+  <div class="side-body">
+    <div class="side-label">Datos y calendario</div>
+    <div class="ham-item" onclick="openPasteModal();closeHam()"><span class="ham-ico">📋</span> Pegar notas del portal</div>
+    <div class="ham-item" onclick="openCalendarModal();closeHam()"><span class="ham-ico">📅</span> Calendario</div>
+    <div class="ham-item" onclick="openAsistencia();closeHam()"><span class="ham-ico">🏛</span> Asistencia diaria</div>
+    <div class="ham-item" onclick="openHistPensum();closeHam()"><span class="ham-ico">📜</span> Historial de cambios</div>
+
+    <div class="ham-divider"></div>
+    <div class="side-label">Sincronización</div>
+    <div class="ham-item" onclick="fetchFromFirebase();closeHam()" style="font-weight:700;color:#1d4ed8;"><span class="ham-ico">🔄</span> Refrescar desde Firebase</div>
+    <div class="ham-item" onclick="syncToFirebase();closeHam()"><span class="ham-ico">☁️</span> Subir a Firebase</div>
+
+    <div class="ham-divider"></div>
+    <div class="side-label">Exportar / Importar</div>
+    <div class="ham-item" onclick="exportCSV();closeHam()"><span class="ham-ico">📊</span> Exportar CSV</div>
+    <div class="ham-item" onclick="importCSV();closeHam()"><span class="ham-ico">📁</span> Importar CSV</div>
+    <div class="ham-item" onclick="exportJSON();closeHam()"><span class="ham-ico">💾</span> Exportar JSON</div>
+    <div class="ham-item" onclick="importJSON();closeHam()"><span class="ham-ico">📂</span> Importar JSON</div>
+    <div class="ham-item" onclick="exportPDF();closeHam()"><span class="ham-ico">🖨️</span> Imprimir / PDF</div>
+
+    <div class="ham-divider"></div>
+    <div class="side-label">Preferencias</div>
+    <div class="ham-item" onclick="abrirModoAvanzado();closeHam()"><span class="ham-ico">⚙️</span> Verificar base de datos</div>
+    <div class="ham-item" onclick="toggleTheme();closeHam()"><span class="ham-ico">🌙</span> Cambiar tema</div>
+
+    <div class="ham-divider"></div>
+    <div class="side-label">Cuenta</div>
+    <div class="ham-item" onclick="openChangePass()" style="color:#1d4ed8;font-weight:700;"><span class="ham-ico">🔑</span> Cambiar contraseña</div>
+    <div class="ham-item" onclick="openDeleteDataModal()" style="color:#dc2626;font-weight:700;"><span class="ham-ico">🗑️</span> Borrar datos</div>
+    <div class="ham-item" onclick="toggleAccountListVisibility()" style="color:#991b1b;font-weight:700;"><span class="ham-ico">👁️</span> Mostrar/ocultar lista de cuentas</div>
+    <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;"><span class="ham-ico">🧹</span> Limpiar caché y recargar</div>
+
+    <div class="ham-divider"></div>
+    <div class="ham-item" onclick="openAdvanced();closeHam()" style="color:#7c3aed;font-weight:800;"><span class="ham-ico">🚀</span> ADVANCED</div>
+
+    <div class="ham-divider"></div>
+    <div class="ham-item" onclick="changeStudent();backToCareerSelect();closeHam()" style="color:var(--blue);font-weight:700;"><span class="ham-ico">🎓</span> Cambiar carrera</div>
+    <div class="ham-item danger" onclick="changeStudent();closeHam()"><span class="ham-ico">🚪</span> Cambiar estudiante</div>
+    <div class="ham-item danger" onclick="cerrarSesion();closeHam()" style="font-weight:800;"><span class="ham-ico">🔒</span> Cerrar sesión</div>
+  </div>
+  <div class="side-foot">Universidad Gerardo Barrios<br><b>UGB Pénsum</b></div>
+</div>
 
 <div class="stats-bar">
   <div class="stat-item"><div class="stat-dot" style="background:var(--pass)"></div><span class="stat-label">Aprobadas:</span><span class="stat-val" id="statPass">0</span></div>
@@ -515,8 +560,9 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   <button class="tool-btn" onclick="openPasteModal()" title="Pegar notas">📋</button>
   <button class="tool-btn" onclick="openCalendarModal()" title="Calendario">📅</button>
   <button class="tool-btn" onclick="openAsistencia()" title="Asistencia">🏛</button>
-  <button class="tool-btn" onclick="fetchFromSheets()" title="Descargar">⬇️</button>
-  <button class="tool-btn" onclick="syncToSheets()" title="Subir">☁️</button>
+  <button class="tool-btn" onclick="openDondeEstoy()" title="¿Dónde debo estar?">📍</button>
+  <button class="tool-btn" onclick="fetchFromFirebase()" title="Descargar">⬇️</button>
+  <button class="tool-btn" onclick="syncToFirebase()" title="Subir">☁️</button>
   <button class="tool-btn" onclick="exportPDF()" title="Imprimir">🖨️</button>
   <button class="tool-btn" onclick="toggleTheme()" title="Tema">🌙</button>
   <span style="margin-left:auto;font-size:10px;color:var(--gm);" id="autoSaveTick">💾 OK</span>
@@ -603,8 +649,8 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   <div class="modal" style="width:540px;">
     <div class="asist-logos">
       <img src="Logotipo-horizontal-azul.png" alt="UGB" onerror="this.style.display='none'">
-      <div style="width:1px;height:46px;background:var(--gl);"></div>
-      <img src="logo2.jpg" alt="Dir. Integración" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
+      <div style="width:1px;height:60px;background:var(--gl);"></div>
+      <img src="logodi.jpg" alt="Dir. Integración" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
     </div>
     <h3 style="text-align:center;margin-bottom:3px;">🏛 Asistencia Diaria</h3>
     <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
@@ -784,7 +830,7 @@ const CAREERS = {
 let currentCareer = localStorage.getItem('ugb_career') || 'sistemas';
 let CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles));
 
-// Construye la llave usada en el servidor (Sheets) — incluye la carrera
+// Construye la llave usada en Firestore — incluye la carrera
 // para que cada carrera tenga sus propios datos sin mezclarse,
 // pero el nombre que ve el usuario en la UI sigue siendo limpio.
 function _serverKey(name, career) {
@@ -809,7 +855,7 @@ function snapshotCycles(desc) {
   });
   redoStack = []; // al hacer algo nuevo, limpiar redo
   updateUndoRedoBtns();
-  saveHistToLocal();
+  saveLocal();
 }
 
 function undoPensum() {
@@ -823,7 +869,7 @@ function undoPensum() {
   const entry = undoStack.pop();
   CYCLES = JSON.parse(JSON.stringify(entry.snapshot));
   updateUndoRedoBtns();
-  saveHistToLocal();
+  saveLocal();
   renderPensum();
   showToast('↩ Deshecho: ' + entry.desc, 'success');
 }
@@ -838,7 +884,7 @@ function redoPensum() {
   const entry = redoStack.pop();
   CYCLES = JSON.parse(JSON.stringify(entry.snapshot));
   updateUndoRedoBtns();
-  saveHistToLocal();
+  saveLocal();
   renderPensum();
   showToast('↪ Rehecho', 'success');
 }
@@ -852,22 +898,16 @@ function updateUndoRedoBtns() {
   if (r && redoStack.length) r.title = '↪ ' + redoStack[redoStack.length-1].desc;
 }
 
-function saveHistToLocal() {
-  if (!currentStudent) return;
-  try {
-    const sd = getStudentData();
-    sd.undoStack = undoStack.slice(-MAX_HIST);
-    sd.cycles = JSON.parse(JSON.stringify(CYCLES));
-    localStorage.setItem('ugb_pensum_appdata', JSON.stringify(appData));
-  } catch(e) {}
-}
+// (saveHistToLocal() se eliminó: escribía a una llave de localStorage que
+// ningún código volvía a leer. saveLocal() hace lo mismo — capturar
+// sd.cycles/sd.undoStack — y además dispara la subida real a Firebase.)
 
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
 let currentStudent=null, appData={}, config={};
 let pendingDeleteAction=null, loginMode='name';
-let accountListVisible=true; // ajuste global (Sheets) — ver toggleAccountListVisibility()
+let accountListVisible=true; // ajuste global (Firebase) — ver toggleAccountListVisibility()
 let currentZoom=85, currentCycleId=null;
 let autoSyncTimer=null;
 let editModeActive=false;
@@ -939,7 +979,7 @@ function _apsFetch(url, t) { return _jsonpFetch(url, t); }
 // ══════════════════════════════════════════════════════════════
 // SISTEMA DE CONTRASEÑAS — SHA-256 en el cliente
 // La contraseña nunca viaja ni se guarda como texto plano
-// Solo el hash se compara con lo que está en Sheets
+// Solo el hash se compara con lo que está en Firebase
 // ══════════════════════════════════════════════════════════════
 
 // SHA-256 usando la API nativa del navegador (no se necesita librería)
@@ -1100,6 +1140,8 @@ async function chooseCareer(career) {
   const h2 = document.getElementById('careerHeaderLine2');
   if (h1) h1.textContent = CAREERS[career].headerL1;
   if (h2) h2.textContent = CAREERS[career].headerL2;
+  const sideSub = document.getElementById('sideCareerSub');
+  if (sideSub) sideSub.textContent = CAREERS[career].label || 'Ciclo II 2026';
 
   appData = {};
 
@@ -1131,8 +1173,8 @@ async function chooseCareer(career) {
     _hideLoading();
   }
 
-  const bar    = document.getElementById('sheetsStatusBar');
-  const barOff = document.getElementById('sheetsOfflineBar');
+  const bar    = document.getElementById('firebaseStatusBar');
+  const barOff = document.getElementById('firebaseOfflineBar');
   if (config.appsScriptUrl) {
     if (bar)    bar.style.display    = 'block';
     if (barOff) barOff.style.display = 'none';
@@ -1156,7 +1198,7 @@ function backToCareerSelect() {
 
 
 // Muestra u oculta el listado de cuentas (chips con nombres) que aparece
-// en la pantalla de login. Es un ajuste GLOBAL (se guarda en Sheets, no en
+// en la pantalla de login. Es un ajuste GLOBAL (se guarda en Firebase, no en
 // este dispositivo) protegido con la misma contraseña de administrador.
 // Ya NO borra ninguna cuenta ni ningún dato — solo controla si se ve o no.
 // Aplica a ambas carreras por igual (un solo interruptor para todo el libro).
@@ -1328,7 +1370,7 @@ async function selectStudent(name) {
   if (config.appsScriptUrl) {
     try {
       await window.__firebaseReady;
-      const { perfil, notas, eventos, asistencias } = await window.FirebaseDB.cargarEstudianteUnaVez(name, currentCareer);
+      const { perfil, notas, eventos, asistencias, pensumHistorial } = await window.FirebaseDB.cargarEstudianteUnaVez(name, currentCareer);
       const local = appData[name];
       // Notas
       notas.forEach(row => {
@@ -1348,6 +1390,10 @@ async function selectStudent(name) {
       if (asistencias) Object.assign(local.asistencias, asistencias);
       if (perfil && perfil.specialCards) local.specialCards = perfil.specialCards;
       local.horario = (perfil && perfil.horario) || local.horario || null;
+      // Pénsum editado (arrastrar materias) + su historial — antes nunca
+      // se descargaban porque nunca se habían subido a Firestore.
+      if (perfil && perfil.pensumCycles) local.cycles = perfil.pensumCycles;
+      if (pensumHistorial) local.undoStack = pensumHistorial;
       _downloadOk = true;
       _showLoading('¡Todo al día!', 'Abriendo pénsum...');
       await new Promise(r => setTimeout(r, 400));
@@ -1568,7 +1614,7 @@ Esta acción NO se puede deshacer.`)) return;
       if (delSpecial) { sd.specialCards = {}; }
       // Subir cambios al servidor
       try {
-        await syncToSheets(true);
+        await syncToFirebase(true);
       } catch(e) {}
     }
   }
@@ -1694,14 +1740,14 @@ function getSubjectData(num) {
 function escapeHtml(s){return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
 
 // ═══════════════════════════════════════════════════════════
-// AUTOSAVE & SYNC  (instantáneo al localStorage, 1s debounce a Sheets)
+// AUTOSAVE & SYNC  (instantáneo en memoria, 1s debounce a Firebase)
 // ═══════════════════════════════════════════════════════════
 function saveLocal(triggerSync=true) {
   if(!currentStudent) return;
   const sd=getStudentData();
   sd.cycles=JSON.parse(JSON.stringify(CYCLES));
   sd.undoStack=undoStack.slice(-MAX_HIST);
-  // NO guardamos en localStorage — Sheets es la única fuente de verdad
+  // NO guardamos en localStorage — Firebase es la única fuente de verdad
   document.getElementById('autoSaveTick').textContent='💾 '+new Date().toLocaleTimeString();
   if(triggerSync) triggerAutoSync();
 }
@@ -1737,7 +1783,7 @@ function _updateSyncBadge(state, extra) {
     text.textContent = 'Cambios pendientes...';
     count.style.display = 'none';
   } else if (state === 'uploading') {
-    text.textContent = 'Guardando en Sheets...';
+    text.textContent = 'Guardando en Firebase...';
     count.style.display = 'none';
   } else if (state === 'ok') {
     badge.classList.add('ok');
@@ -1781,7 +1827,7 @@ async function _enqueueSync() {
     while (!ok && attempts < 3) {
       attempts++;
       try {
-        await syncToSheets(true);
+        await syncToFirebase(true);
         ok = true;
       } catch (e) {
         if (attempts < 3) {
@@ -1822,10 +1868,11 @@ function startAutoSyncInterval() {
   // guardaron. autoFetchInterval ahora guarda la función para CERRAR ese
   // listener (ya no es un setInterval).
   autoFetchInterval = window.FirebaseDB.escucharEstudiante(currentStudent, currentCareer, {
-    onPerfil: (perfil) => _applyRemoteUpdate({ cyclesDone: perfil.cyclesDone, specialCards: perfil.specialCards, horario: perfil.horario }),
+    onPerfil: (perfil) => _applyRemoteUpdate({ cyclesDone: perfil.cyclesDone, specialCards: perfil.specialCards, horario: perfil.horario, pensumCycles: perfil.pensumCycles }),
     onNotas: (notasArray) => _applyRemoteUpdate({ notas: notasArray }),
     onEventos: (eventosArray) => { if (!_calendarModalOpen) _applyRemoteUpdate({ events: eventosArray }); },
-    onAsistencias: (asistObj) => _applyRemoteUpdate({ asistencias: asistObj })
+    onAsistencias: (asistObj) => _applyRemoteUpdate({ asistencias: asistObj }),
+    onPensumHistorial: (histArray) => _applyRemoteUpdate({ pensumHistorial: histArray })
   });
 }
 
@@ -1904,6 +1951,28 @@ function _applyRemoteUpdate(d) {
     }
   }
 
+  if (d.pensumCycles !== undefined && d.pensumCycles !== null && !editModeActive) {
+    const remPC = JSON.stringify(d.pensumCycles);
+    const locPC = JSON.stringify(local.cycles || null);
+    if (remPC !== locPC) {
+      local.cycles = d.pensumCycles;
+      CYCLES = JSON.parse(JSON.stringify(d.pensumCycles));
+      changed = true;
+    }
+  }
+
+  if (d.pensumHistorial !== undefined) {
+    const remPH = JSON.stringify(d.pensumHistorial || []);
+    const locPH = JSON.stringify(local.undoStack || []);
+    if (remPH !== locPH) {
+      local.undoStack = d.pensumHistorial || [];
+      undoStack = local.undoStack;
+      updateUndoRedoBtns();
+      const histModal = document.getElementById('histPensumModal');
+      if (histModal && histModal.classList.contains('open')) renderHistPensum();
+    }
+  }
+
   const st = document.getElementById('syncStatus');
   if (changed) {
     renderPensum();
@@ -1922,9 +1991,14 @@ function toggleTheme(){
   document.getElementById('htmlRoot').setAttribute('data-theme',n);
   localStorage.setItem('ugb_theme',n);
 }
-function toggleHam(){document.getElementById('hamMenu').classList.toggle('open');}
-function closeHam(){document.getElementById('hamMenu').classList.remove('open');}
-document.addEventListener('click',e=>{const w=document.querySelector('.ham-wrap');if(w&&!w.contains(e.target))closeHam();});
+function toggleHam(){
+  document.getElementById('hamMenu').classList.toggle('open');
+  document.getElementById('sideOverlay').classList.toggle('on');
+}
+function closeHam(){
+  document.getElementById('hamMenu').classList.remove('open');
+  document.getElementById('sideOverlay').classList.remove('on');
+}
 
 // ═══════════════════════════════════════════════════════════
 // GRADE CALC
@@ -1933,7 +2007,7 @@ function calcComputo(c){const l1=parseFloat(c.lab1),l2=parseFloat(c.lab2),p=pars
 function calcFinal(computos){const s=computos.map(calcComputo);if(!s.some(x=>x!==null))return null;return s.reduce((a,b)=>a+(b===null?0:b),0)/3;}
 function getStatus(grade,computos){if(grade===null){return(computos||[]).some(c=>c.lab1!==''||c.lab2!==''||c.parcial!=='')?'inprogress':'pending';}return grade>=6.0?'pass':'fail';}
 
-// Versión que usa el status/finalGrade guardado en Sheets como respaldo
+// Versión que usa el status/finalGrade guardado en Firebase como respaldo
 function getEffectiveGrade(subData) {
   const calc = calcFinal(subData.computos);
   if (calc !== null) return calc;
@@ -1944,7 +2018,7 @@ function getEffectiveGrade(subData) {
 function getEffectiveStatus(subData) {
   const calc = calcFinal(subData.computos);
   if (calc !== null) return getStatus(calc, subData.computos);
-  // Sin cómputos: usar el status guardado en Sheets
+  // Sin cómputos: usar el status guardado en Firebase
   if (subData.status && subData.status !== 'pending') return subData.status;
   return getStatus(null, subData.computos);
 }
@@ -2738,9 +2812,9 @@ function exportPDF(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// SHEETS SYNC
+// FIREBASE SYNC
 // ═══════════════════════════════════════════════════════════
-async function syncToSheets(isAuto=false){
+async function syncToFirebase(isAuto=false){
   if(!config.appsScriptUrl){if(!isAuto){showToast('Firebase no está listo todavía','error');}return;}
   if(!isAuto) showToast('⏳ Sincronizando...','success');
   else{const st=document.getElementById('syncStatus');if(st)st.textContent='⏳ Subiendo...';}
@@ -2761,7 +2835,10 @@ async function syncToSheets(isAuto=false){
       window.FirebaseDB.guardarNotas(currentStudent, currentCareer, notasArray),
       window.FirebaseDB.guardarEventos(currentStudent, currentCareer, sd.events||[]),
       window.FirebaseDB.guardarCiclosDone(currentStudent, currentCareer, sd.cyclesDone||{}),
-      window.FirebaseDB.guardarEspeciales(currentStudent, currentCareer, sd.specialCards||{})
+      window.FirebaseDB.guardarEspeciales(currentStudent, currentCareer, sd.specialCards||{}),
+      window.FirebaseDB.guardarAsistencias(currentStudent, currentCareer, sd.asistencias||{}),
+      window.FirebaseDB.guardarPensumCycles(currentStudent, currentCareer, sd.cycles||CYCLES),
+      window.FirebaseDB.guardarPensumHistorial(currentStudent, currentCareer, (sd.undoStack||undoStack||[]).slice(-MAX_HIST))
     ]);
     const t=new Date().toLocaleTimeString();
     document.getElementById('syncStatus').textContent='sync '+t;
@@ -2772,13 +2849,13 @@ async function syncToSheets(isAuto=false){
     throw e; // re-lanzar para que la cola de sincronización pueda reintentar
   }
 }
-async function fetchFromSheets(silent=false){
+async function fetchFromFirebase(silent=false){
   if(!config.appsScriptUrl){if(!silent)showToast('Firebase no está listo todavía','error');return;}
   if(!currentStudent){if(!silent)showToast('No hay estudiante seleccionado','error');return;}
   if(!silent) showToast('⏳ Descargando desde Firebase...','success');
   try{
     await window.__firebaseReady;
-    const { perfil, notas, eventos, asistencias } = await window.FirebaseDB.cargarEstudianteUnaVez(currentStudent, currentCareer);
+    const { perfil, notas, eventos, asistencias, pensumHistorial } = await window.FirebaseDB.cargarEstudianteUnaVez(currentStudent, currentCareer);
     if(!appData[currentStudent]) appData[currentStudent]={notas:{},events:[],cyclesDone:{},asistencias:{},specialCards:{},undoStack:[]};
     // Reemplazar completamente con datos de Firestore (Firestore = fuente de verdad)
     appData[currentStudent].notas={};
@@ -2786,12 +2863,15 @@ async function fetchFromSheets(silent=false){
     if(eventos && eventos.length) appData[currentStudent].events=eventos;
     if(perfil && perfil.cyclesDone) appData[currentStudent].cyclesDone=Object.assign(appData[currentStudent].cyclesDone||{},perfil.cyclesDone);
     if(asistencias) appData[currentStudent].asistencias=Object.assign(appData[currentStudent].asistencias||{},asistencias);
+    if(perfil && perfil.pensumCycles){ appData[currentStudent].cycles=perfil.pensumCycles; CYCLES=JSON.parse(JSON.stringify(perfil.pensumCycles)); }
+    if(pensumHistorial){ appData[currentStudent].undoStack=pensumHistorial; undoStack=pensumHistorial; redoStack=[]; updateUndoRedoBtns(); }
     renderPensum();
     if(!silent) showToast('✓ Datos actualizados desde Firebase','success');
     else { const st=document.getElementById('syncStatus'); if(st) st.textContent='✓ '+new Date().toLocaleTimeString(); }
   }catch(e){if(!silent) showToast('✗ Sin conexión a Firebase','error');}
 }
-// El modal viejo de "Configurar Sheets" ya no existe — ahora la base de
+// El modal viejo de "Configurar Sheets" (heredado del sistema anterior)
+// ya no existe — ahora la base de
 // datos se verifica/inicializa con doble clic en el logo (ver más abajo,
 // "MODO AVANZADO"). Esta función queda como el nuevo punto de entrada,
 // también usable desde un botón del menú si se prefiere más visible que
@@ -2824,7 +2904,7 @@ async function abrirModoAvanzado() {
 //  1. Primera vez que el alumno entra: el iframe no recibe preselección
 //     → le pide elegir carrera/ciclo/grupo normalmente.
 //  2. Cuando elige, horarios.html manda {type:'selected', horario:{...}}
-//     → aquí lo guardamos en Sheets (una sola vez, no en cada clic).
+//     → aquí lo guardamos en Firebase (una sola vez, no en cada clic).
 //  3. Próxima vez: en cuanto el iframe avisa que está listo, le mandamos
 //     esa selección guardada y salta directo al horario — no vuelve a
 //     preguntar ciclo/grupo.
@@ -2922,7 +3002,10 @@ document.addEventListener('keydown',e=>{
   // Ctrl+Z = deshacer, Ctrl+Y o Ctrl+Shift+Z = rehacer
   if(e.ctrlKey && !e.shiftKey && e.key==='z'){ e.preventDefault(); undoPensum(); return; }
   if(e.ctrlKey && (e.key==='y' || (e.shiftKey && e.key==='Z'))){ e.preventDefault(); redoPensum(); return; }
-  if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open,.ham-menu.open').forEach(el=>el.classList.remove('open'));
+  if(e.key==='Escape'){
+    document.querySelectorAll('.modal-overlay.open,.ham-menu.open').forEach(el=>el.classList.remove('open'));
+    closeHam();
+  }
   // Navegación con Ctrl+Arrow en inputs de notas
   if(e.ctrlKey&&e.key.startsWith('Arrow')){
     const active=document.activeElement;

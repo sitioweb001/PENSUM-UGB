@@ -307,3 +307,42 @@ export async function initFirestoreDatabase(onProgress = () => {}) {
   onProgress('Todo listo. Las colecciones notas/eventos/asistencias se crean solas en cuanto el primer estudiante guarde datos.');
   return { ok: true, estudiantesExistentes: someStudents.size };
 }
+
+// ============================================================
+// RESET TOTAL DE LA BASE DE DATOS — borra TODOS los estudiantes (de
+// TODAS las carreras) con sus subcolecciones (notas/eventos/asistencias/
+// pensumHistorial) y deja config/settings en su estado por defecto.
+// No hay vuelta atrás — la protección con contraseña vive en el HTML
+// (ver resetearBaseDeDatosUI en index.html), aquí solo se ejecuta el borrado.
+// ============================================================
+export async function resetearBaseDeDatos(onProgress = () => {}) {
+  onProgress('Buscando cuentas existentes...');
+  const estudiantesSnap = await getDocs(collection(db, 'estudiantes'));
+  const ids = estudiantesSnap.docs.map(d => d.id);
+  onProgress(`${ids.length} cuenta(s) encontrada(s).`);
+
+  let borrados = 0;
+  for (const id of ids) {
+    for (const sub of ['notas', 'eventos', 'asistencias', 'pensumHistorial']) {
+      const subSnap = await getDocs(collection(db, 'estudiantes', id, sub));
+      if (subSnap.docs.length) {
+        const batch = writeBatch(db);
+        subSnap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+    await deleteDoc(doc(db, 'estudiantes', id));
+    borrados++;
+    onProgress(`Borrando cuentas... (${borrados}/${ids.length})`);
+  }
+
+  onProgress('Reiniciando configuración global...');
+  await setDoc(doc(db, 'config', 'settings'), {
+    showAccountList: true,
+    version: '1.0',
+    createdAt: serverTimestamp()
+  });
+
+  onProgress('Base de datos reiniciada — lista para datos nuevos.');
+  return { ok: true, cuentasBorradas: borrados };
+}

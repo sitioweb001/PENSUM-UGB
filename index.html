@@ -475,6 +475,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 
     <div class="ham-divider"></div>
     <div class="side-label">Sincronización</div>
+    <div class="ham-item" onclick="sincronizarTodo();closeHam()" style="font-weight:800;color:#047857;"><span class="ham-ico">🔃</span> Sincronizar</div>
     <div class="ham-item" onclick="fetchFromFirebase();closeHam()" style="font-weight:700;color:#1d4ed8;"><span class="ham-ico">🔄</span> Refrescar desde Firebase</div>
     <div class="ham-item" onclick="syncToFirebase();closeHam()"><span class="ham-ico">☁️</span> Subir a Firebase</div>
 
@@ -495,6 +496,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
     <div class="side-label">Cuenta</div>
     <div class="ham-item" onclick="openChangePass()" style="color:#1d4ed8;font-weight:700;"><span class="ham-ico">🔑</span> Cambiar contraseña</div>
     <div class="ham-item" onclick="openDeleteDataModal()" style="color:#dc2626;font-weight:700;"><span class="ham-ico">🗑️</span> Borrar datos</div>
+    <div class="ham-item" onclick="resetearBaseDeDatosUI()" style="color:#fff;font-weight:800;background:#dc2626;border-radius:6px;margin:2px 10px;padding:11px 14px;"><span class="ham-ico">🧨</span> Resetear base de datos</div>
     <div class="ham-item" onclick="toggleAccountListVisibility()" style="color:#991b1b;font-weight:700;"><span class="ham-ico">👁️</span> Mostrar/ocultar lista de cuentas</div>
     <div class="ham-item" onclick="limpiarCache();closeHam()" style="color:#7c3aed;font-weight:700;"><span class="ham-ico">🧹</span> Limpiar caché y recargar</div>
 
@@ -1629,6 +1631,47 @@ Esta acción NO se puede deshacer.`)) return;
     renderPensum();
     renderStudentList();
     showToast('✓ Datos borrados correctamente','success');
+  }
+}
+
+// "🧨 Resetear base de datos" — a diferencia de "Borrar datos" (que borra
+// estudiantes puntuales que elijas), esto borra TODO: todas las cuentas de
+// todas las carreras, con sus notas/calendario/asistencias/historial, y
+// reinicia la configuración global. Doble candado: contraseña + confirm().
+async function resetearBaseDeDatosUI() {
+  closeHam();
+  const pw = prompt('⚠️ Esto borra TODA la base de datos: todos los estudiantes, de todas las carreras, con sus notas, calendario, asistencias e historial.\n\nEsta acción NO se puede deshacer.\n\nContraseña de administrador:');
+  if (pw !== '747') {
+    if (pw !== null) showToast('Contraseña incorrecta', 'error');
+    return;
+  }
+  if (!confirm('ÚLTIMA CONFIRMACIÓN\n\nSe va a borrar la base de datos completa y quedará lista para empezar de cero.\n\n¿Continuar?')) return;
+  if (!config.appsScriptUrl) { showToast('Firebase no está listo todavía', 'error'); return; }
+
+  _showLoading('Reiniciando base de datos...', 'Esto puede tardar unos segundos');
+  try {
+    await window.__firebaseReady;
+    const res = await window.FirebaseDB.resetearBaseDeDatos((paso) => {
+      _showLoading('Reiniciando base de datos...', paso);
+    });
+
+    // Volver a un estado limpio en el cliente también
+    appData = {};
+    currentStudent = null;
+    stopAutoSyncInterval();
+    closeDondeEstoy();
+    document.getElementById('dondeEstoyFab').style.display = 'none';
+    document.getElementById('appView').style.display = 'none';
+    document.getElementById('bottomBar').style.display = 'none';
+    document.getElementById('loginView').style.display = 'flex';
+    localStorage.removeItem('ugb_last_student');
+    renderStudentList();
+
+    _hideLoading();
+    showToast(`✅ Base de datos reiniciada (${res.cuentasBorradas} cuenta(s) borradas)`, 'success');
+  } catch (e) {
+    _hideLoading();
+    showToast('✗ Error al reiniciar: ' + (e && e.message ? e.message : ''), 'error');
   }
 }
 
@@ -2870,6 +2913,22 @@ async function fetchFromFirebase(silent=false){
     else { const st=document.getElementById('syncStatus'); if(st) st.textContent='✓ '+new Date().toLocaleTimeString(); }
   }catch(e){if(!silent) showToast('✗ Sin conexión a Firebase','error');}
 }
+
+// "🔃 Sincronizar" del menú — no borra nada, solo sube lo pendiente y luego
+// baja lo último de Firebase, para dejar todo al día en ambos sentidos.
+// Sin contraseña, a diferencia de "Resetear base de datos".
+async function sincronizarTodo() {
+  if (!config.appsScriptUrl) { showToast('Firebase no está listo todavía', 'error'); return; }
+  if (!currentStudent) { showToast('No hay estudiante seleccionado', 'error'); return; }
+  showToast('⏳ Sincronizando...', 'success');
+  try {
+    await syncToFirebase(true);
+    await fetchFromFirebase(true);
+    showToast('✅ Sincronizado correctamente', 'success');
+  } catch (e) {
+    showToast('✗ Error al sincronizar' + (e && e.message ? ': ' + e.message : ''), 'error');
+  }
+}
 // El modal viejo de "Configurar Sheets" (heredado del sistema anterior)
 // ya no existe — ahora la base de
 // datos se verifica/inicializa con doble clic en el logo (ver más abajo,
@@ -2934,13 +2993,35 @@ function onHorarioSynced() { refreshDondeEstoyUI(); }
 function openDondeEstoy() {
   document.getElementById('dondeEstoyModal').classList.add('open');
   refreshDondeEstoyUI();
+  const frame = document.getElementById('dondeEstoyFrame');
   if (!_dondeEstoyFrameLoaded) {
-    document.getElementById('dondeEstoyFrame').src = _dondeEstoyUrl(false);
+    frame.addEventListener('load', _autoAbrirDondeDebo, { once: true });
+    frame.src = _dondeEstoyUrl(false);
     _dondeEstoyFrameLoaded = true;
+  } else {
+    _autoAbrirDondeDebo();
   }
 }
 function closeDondeEstoy() {
   document.getElementById('dondeEstoyModal').classList.remove('open');
+}
+
+// El botón 📍/🕒 "¿Dónde debo estar?" debe abrir DIRECTO el aviso de estado
+// (modalDonde) que ya existe dentro de horarios.html — no la tabla completa
+// esperando un segundo clic. Como horarios.html es el mismo origen, se puede
+// llamar directo a sus funciones (applyPreselect/openDonde) sin necesidad de
+// postMessage ni de adivinar tiempos de carga.
+function _autoAbrirDondeDebo() {
+  const frame = document.getElementById('dondeEstoyFrame');
+  const win = frame && frame.contentWindow;
+  if (!win) return;
+  try {
+    const sd = getStudentData();
+    if (sd && sd.horario && sd.horario.grupo && typeof win.applyPreselect === 'function') {
+      win.applyPreselect(sd.horario.carrera, sd.horario.dbKey, sd.horario.grupo);
+    }
+    if (typeof win.openDonde === 'function') win.openDonde();
+  } catch (e) { /* si algo falla aquí no debe romper el resto de la app */ }
 }
 
 async function editarHorario() {

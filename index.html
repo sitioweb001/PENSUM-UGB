@@ -306,6 +306,8 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 .ev-date{font-size:11px;font-weight:700;}
 .ev-nota-inp{width:56px;padding:3px 5px;border:1.5px solid var(--inp-b);border-radius:6px;font-size:12px;text-align:center;background:var(--inp-bg);color:var(--text);font-weight:600;outline:none;}
 .ev-del-btn{background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:14px;margin-left:auto;}
+.ev-computo-tag{font-size:10px;font-weight:700;color:var(--blue);background:rgba(30,64,175,.12);padding:2px 7px;border-radius:999px;}
+[data-theme="dark"] .ev-computo-tag{color:var(--blue-lt);}
 .ev-sub{font-size:11px;color:var(--gm);margin-top:3px;}
 
 /* TOAST */
@@ -313,6 +315,62 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 .toast.show{transform:translateY(0);opacity:1;}
 .toast.show.success{background:#065f46;}
 .toast.show.error{background:#991b1b;}
+
+/* ═══════════════════════════════════════════════════════════
+   NOTIFICACIONES (calendario: laboratorios, parciales, actividades)
+   ═══════════════════════════════════════════════════════════ */
+.notif-badge{background:var(--fail);color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;margin-left:auto;display:none;align-items:center;justify-content:center;min-width:18px;line-height:1.5;}
+
+/* -- Toasts emergentes de notificación (esquina, apilables, deslizables) -- */
+.notif-toast-container{position:fixed;top:76px;right:14px;z-index:5500;display:flex;flex-direction:column;gap:10px;max-width:340px;pointer-events:none;}
+.notif-toast{pointer-events:auto;background:var(--card);color:var(--text);border:1px solid var(--gl);border-radius:10px;padding:11px 12px;box-shadow:0 10px 32px rgba(0,0,0,.22);display:flex;align-items:flex-start;gap:9px;transform:translateX(120%);opacity:0;transition:transform .28s ease,opacity .28s ease;cursor:pointer;touch-action:pan-y;}
+.notif-toast.show{transform:translateX(0);opacity:1;}
+.notif-toast.hide{transform:translateX(120%);opacity:0;}
+.notif-toast.tier-green{background:var(--pass);border-color:var(--pass);color:#062e21;}
+.notif-toast.tier-yellow{background:var(--pend);border-color:var(--pend);color:#3a2400;}
+.notif-toast.tier-red{background:var(--fail);border-color:var(--fail);color:#3a0505;}
+.notif-toast-icon{font-size:14px;line-height:1.4;flex-shrink:0;}
+.notif-toast-body{flex:1;min-width:0;}
+.notif-toast-title{font-weight:700;font-size:12.5px;color:inherit;}
+.notif-toast-sub{font-size:11px;color:inherit;opacity:.82;margin-top:2px;}
+.notif-toast-close{cursor:pointer;color:inherit;opacity:.65;font-size:13px;flex-shrink:0;padding:2px;}
+.notif-toast-close:hover{opacity:1;}
+.notif-toast:not(.tier-green):not(.tier-yellow):not(.tier-red) .notif-toast-sub{color:var(--gm);opacity:1;}
+@media(max-width:640px){.notif-toast-container{top:64px;right:8px;left:8px;max-width:none;}}
+
+/* -- Lista de notificaciones (dentro del modal) -- */
+.notif-row{background:var(--comp-bg);border:1px solid var(--gl);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.notif-row.tier-green{background:var(--pass);border-color:var(--pass);color:#062e21;}
+.notif-row.tier-yellow{background:var(--pend);border-color:var(--pend);color:#3a2400;}
+.notif-row.tier-red{background:var(--fail);border-color:var(--fail);color:#3a0505;}
+.notif-row-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.notif-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:currentColor;}
+.notif-row-type{font-weight:700;font-size:12.5px;color:inherit;}
+.notif-row-days{margin-left:auto;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:rgba(0,0,0,.16);color:inherit;}
+.notif-row.tier-green .notif-row-days,.notif-row.tier-yellow .notif-row-days,.notif-row.tier-red .notif-row-days{background:rgba(0,0,0,.16);}
+.notif-row:not(.tier-green):not(.tier-yellow):not(.tier-red) .notif-row-days{background:var(--gm);color:#fff;}
+.notif-row-sub{font-size:11.5px;color:inherit;opacity:.85;margin-top:3px;}
+.notif-row-date{font-size:10.5px;color:inherit;opacity:.85;margin-top:1px;}
+.notif-row-actions{display:flex;align-items:center;gap:4px;margin-left:6px;}
+.notif-row-btn{background:rgba(0,0,0,.1);border:none;color:inherit;cursor:pointer;font-size:13px;border-radius:6px;width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.notif-row-btn:hover{background:rgba(0,0,0,.22);}
+.notif-row:not(.tier-green):not(.tier-yellow):not(.tier-red) .notif-row-sub,.notif-row:not(.tier-green):not(.tier-yellow):not(.tier-red) .notif-row-date{opacity:1;color:var(--gm);}
+
+/* -- Panel de configuración de notificaciones -- */
+.notif-cfg-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
+.notif-cfg-row label{font-size:12.5px;font-weight:600;color:var(--text);display:flex;align-items:center;}
+.notif-cfg-row input[type=number]{width:64px;padding:7px 9px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-size:13px;text-align:center;font-family:'Inter',sans-serif;}
+.notif-swatch{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:7px;flex-shrink:0;}
+.toggle-switch{position:relative;width:42px;height:24px;flex-shrink:0;display:inline-block;}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-slider{position:absolute;inset:0;background:var(--gl);border-radius:999px;cursor:pointer;transition:.2s;}
+.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.toggle-switch input:checked+.toggle-slider{background:var(--pass);}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(18px);}
+.notif-cfg-gear{background:transparent;border:1.5px solid var(--gl);border-radius:8px;width:34px;height:34px;font-size:15px;cursor:pointer;color:var(--text);flex-shrink:0;transition:all .15s;}
+.notif-cfg-gear:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+.notif-cfg-back{background:transparent;border:none;color:var(--blue);font-size:13px;font-weight:700;cursor:pointer;padding:4px 0;margin-bottom:8px;display:inline-flex;align-items:center;gap:4px;}
+[data-theme="dark"] .notif-cfg-back{color:var(--blue-lt);}
 
 /* BOTTOM BAR */
 .bottom-toolbar{position:fixed;bottom:0;left:0;right:0;background:var(--modal-bg);border-top:1px solid var(--gl);padding:6px 16px;display:flex;align-items:center;gap:5px;z-index:150;box-shadow:0 -4px 20px rgba(0,0,0,.12);}
@@ -352,6 +410,75 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 [data-theme="dark"] .login-box .scroll-indicator{background:linear-gradient(180deg, rgba(0,0,0,0), rgba(14,22,38,1));}
 .login-box.scrollable .scroll-indicator{opacity:1}
 .pill:focus,.login-btn:focus,.login-field input:focus{outline:3px solid rgba(59,130,246,.18);outline-offset:2px}
+
+/* ═══════════════════════════════════════════════════════════
+   OPTIMIZACIÓN MÓVIL
+   El bug real del header en teléfono (nombre del estudiante
+   cortado a la mitad, "CASTRO" invisible) era el típico gotcha de
+   flexbox: los hijos de un flex container tienen min-width:auto
+   por defecto, así que aunque hubiera texto de más NUNCA se
+   encogían — en vez de eso el texto envolvía a una 2ª línea que
+   el header (altura fija, align-items:center) recortaba verticalmente.
+   Con min-width:0 + white-space:nowrap + text-overflow:ellipsis en
+   los hijos que pueden ser largos, ahora truncan con "…" en vez de
+   partirse o desbordar. Esto es válido en cualquier tamaño, no solo
+   celular — solo se nota ahí porque hay menos espacio.
+   ═══════════════════════════════════════════════════════════ */
+/* El nombre ya NO se trunca con "…" — en vez de eso, .header-right
+   pasa a su propia fila completa cuando no cabe, así el nombre
+   siempre se ve completo (ver regla dentro de @media abajo). */
+header{flex-wrap:wrap;row-gap:6px;}
+.header-title{min-width:0;overflow:hidden;flex:1;}
+.header-title h1,.header-title h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.header-right{flex-shrink:0;display:flex;align-items:center;gap:8px;}
+.header-right .sync-status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;display:inline-block;vertical-align:middle;}
+#currentStudentName{white-space:normal;overflow:visible;text-overflow:clip;max-width:none;display:inline-block;vertical-align:middle;word-break:break-word;}
+
+@media (max-width:640px){
+  header{padding:9px 10px;gap:8px;}
+  .ham-btn{width:36px;height:36px;font-size:16px;}
+  .logo-wrap img{height:32px!important;}
+  .header-title{margin-left:4px!important;}
+  .header-title h1{font-size:8px;letter-spacing:1.5px;}
+  .header-title h2{font-size:12.5px;}
+  /* El nombre completo necesita más espacio del que queda en la fila
+     de arriba (hamburguesa+logo+título) — en vez de truncarlo, .header-right
+     baja a su propia fila de ancho completo, alineado a la derecha. */
+  .header-right{width:100%;max-width:none;justify-content:flex-end;gap:10px;order:5;}
+  .header-right .sync-status{max-width:160px;opacity:1;margin:0;}
+  #currentStudentName{font-size:11.5px!important;max-width:none;}
+
+  .stats-bar{padding:8px 12px;gap:9px 14px;}
+  .stat-item{font-size:10.5px;}
+  .stat-item .stat-val{font-size:12px;}
+
+  .pensum-controls{padding:8px 12px;gap:8px 10px;}
+  .pensum-hint{display:none;}
+  .zoom-slider{width:76px;}
+  .undo-btn,.edit-mode-btn{padding:6px 9px;font-size:11px;}
+
+  .tool-btn{width:38px;height:38px;font-size:16px;}
+  .bottom-toolbar{padding:6px 8px;padding-bottom:max(6px,env(safe-area-inset-bottom));gap:2px;}
+  #autoSaveTick{display:none;} /* en celular no hay espacio — el estado real ya se ve en el badge de sync flotante */
+  #dondeEstoyFab{width:48px;height:48px;font-size:19px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom));}
+  .pensum-scroll-area{padding-bottom:calc(76px + env(safe-area-inset-bottom));}
+
+  .modal{padding:18px;border-radius:14px;}
+  .asist-logos img{height:56px!important;}
+  .login-logo-wrap img{height:64px!important;}
+}
+
+@media (max-width:380px){
+  .header-title h1{display:none;}
+  .header-title h2{font-size:12px;}
+  #currentStudentName{font-size:11px!important;}
+}
+
+/* iOS Safari hace zoom automático al enfocar un input con font-size
+   menor a 16px — se siente como un bug aunque el campo funcione bien. */
+@media (max-width:640px){
+  input,select,textarea{font-size:16px!important;}
+}
 </style>
 </head>
 <body>
@@ -396,6 +523,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
       <span style="font-weight:800;font-size:13px;color:#7c3aed;letter-spacing:1px;">ADVANCED</span>
     </button>
   </div>
+  <div class="scroll-indicator"></div>
 </div>
 </div>
 
@@ -414,7 +542,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   </p>
   <p id="loginSubtitle" style="text-align:center;margin-bottom:8px;">Ingresa nombre del estudiante</p>
   <div id="firebaseStatusBar" style="display:none;background:rgba(16,185,129,.13);border:1px solid rgba(16,185,129,.35);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#065f46;font-weight:600;text-align:center;">
-    🟢 Datos sincronizados en la nube — solo tus dispositivos verán esta información
+    🟢 Datos guardados en la nube — inicia sesión con tu contraseña desde cualquier dispositivo
   </div>
   <div id="firebaseOfflineBar" style="display:none;background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.4);border-radius:8px;padding:7px 12px;margin-bottom:10px;font-size:11px;color:#92400e;font-weight:600;text-align:center;">
     ⚠️ Sin conexión con Firebase
@@ -454,6 +582,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
     <span id="listLoadStatus" style="font-size:11px;color:var(--gm);"></span>
   </div>
   <div id="studentList" style="margin-top:10px;"></div>
+  <div class="scroll-indicator"></div>
 </div>
 </div>
 
@@ -491,6 +620,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
     <div class="side-label">Datos y calendario</div>
     <div class="ham-item" onclick="openPasteModal();closeHam()"><span class="ham-ico">📋</span> Pegar notas del portal</div>
     <div class="ham-item" onclick="openCalendarModal();closeHam()"><span class="ham-ico">📅</span> Calendario</div>
+    <div class="ham-item" onclick="openNotifModal();closeHam()"><span class="ham-ico">🔔</span> Notificaciones <span class="notif-badge" id="notifBadge"></span></div>
     <div class="ham-item" onclick="openAsistencia();closeHam()"><span class="ham-ico">🏛</span> Asistencia diaria</div>
     <div class="ham-item" onclick="openHistPensum();closeHam()"><span class="ham-ico">📜</span> Historial de cambios</div>
 
@@ -618,7 +748,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   </div>
 </div>
 
-<div class="modal-overlay" id="deleteModal">
+<div class="modal-overlay" id="deleteModal" style="z-index:9999;">
   <div class="modal">
     <h3>⚠️ Confirmar</h3>
     <p id="deleteModalText">¿Eliminar?</p>
@@ -657,6 +787,14 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
       <select id="eventCycle" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;" onchange="updateEventSubjects()"></select></div>
     <div class="modal-field"><label>Materia</label>
       <select id="eventSubject" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></select></div>
+    <div class="modal-field" id="eventComputoField" style="display:none;"><label>Cómputo</label>
+      <select id="eventComputo" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;">
+        <option value="0">Cómputo 1</option>
+        <option value="1">Cómputo 2</option>
+        <option value="2">Cómputo 3</option>
+      </select>
+      <p style="font-size:10.5px;color:var(--gm);margin:4px 0 0;">La nota que anotes aquí se copiará automáticamente al pénsum, en este cómputo.</p>
+    </div>
     <div class="modal-field"><label>Fecha</label>
       <input type="date" id="eventDate" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
     <div class="modal-field"><label>Comentario (opcional)</label>
@@ -668,15 +806,63 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
   </div>
 </div>
 
+<div class="modal-overlay" id="notifModal">
+  <div class="modal" style="width:520px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <h3 style="margin-bottom:0;">🔔 Notificaciones</h3>
+      <button class="notif-cfg-gear" onclick="openNotifConfig()" title="Configurar colores y tiempos">⚙️</button>
+    </div>
+    <p>Avisos de laboratorios, parciales y actividades según su fecha en el calendario.</p>
+    <div id="notifList" style="max-height:400px;overflow-y:auto;margin-bottom:13px;"></div>
+    <div class="modal-btns"><button class="modal-btn primary" onclick="closeNotifModal()">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="notifConfigModal" style="z-index:9999;">
+  <div class="modal" style="width:420px;">
+    <button class="notif-cfg-back" onclick="closeNotifConfig()">← Volver a notificaciones</button>
+    <h3>⚙️ Configurar notificaciones</h3>
+    <p>Define cuántos días antes avisar y cuánto dura cada mensaje emergente.</p>
+
+    <div class="notif-cfg-row">
+      <label>Notificaciones activas</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="notifCfgEnabled">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="notif-cfg-row">
+      <label><span class="notif-swatch" style="background:var(--pass);"></span>Verde — días antes</label>
+      <input type="number" id="notifCfgGreen" min="1" max="60">
+    </div>
+    <div class="notif-cfg-row">
+      <label><span class="notif-swatch" style="background:var(--pend);"></span>Amarillo — días antes</label>
+      <input type="number" id="notifCfgYellow" min="1" max="60">
+    </div>
+    <div class="notif-cfg-row">
+      <label><span class="notif-swatch" style="background:var(--fail);"></span>Rojo — días antes</label>
+      <input type="number" id="notifCfgRed" min="0" max="60">
+    </div>
+    <div class="notif-cfg-row">
+      <label>⏱️ Duración del mensaje (segundos)</label>
+      <input type="number" id="notifCfgDuration" min="2" max="60">
+    </div>
+    <p style="font-size:11px;margin-top:-4px;">Desliza cualquier mensaje emergente hacia la derecha para ocultarlo antes de tiempo. Esta configuración se guarda en este dispositivo.</p>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="resetNotifConfig()">Restaurar</button>
+      <button class="modal-btn primary" onclick="saveNotifConfigUI()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif-toast-container" id="notifToastContainer"></div>
+
 <div class="modal-overlay" id="asistenciaModal">
   <div class="modal" style="width:540px;">
-    <div class="asist-logos" style="flex-direction:column;gap:12px;">
-      <img src="DI.svg" alt="Dirección de Integración" style="height:84px;object-fit:contain;" onerror="this.style.display='none'">
-    </div>
     <div class="asist-logos">
       <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height:70px;object-fit:contain;" onerror="this.style.display='none'">
       <div style="width:1px;height:60px;background:var(--gl);"></div>
-      <img src="logoedu.svg" alt="Logo Edu" style="height:58px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
+      <img src="DI.svg" alt="Dirección de Integración" style="height:58px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
     </div>
     <h3 style="text-align:center;margin-bottom:3px;">🏛 Asistencia Diaria</h3>
     <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
@@ -1481,12 +1667,14 @@ async function selectStudent(name) {
     showToast('⚠️ No se pudo descargar tu información. Revisa tu conexión — se sincronizará solo en cuanto vuelva.', 'error');
     renderPensum();
     startAutoSyncInterval();
+    startNotifWatcher();
     return;
   }
 
   if (config.appsScriptUrl) document.getElementById('syncStatus').textContent = '✓ Firebase activo';
   renderPensum();
   startAutoSyncInterval();
+  startNotifWatcher();
 }
 
 // ── LOADING HELPERS ──
@@ -1706,6 +1894,7 @@ async function resetearBaseDeDatosUI() {
     appData = {};
     currentStudent = null;
     stopAutoSyncInterval();
+    stopNotifWatcher();
     closeDondeEstoy();
     document.getElementById('dondeEstoyFab').style.display = 'none';
     document.getElementById('appView').style.display = 'none';
@@ -1731,6 +1920,7 @@ function changeStudent() {
   document.getElementById('loginName').value='';
   const _pEl=document.getElementById('loginPass'); if(_pEl)_pEl.value='';
   stopAutoSyncInterval();
+  stopNotifWatcher();
   closeDondeEstoy();
   document.getElementById('dondeEstoyFab').style.display='none';
   renderStudentList();
@@ -1794,6 +1984,7 @@ function cerrarSesion(){
   localStorage.removeItem('ugb_last_student');
   localStorage.removeItem('ugb_career');
   stopAutoSyncInterval();
+  stopNotifWatcher();
   closeDondeEstoy();
   document.getElementById('dondeEstoyFab').style.display='none';
   document.getElementById('appView').style.display='none';
@@ -1960,7 +2151,7 @@ function startAutoSyncInterval() {
   autoFetchInterval = window.FirebaseDB.escucharEstudiante(currentStudent, currentCareer, {
     onPerfil: (perfil) => _applyRemoteUpdate({ cyclesDone: perfil.cyclesDone, specialCards: perfil.specialCards, horario: perfil.horario, pensumCycles: perfil.pensumCycles }),
     onNotas: (notasArray) => _applyRemoteUpdate({ notas: notasArray }),
-    onEventos: (eventosArray) => { if (!_calendarModalOpen) _applyRemoteUpdate({ events: eventosArray }); },
+    onEventos: (eventosArray) => { if (!_calendarModalOpen) { _applyRemoteUpdate({ events: eventosArray }); checkAndShowNotifToasts(); } },
     onAsistencias: (asistObj) => _applyRemoteUpdate({ asistencias: asistObj }),
     onPensumHistorial: (histArray) => _applyRemoteUpdate({ pensumHistorial: histArray })
   });
@@ -2682,7 +2873,18 @@ function addEvent(type){
   document.getElementById('eventSubject').innerHTML='<option value="">-- Primero elige ciclo --</option>';
   document.getElementById('eventDate').value='';
   document.getElementById('eventComment').value='';
+  const needsComputo=eventTypeNeedsComputo(type);
+  document.getElementById('eventComputoField').style.display=needsComputo?'':'none';
+  if(needsComputo) document.getElementById('eventComputo').value='0';
   document.getElementById('addEventModal').classList.add('open');
+}
+// 'Otra' no corresponde a ningún cómputo del pénsum, así que no sincroniza
+function eventTypeNeedsComputo(type){ return type==='Lab 1'||type==='Lab 2'||type==='Parcial'; }
+function eventTypeToField(type){
+  if(type==='Lab 1') return 'lab1';
+  if(type==='Lab 2') return 'lab2';
+  if(type==='Parcial') return 'parcial';
+  return null;
 }
 function updateEventSubjects(){
   const cid=parseInt(document.getElementById('eventCycle').value);
@@ -2698,22 +2900,61 @@ function saveEvent(){
   const comment=document.getElementById('eventComment').value.trim();
   if(!date){showToast('Selecciona una fecha','error');return;}
   if(!appData[currentStudent].events) appData[currentStudent].events=[];
-  appData[currentStudent].events.push({id:Date.now(),type:currentEventType,subject:document.getElementById('eventSubject').value,date,comment,done:false,nota:undefined});
+  const needsComputo=eventTypeNeedsComputo(currentEventType);
+  const computo=needsComputo?parseInt(document.getElementById('eventComputo').value,10):null;
+  appData[currentStudent].events.push({id:Date.now(),type:currentEventType,subject:document.getElementById('eventSubject').value,date,comment,done:false,nota:undefined,computo});
   saveLocal();
   document.getElementById('addEventModal').classList.remove('open');
   renderEvents();showToast('Actividad guardada','success');
+  refreshNotifBadge();
 }
 function deleteEvent(id){
   appData[currentStudent].events=(appData[currentStudent].events||[]).filter(e=>e.id!==id);
-  saveLocal();renderEvents();
+  saveLocal();renderEvents();refreshNotifBadge();
+  if(document.getElementById('notifModal').classList.contains('open')) renderNotifList();
+}
+// Pide confirmación antes de borrar un evento del calendario (se llama tanto
+// desde la lista del calendario como desde el menú de notificaciones).
+function askDeleteEvent(id){
+  const ev=(appData[currentStudent].events||[]).find(e=>e.id===id);
+  if(!ev) return;
+  let sname='';CYCLES.forEach(c=>c.subjects.forEach(s=>{if(s.num===ev.subject)sname=s.name;}));
+  document.getElementById('deleteModalText').textContent=`¿Eliminar "${ev.type}"${sname?' de '+sname:''} del calendario? Esta acción no se puede deshacer.`;
+  pendingDeleteAction=()=>{ deleteEvent(id); showToast('Evento eliminado','success'); };
+  document.getElementById('deleteModal').classList.add('open');
 }
 function toggleEventDone(id,checked){
   const ev=(appData[currentStudent].events||[]).find(e=>e.id===id);
-  if(!ev) return; ev.done=checked; saveLocal();renderEvents();
+  if(!ev) return; ev.done=checked; saveLocal();renderEvents();refreshNotifBadge();
 }
 function setEventNota(id,val){
   const ev=(appData[currentStudent].events||[]).find(e=>e.id===id);
-  if(!ev) return; ev.nota=val===''?undefined:parseFloat(val); saveLocal();
+  if(!ev) return;
+  ev.nota=val===''?undefined:parseFloat(val);
+  saveLocal();
+  syncEventNotaToPensum(ev);
+}
+// Copia automáticamente la nota anotada en el calendario hacia el cómputo
+// correspondiente del pénsum (solo para Lab 1 / Lab 2 / Parcial; "Otra" no aplica).
+function syncEventNotaToPensum(ev){
+  const field=eventTypeToField(ev.type);
+  if(!field) return;
+  if(!ev.subject) return;
+  if(ev.nota===undefined||ev.nota===null||isNaN(ev.nota)) return;
+  const ci=(ev.computo!==undefined&&ev.computo!==null)?ev.computo:0;
+  const sd=getSubjectData(ev.subject);
+  sd.computos[ci][field]=ev.nota;
+  const fg=calcFinal(sd.computos);
+  sd.finalGrade=fg;
+  sd.status=getStatus(fg,sd.computos);
+  saveLocal();
+  showToast('✓ Nota sincronizada al pénsum','success');
+  if(currentCycleId&&document.getElementById('cycleView').classList.contains('active')){
+    const cyc=CYCLES.find(c=>c.id===currentCycleId);
+    if(cyc) renderSubjects(cyc);
+  }
+  if(document.getElementById('pensumView').classList.contains('active')) renderPensum();
+  updateStats();
 }
 function renderEvents(){
   const list=document.getElementById('eventsList');
@@ -2730,13 +2971,286 @@ function renderEvents(){
         <input type="checkbox" class="ev-check" ${ev.done?'checked':''} onchange="toggleEventDone(${ev.id},this.checked)">
         <span class="ev-type${ev.done?' done-txt':''}">${ev.type}</span>
         <span class="ev-date" style="color:${past?'var(--fail)':'var(--gm)'};">📅 ${ev.date}</span>
+        ${(ev.computo!==undefined&&ev.computo!==null)?`<span class="ev-computo-tag">Cómputo ${ev.computo+1}</span>`:''}
         <label style="font-size:11px;color:var(--gm);margin-left:auto;display:flex;align-items:center;gap:4px;">Nota:<input type="number" class="ev-nota-inp" min="0" max="10" step="0.01" value="${ev.nota!==undefined?ev.nota:''}" placeholder="—" oninput="setEventNota(${ev.id},this.value)"></label>
-        <button class="ev-del-btn" onclick="deleteEvent(${ev.id})">🗑</button>
+        <button class="ev-del-btn" onclick="askDeleteEvent(${ev.id})">🗑</button>
       </div>
       ${sname?`<div class="ev-sub">${sname}</div>`:''}
       ${ev.comment?`<div class="ev-sub" style="font-style:italic;">"${ev.comment}"</div>`:''}
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// NOTIFICACIONES (laboratorios, parciales y actividades del calendario)
+// Verde = falta ~1 semana · Amarillo = faltan 3-4 días · Rojo = faltan 2 o menos.
+// Todo esto vive solo en este dispositivo (localStorage), igual que el
+// tema/idioma o "recordar estudiante" — no pasa por Firebase.
+// ═══════════════════════════════════════════════════════════
+const NOTIF_DEFAULTS = { enabled:true, greenDays:7, yellowDays:4, redDays:2, duration:8 };
+let notifConfig = Object.assign({}, NOTIF_DEFAULTS);
+
+function _notifKeyBase(){ return (currentStudent||'')+'__'+(currentCareer||''); }
+function notifConfigStorageKey(){ return 'ugb_notif_cfg_'+_notifKeyBase(); }
+function notifSeenStorageKey(){ return 'ugb_notif_seen_'+_notifKeyBase(); }
+
+function loadNotifConfig(){
+  notifConfig = Object.assign({}, NOTIF_DEFAULTS);
+  try{
+    const raw = localStorage.getItem(notifConfigStorageKey());
+    if(raw) notifConfig = Object.assign({}, NOTIF_DEFAULTS, JSON.parse(raw));
+  }catch(e){ console.error('[Notif] Error leyendo configuración:', e); }
+}
+function saveNotifConfig(){
+  try{ localStorage.setItem(notifConfigStorageKey(), JSON.stringify(notifConfig)); }
+  catch(e){ console.error('[Notif] Error guardando configuración:', e); }
+}
+function getNotifSeen(){
+  try{ return JSON.parse(localStorage.getItem(notifSeenStorageKey())||'{}'); }
+  catch(e){ return {}; }
+}
+function setNotifSeen(map){
+  try{ localStorage.setItem(notifSeenStorageKey(), JSON.stringify(map)); }
+  catch(e){ console.error('[Notif] Error guardando notificaciones vistas:', e); }
+}
+
+function daysUntil(dateStr){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const d=new Date(dateStr+'T00:00:00');
+  if(isNaN(d)) return null;
+  return Math.round((d-today)/86400000);
+}
+function notifTier(daysLeft){
+  if(daysLeft===null) return null;
+  if(daysLeft<=notifConfig.redDays) return 'red';
+  if(daysLeft<=notifConfig.yellowDays) return 'yellow';
+  if(daysLeft<=notifConfig.greenDays) return 'green';
+  return null;
+}
+function notifDaysLabel(daysLeft){
+  if(daysLeft<0) return `Venció hace ${Math.abs(daysLeft)} día${Math.abs(daysLeft)===1?'':'s'}`;
+  if(daysLeft===0) return 'Es hoy';
+  if(daysLeft===1) return 'Falta 1 día';
+  return `Faltan ${daysLeft} días`;
+}
+function notifTierColor(tier){ return tier==='red'?'var(--fail)':tier==='yellow'?'var(--pend)':'var(--pass)'; }
+function notifTierIcon(tier){ return tier==='red'?'🔴':tier==='yellow'?'🟡':'🟢'; }
+
+// Calcula, para el estudiante actual, qué eventos del calendario caen
+// dentro de alguna franja de aviso configurada (y no están marcados hechos).
+function computeNotifications(){
+  if(!currentStudent||!appData[currentStudent]) return [];
+  const evs=appData[currentStudent].events||[];
+  const dismissed=getNotifDismissed();
+  const items=[];
+  evs.forEach(ev=>{
+    if(ev.done||!ev.date) return;
+    if(dismissed[ev.id]) return;
+    const daysLeft=daysUntil(ev.date);
+    const tier=notifTier(daysLeft);
+    if(!tier) return;
+    let sname='';CYCLES.forEach(c=>c.subjects.forEach(s=>{if(s.num===ev.subject)sname=s.name;}));
+    items.push({ id:ev.id, type:ev.type, subject:ev.subject, sname, date:ev.date, daysLeft, tier });
+  });
+  items.sort((a,b)=>a.daysLeft-b.daysLeft);
+  return items;
+}
+
+// ── BADGE en el menú hamburguesa ──
+function refreshNotifBadge(){
+  const items=computeNotifications();
+  const b=document.getElementById('notifBadge');
+  if(b){
+    if(items.length>0){ b.textContent=items.length>99?'99+':String(items.length); b.style.display='flex'; }
+    else { b.style.display='none'; }
+  }
+  return items;
+}
+
+// ── Modal con la lista visual de notificaciones ──
+function openNotifModal(){ renderNotifList(); document.getElementById('notifModal').classList.add('open'); }
+function closeNotifModal(){ document.getElementById('notifModal').classList.remove('open'); }
+function renderNotifList(){
+  const list=document.getElementById('notifList');
+  const items=refreshNotifBadge();
+  if(!items.length){
+    list.innerHTML='<div style="color:var(--gm);text-align:center;padding:24px 10px;">No hay notificaciones activas.<br><span style="font-size:11px;">Aparecerán aquí cuando se acerque la fecha de un laboratorio, parcial o actividad.</span></div>';
+    return;
+  }
+  list.innerHTML=items.map(it=>{
+    return `<div class="notif-row tier-${it.tier}">
+      <div class="notif-row-top">
+        <span class="notif-dot"></span>
+        <span class="notif-row-type">${escapeHtml(it.type)}</span>
+        <span class="notif-row-days">${notifDaysLabel(it.daysLeft)}</span>
+        <div class="notif-row-actions">
+          <button class="notif-row-btn" title="Ocultar esta notificación" onclick="dismissNotifItem(${it.id})">🔕</button>
+          <button class="notif-row-btn" title="Eliminar del calendario" onclick="askDeleteEvent(${it.id})">🗑</button>
+        </div>
+      </div>
+      ${it.sname?`<div class="notif-row-sub">${escapeHtml(it.sname)}</div>`:''}
+      <div class="notif-row-date">📅 ${it.date}</div>
+    </div>`;
+  }).join('');
+}
+// ── Ocultar una notificación puntual sin borrar el evento del calendario ──
+function notifDismissedStorageKey(){ return 'ugb_notif_dismissed_'+_notifKeyBase(); }
+function getNotifDismissed(){
+  try{ return JSON.parse(localStorage.getItem(notifDismissedStorageKey())||'{}'); }
+  catch(e){ return {}; }
+}
+function setNotifDismissed(map){
+  try{ localStorage.setItem(notifDismissedStorageKey(), JSON.stringify(map)); }
+  catch(e){ console.error('[Notif] Error guardando notificaciones ocultas:', e); }
+}
+function dismissNotifItem(id){
+  const map=getNotifDismissed();
+  map[id]=true;
+  setNotifDismissed(map);
+  renderNotifList();
+  showToast('Notificación ocultada','success');
+}
+
+// ── Panel de configuración (engranaje dentro del modal) ──
+function openNotifConfig(){
+  document.getElementById('notifCfgEnabled').checked = notifConfig.enabled;
+  document.getElementById('notifCfgGreen').value = notifConfig.greenDays;
+  document.getElementById('notifCfgYellow').value = notifConfig.yellowDays;
+  document.getElementById('notifCfgRed').value = notifConfig.redDays;
+  document.getElementById('notifCfgDuration').value = notifConfig.duration;
+  document.getElementById('notifModal').classList.remove('open');
+  document.getElementById('notifConfigModal').classList.add('open');
+}
+function closeNotifConfig(){
+  document.getElementById('notifConfigModal').classList.remove('open');
+  openNotifModal();
+}
+function saveNotifConfigUI(){
+  let green=parseInt(document.getElementById('notifCfgGreen').value,10);
+  let yellow=parseInt(document.getElementById('notifCfgYellow').value,10);
+  let red=parseInt(document.getElementById('notifCfgRed').value,10);
+  let duration=parseInt(document.getElementById('notifCfgDuration').value,10);
+  if(isNaN(green)||green<1) green=NOTIF_DEFAULTS.greenDays;
+  if(isNaN(yellow)||yellow<1) yellow=NOTIF_DEFAULTS.yellowDays;
+  if(isNaN(red)||red<0) red=NOTIF_DEFAULTS.redDays;
+  if(isNaN(duration)||duration<2) duration=NOTIF_DEFAULTS.duration;
+  // Mantener el orden lógico rojo <= amarillo <= verde para que las franjas tengan sentido
+  if(yellow>green) yellow=green;
+  if(red>yellow) red=yellow;
+  notifConfig = {
+    enabled: document.getElementById('notifCfgEnabled').checked,
+    greenDays: green, yellowDays: yellow, redDays: red, duration: duration
+  };
+  saveNotifConfig();
+  showToast('✓ Configuración de notificaciones guardada','success');
+  closeNotifConfig();
+  checkAndShowNotifToasts(true);
+}
+function resetNotifConfig(){
+  notifConfig = Object.assign({}, NOTIF_DEFAULTS);
+  saveNotifConfig();
+  document.getElementById('notifCfgEnabled').checked = notifConfig.enabled;
+  document.getElementById('notifCfgGreen').value = notifConfig.greenDays;
+  document.getElementById('notifCfgYellow').value = notifConfig.yellowDays;
+  document.getElementById('notifCfgRed').value = notifConfig.redDays;
+  document.getElementById('notifCfgDuration').value = notifConfig.duration;
+  showToast('Valores por defecto restaurados','success');
+}
+
+// ── Toasts emergentes (deslizar a la derecha para ocultar, 8s por defecto) ──
+let _notifToastTimers = {};
+function showNotifToast(item){
+  const wrap=document.getElementById('notifToastContainer');
+  if(!wrap) return;
+  const id='nt_'+item.id+'_'+item.tier;
+  if(document.getElementById(id)) return;
+  const el=document.createElement('div');
+  el.className='notif-toast tier-'+item.tier;
+  el.id=id;
+  el.innerHTML=`
+    <div class="notif-toast-icon">${notifTierIcon(item.tier)}</div>
+    <div class="notif-toast-body">
+      <div class="notif-toast-title">${escapeHtml(item.type)}${item.sname?' · '+escapeHtml(item.sname):''}</div>
+      <div class="notif-toast-sub">${notifDaysLabel(item.daysLeft)} · 📅 ${item.date}</div>
+    </div>
+    <div class="notif-toast-close" onclick="event.stopPropagation();dismissNotifToast('${id}')" title="Cerrar">✕</div>`;
+  el.addEventListener('click',()=>{
+    if(el._dragged){ el._dragged=false; return; }
+    dismissNotifToast(id);
+    openNotifModal();
+  });
+  wrap.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  _attachNotifSwipe(el,id);
+  const dur=Math.max(2,notifConfig.duration)*1000;
+  _notifToastTimers[id]=setTimeout(()=>dismissNotifToast(id),dur);
+}
+function dismissNotifToast(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  clearTimeout(_notifToastTimers[id]);
+  el.classList.add('hide');
+  setTimeout(()=>{ if(el.parentNode) el.parentNode.removeChild(el); },260);
+}
+function _attachNotifSwipe(el,id){
+  let startX=0,dx=0,dragging=false;
+  const threshold=70;
+  function onDown(x){ dragging=true; startX=x; dx=0; el.style.transition='none'; el.style.cursor='grabbing'; }
+  function onMove(x){
+    if(!dragging) return;
+    dx=Math.max(0,x-startX);
+    if(dx>8) el._dragged=true;
+    el.style.transform=`translateX(${dx}px)`;
+    el.style.opacity=String(Math.max(.15,1-dx/180));
+  }
+  function onUp(){
+    if(!dragging) return;
+    dragging=false; el.style.transition=''; el.style.cursor='grab';
+    if(dx>threshold){
+      el.style.transform='translateX(120%)'; el.style.opacity='0';
+      clearTimeout(_notifToastTimers[id]);
+      setTimeout(()=>{ if(el.parentNode) el.parentNode.removeChild(el); },200);
+    } else {
+      el.style.transform=''; el.style.opacity='';
+    }
+    document.removeEventListener('mousemove',onMouseMove);
+    document.removeEventListener('mouseup',onMouseUp);
+  }
+  const onMouseMove=e=>onMove(e.clientX);
+  const onMouseUp=()=>onUp();
+  el.addEventListener('touchstart',e=>onDown(e.touches[0].clientX),{passive:true});
+  el.addEventListener('touchmove',e=>onMove(e.touches[0].clientX),{passive:true});
+  el.addEventListener('touchend',onUp);
+  el.addEventListener('mousedown',e=>{ onDown(e.clientX); document.addEventListener('mousemove',onMouseMove); document.addEventListener('mouseup',onMouseUp); });
+}
+
+// ── Revisa el calendario y muestra los toasts que falten (nuevos o que subieron de nivel) ──
+function checkAndShowNotifToasts(force){
+  const items=refreshNotifBadge();
+  if(!notifConfig.enabled) return;
+  const seen=getNotifSeen();
+  let changed=false, shown=0;
+  items.forEach(it=>{
+    const key=String(it.id);
+    if(!force && seen[key]===it.tier) return; // ya se mostró esta franja para este evento
+    if(shown>=4) return; // evita saturar la pantalla si hay muchas a la vez
+    showNotifToast(it);
+    seen[key]=it.tier;
+    changed=true; shown++;
+  });
+  if(changed) setNotifSeen(seen);
+}
+
+// ── Watcher periódico: revisa cada 5 min (además de al iniciar sesión) ──
+let _notifWatcherInterval=null;
+function startNotifWatcher(){
+  stopNotifWatcher();
+  loadNotifConfig();
+  checkAndShowNotifToasts();
+  _notifWatcherInterval=setInterval(checkAndShowNotifToasts,5*60*1000);
+}
+function stopNotifWatcher(){
+  if(_notifWatcherInterval){ clearInterval(_notifWatcherInterval); _notifWatcherInterval=null; }
 }
 
 // ═══════════════════════════════════════════════════════════

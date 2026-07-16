@@ -33,7 +33,7 @@
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;}
 
 /* PRINT */
-@media print{body>*:not(#printArea){display:none!important;}#printArea,#printArea *{display:revert!important;}#printArea{position:static!important;width:100%;background:#fff;padding:0;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+@media print{body>*:not(#printArea){display:none!important;}#printArea{display:block!important;position:static!important;width:100%;background:#fff;padding:0;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
 body.printing>*:not(#printArea){display:none!important;}
 body.printing #printArea{display:block!important;position:fixed;inset:0;z-index:99999;background:#fff;overflow-y:auto;padding:22px 30px;}
 #printArea{display:none;}
@@ -502,9 +502,9 @@ header{flex-wrap:wrap;row-gap:6px;}
    modo claro u oscuro. @page con nombre permite mezclar
    hojas horizontales y verticales en el mismo documento.
    ══════════════════════════════════════════════════════ */
-@page { size: portrait; margin: 12mm 10mm; }
-@page pdf-landscape { size: landscape; margin: 10mm 12mm; }
-@page pdf-portrait  { size: portrait;  margin: 14mm 12mm; }
+@page { size: letter portrait; margin: 12mm 10mm; }
+@page pdf-landscape { size: letter landscape; margin: 9mm 10mm; }
+@page pdf-portrait  { size: letter portrait;  margin: 13mm 11mm; }
 
 .pdf-doc{font-family:'Inter',Arial,sans-serif;color:#111827;}
 .pdf-doc *{box-sizing:border-box;}
@@ -542,18 +542,18 @@ header{flex-wrap:wrap;row-gap:6px;}
 .pdf-electives-title span{background:#1e40af;color:#fff;padding:4px 16px;border-radius:999px;font-size:8px;font-weight:800;letter-spacing:1px;}
 .pdf-electives-grid{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
 
-.pdf-cycle-block{margin-bottom:16px;}
-.pdf-cycle-block-title{font-size:12px;font-weight:800;color:#1e3a8a;border-bottom:2px solid #1e40af;padding-bottom:5px;margin-bottom:10px;}
-.pdf-subject-detail{border:1px solid #e5e7eb;border-radius:9px;padding:9px 12px;margin-bottom:8px;page-break-inside:avoid;break-inside:avoid;}
-.pdf-subject-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:8px;}
-.pdf-subject-detail-name{font-size:11px;font-weight:700;color:#111827;}
-.pdf-subject-detail-code{font-size:9px;color:#6b7280;font-weight:500;}
-.pdf-subject-detail-grade{font-size:11px;font-weight:800;padding:2px 10px;border-radius:999px;color:#fff;white-space:nowrap;}
-.pdf-computos-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
-.pdf-computo-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:6px 8px;}
-.pdf-computo-box b{display:block;font-size:8px;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-.pdf-computo-box div{display:flex;justify-content:space-between;font-size:8.3px;color:#374151;padding:1px 0;}
-.pdf-computo-box .pdf-computo-sub{border-top:1px solid #e5e7eb;margin-top:3px;padding-top:3px;font-weight:700;color:#111827;}
+.pdf-cycle-block{margin-bottom:14px;}
+.pdf-cycle-block-title{font-size:12px;font-weight:800;color:#1e3a8a;border-bottom:2px solid #1e40af;padding-bottom:4px;margin-bottom:8px;}
+.pdf-subject-detail{border:1px solid #e5e7eb;border-radius:8px;padding:7px 10px;margin-bottom:6px;page-break-inside:avoid;break-inside:avoid;}
+.pdf-subject-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:8px;}
+.pdf-subject-detail-name{font-size:10.5px;font-weight:700;color:#111827;}
+.pdf-subject-detail-code{font-size:8.5px;color:#6b7280;font-weight:500;}
+.pdf-subject-detail-grade{font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:999px;color:#fff;white-space:nowrap;}
+.pdf-computos-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.pdf-computo-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:5px 7px;}
+.pdf-computo-box b{display:block;font-size:7.5px;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.pdf-computo-box div{display:flex;justify-content:space-between;font-size:8px;color:#374151;padding:0.5px 0;}
+.pdf-computo-box .pdf-computo-sub{border-top:1px solid #e5e7eb;margin-top:2px;padding-top:2px;font-weight:700;color:#111827;}
 
 .pdf-summary-table{width:100%;border-collapse:collapse;font-size:9px;}
 .pdf-summary-table thead th{background:#1e40af;color:#fff;padding:5px 7px;text-align:left;}
@@ -3668,8 +3668,9 @@ function buildPensumPageHTML(cyclesList,opts){
 
   if(normalCycles.length){
     const cols=singleColumn?1:normalCycles.length;
-    html+=`<div class="pdf-year-row" style="grid-template-columns:repeat(${cols},1fr);">${buildPdfYearRowHTML(normalCycles)}</div>`;
-    html+=`<div class="pdf-pensum-grid${singleColumn?' pdf-single-col':''}" style="grid-template-columns:repeat(${cols},1fr);">`;
+    const centerStyle=singleColumn?'margin:0 auto;':'';
+    html+=`<div class="pdf-year-row" style="grid-template-columns:repeat(${cols},1fr);max-width:${singleColumn?'230px':'none'};${centerStyle}">${buildPdfYearRowHTML(normalCycles)}</div>`;
+    html+=`<div class="pdf-pensum-grid${singleColumn?' pdf-single-col':''}" style="grid-template-columns:repeat(${cols},1fr);${centerStyle}">`;
     normalCycles.forEach(cycle=>{
       html+=`<div class="pdf-cycle-col"><div class="pdf-cycle-header">${escapeHtml(cycle.name.toUpperCase())}</div>`;
       cycle.subjects.forEach(sub=>{html+=buildPdfSubjectCardHTML(sub);});

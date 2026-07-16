@@ -33,7 +33,7 @@
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;}
 
 /* PRINT */
-@media print{body>*:not(#printArea){display:none!important;}#printArea,#printArea *{display:revert!important;}#printArea{position:fixed;inset:0;background:#fff;padding:20px 28px;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+@media print{body>*:not(#printArea){display:none!important;}#printArea,#printArea *{display:revert!important;}#printArea{position:static!important;width:100%;background:#fff;padding:0;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
 body.printing>*:not(#printArea){display:none!important;}
 body.printing #printArea{display:block!important;position:fixed;inset:0;z-index:99999;background:#fff;overflow-y:auto;padding:22px 30px;}
 #printArea{display:none;}
@@ -479,6 +479,86 @@ header{flex-wrap:wrap;row-gap:6px;}
 @media (max-width:640px){
   input,select,textarea{font-size:16px!important;}
 }
+
+/* ══════════════════════════════════════════════════════
+   MODAL "GENERAR PDF"
+   ══════════════════════════════════════════════════════ */
+.pdf-opt-card{border:1.5px solid var(--gl);border-radius:10px;padding:11px 13px;margin-bottom:10px;transition:all .15s;}
+.pdf-opt-card:has(input:checked){border-color:var(--blue);background:rgba(30,64,175,.06);}
+.pdf-opt-card label{display:flex;gap:10px;align-items:flex-start;cursor:pointer;}
+.pdf-opt-card input[type="checkbox"]{margin-top:2px;width:16px;height:16px;flex-shrink:0;accent-color:var(--blue);cursor:pointer;}
+.pdf-opt-card input[type="checkbox"]:disabled{cursor:not-allowed;}
+.pdf-opt-card b{display:block;color:var(--text);font-size:13px;font-weight:700;}
+.pdf-opt-desc{display:block;color:var(--gm);font-size:11px;margin-top:2px;font-weight:400;line-height:1.4;}
+.pdf-sub-select{margin-top:10px;margin-left:26px;}
+.pdf-custom-list{margin-top:10px;margin-left:26px;max-height:150px;overflow-y:auto;border:1px solid var(--gl);border-radius:8px;padding:2px 10px;}
+.pdf-custom-list label{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 0;font-weight:500;color:var(--text);cursor:pointer;}
+.pdf-custom-list input{accent-color:var(--blue);cursor:pointer;width:14px;height:14px;}
+
+/* ══════════════════════════════════════════════════════
+   DOCUMENTO PDF IMPRIMIBLE
+   Colores fijos (no usan var(--text)/var(--card) etc.) para
+   que el PDF se vea igual sin importar si la app está en
+   modo claro u oscuro. @page con nombre permite mezclar
+   hojas horizontales y verticales en el mismo documento.
+   ══════════════════════════════════════════════════════ */
+@page { size: portrait; margin: 12mm 10mm; }
+@page pdf-landscape { size: landscape; margin: 10mm 12mm; }
+@page pdf-portrait  { size: portrait;  margin: 14mm 12mm; }
+
+.pdf-doc{font-family:'Inter',Arial,sans-serif;color:#111827;}
+.pdf-doc *{box-sizing:border-box;}
+.pdf-page{page-break-after:always;break-after:page;}
+.pdf-page:last-child{page-break-after:auto;break-after:auto;}
+.pdf-page-landscape{page:pdf-landscape;}
+.pdf-page-portrait{page:pdf-portrait;}
+
+.pdf-header{display:flex;align-items:center;gap:14px;border-bottom:2px solid #1e40af;padding-bottom:10px;margin-bottom:14px;}
+.pdf-header img{height:36px;object-fit:contain;}
+.pdf-header-text h2{color:#1e40af;font-size:15px;font-weight:800;margin:0 0 2px;}
+.pdf-header-text p{color:#6b7280;font-size:10.5px;margin:0;}
+.pdf-header-mini{display:flex;align-items:center;gap:8px;margin-bottom:12px;opacity:.85;}
+.pdf-header-mini img{height:20px;object-fit:contain;}
+.pdf-header-mini span{font-size:9.5px;color:#6b7280;}
+
+.pdf-section-title{font-size:12.5px;font-weight:800;color:#fff;background:#1e40af;padding:7px 14px;border-radius:8px;margin-bottom:12px;letter-spacing:.4px;text-transform:uppercase;}
+
+.pdf-year-row{display:grid;gap:6px;margin-bottom:4px;}
+.pdf-year-label{text-align:center;font-size:7.5px;font-weight:800;letter-spacing:1px;color:#6b7280;text-transform:uppercase;border-bottom:1.5px solid #e5e7eb;padding-bottom:3px;}
+.pdf-pensum-grid{display:grid;gap:6px;margin-bottom:10px;}
+.pdf-pensum-grid.pdf-single-col{max-width:230px;}
+.pdf-cycle-col{display:flex;flex-direction:column;gap:5px;}
+.pdf-cycle-header{background:#1e40af;color:#fff;text-align:center;font-size:8.5px;font-weight:800;letter-spacing:.5px;padding:5px 3px;border-radius:6px;text-transform:uppercase;}
+.pdf-card{border:1px solid #e5e7eb;border-radius:6px;position:relative;overflow:hidden;page-break-inside:avoid;break-inside:avoid;}
+.pdf-card-status{position:absolute;top:0;left:0;width:3px;height:100%;}
+.pdf-card-top{background:rgba(30,64,175,.85);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:2px 5px;font-size:7.3px;font-weight:700;}
+.pdf-card-grade{font-size:7px;font-weight:800;padding:0 4px;border-radius:8px;color:#fff;}
+.pdf-card-body{padding:4px 5px;text-align:center;}
+.pdf-card-name{font-size:7.2px;font-weight:600;line-height:1.15;margin-bottom:2px;}
+.pdf-card-extra{font-size:6px;color:#9ca3af;font-weight:600;text-transform:uppercase;}
+.pdf-card-bottom{display:flex;justify-content:space-between;padding:2px 5px;border-top:1px solid #e5e7eb;font-size:6.2px;color:#6b7280;}
+
+.pdf-electives-title{text-align:center;margin:10px 0 8px;}
+.pdf-electives-title span{background:#1e40af;color:#fff;padding:4px 16px;border-radius:999px;font-size:8px;font-weight:800;letter-spacing:1px;}
+.pdf-electives-grid{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+
+.pdf-cycle-block{margin-bottom:16px;}
+.pdf-cycle-block-title{font-size:12px;font-weight:800;color:#1e3a8a;border-bottom:2px solid #1e40af;padding-bottom:5px;margin-bottom:10px;}
+.pdf-subject-detail{border:1px solid #e5e7eb;border-radius:9px;padding:9px 12px;margin-bottom:8px;page-break-inside:avoid;break-inside:avoid;}
+.pdf-subject-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:8px;}
+.pdf-subject-detail-name{font-size:11px;font-weight:700;color:#111827;}
+.pdf-subject-detail-code{font-size:9px;color:#6b7280;font-weight:500;}
+.pdf-subject-detail-grade{font-size:11px;font-weight:800;padding:2px 10px;border-radius:999px;color:#fff;white-space:nowrap;}
+.pdf-computos-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.pdf-computo-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:7px;padding:6px 8px;}
+.pdf-computo-box b{display:block;font-size:8px;color:#1e40af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.pdf-computo-box div{display:flex;justify-content:space-between;font-size:8.3px;color:#374151;padding:1px 0;}
+.pdf-computo-box .pdf-computo-sub{border-top:1px solid #e5e7eb;margin-top:3px;padding-top:3px;font-weight:700;color:#111827;}
+
+.pdf-summary-table{width:100%;border-collapse:collapse;font-size:9px;}
+.pdf-summary-table thead th{background:#1e40af;color:#fff;padding:5px 7px;text-align:left;}
+.pdf-summary-table td{padding:4px 7px;border-bottom:1px solid #e5e7eb;}
+.pdf-summary-table tr{page-break-inside:avoid;break-inside:avoid;}
 </style>
 </head>
 <body>
@@ -636,7 +716,7 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="ham-item" onclick="importCSV();closeHam()"><span class="ham-ico">📁</span> Importar CSV</div>
     <div class="ham-item" onclick="exportJSON();closeHam()"><span class="ham-ico">💾</span> Exportar JSON</div>
     <div class="ham-item" onclick="importJSON();closeHam()"><span class="ham-ico">📂</span> Importar JSON</div>
-    <div class="ham-item" onclick="exportPDF();closeHam()"><span class="ham-ico">🖨️</span> Imprimir / PDF</div>
+    <div class="ham-item" onclick="openPdfModal();closeHam()"><span class="ham-ico">🖨️</span> Imprimir / PDF</div>
 
     <div class="ham-divider"></div>
     <div class="side-label">Preferencias</div>
@@ -716,7 +796,7 @@ header{flex-wrap:wrap;row-gap:6px;}
   <button class="tool-btn" onclick="openDondeEstoy()" title="¿Dónde debo estar?">📍</button>
   <button class="tool-btn" onclick="fetchFromFirebase()" title="Descargar">⬇️</button>
   <button class="tool-btn" onclick="syncToFirebase()" title="Subir">☁️</button>
-  <button class="tool-btn" onclick="exportPDF()" title="Imprimir">🖨️</button>
+  <button class="tool-btn" onclick="openPdfModal()" title="Imprimir">🖨️</button>
   <button class="tool-btn" onclick="toggleTheme()" title="Tema">🌙</button>
   <span style="margin-left:auto;font-size:10px;color:var(--gm);" id="autoSaveTick">💾 OK</span>
 </div>
@@ -892,6 +972,62 @@ header{flex-wrap:wrap;row-gap:6px;}
     </div>
     <div id="histPensumList" style="max-height:380px;overflow-y:auto;margin-bottom:13px;"></div>
     <div class="modal-btns"><button class="modal-btn primary" onclick="document.getElementById('histPensumModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="pdfModal">
+  <div class="modal" style="width:560px;">
+    <h3>🖨️ Generar PDF</h3>
+    <p style="margin-bottom:14px;">Elige qué incluir en el reporte. Si no marcas ninguna opción, se genera el reporte completo (pénsum + notas por materia de todos los ciclos).</p>
+
+    <div class="pdf-opt-card">
+      <label>
+        <input type="checkbox" id="pdfOptFull" onchange="updatePdfModalUIState()">
+        <div>
+          <b>Generar pénsum completo</b>
+          <span class="pdf-opt-desc">Vista general de todos los ciclos, tal como se ve en pantalla (hoja horizontal).</span>
+        </div>
+      </label>
+    </div>
+
+    <div class="pdf-opt-card">
+      <label>
+        <input type="checkbox" id="pdfOptCycle" onchange="togglePdfCycleSelect()">
+        <div>
+          <b>Generar ciclo específico</b>
+          <span class="pdf-opt-desc">Solo un ciclo: su vista + el detalle de sus notas. No incluye el resumen final de todos los ciclos.</span>
+        </div>
+      </label>
+      <div id="pdfCycleSelectWrap" class="pdf-sub-select" style="display:none;">
+        <select id="pdfCycleSelect"></select>
+      </div>
+    </div>
+
+    <div class="pdf-opt-card">
+      <label>
+        <input type="checkbox" id="pdfOptDetailed" onchange="updatePdfModalUIState()">
+        <div>
+          <b>Generar pénsum y notas por materia</b>
+          <span class="pdf-opt-desc">Detalle completo: cómputos (Lab 1 / Lab 2 / Parcial) de cada materia en todos los ciclos, más la tabla resumen final.</span>
+        </div>
+      </label>
+    </div>
+
+    <div class="pdf-opt-card">
+      <label>
+        <input type="checkbox" id="pdfOptCustom" onchange="togglePdfCustomList()">
+        <div>
+          <b>Personalizado</b>
+          <span class="pdf-opt-desc">Combina el pénsum completo (opcional) con el detalle de solo los ciclos que elijas abajo.</span>
+        </div>
+      </label>
+      <div id="pdfCustomCycleList" class="pdf-custom-list" style="display:none;"></div>
+    </div>
+
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="closePdfModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="generatePdfFromModal()">Generar</button>
+    </div>
   </div>
 </div>
 
@@ -3395,21 +3531,265 @@ function importCSV(){
 // ═══════════════════════════════════════════════════════════
 // PDF
 // ═══════════════════════════════════════════════════════════
-function exportPDF(){
+// ═══════════════════════════════════════════════════════════
+// GENERAR PDF — modal de opciones
+// ═══════════════════════════════════════════════════════════
+const PDF_STATUS_LABEL={pass:'Aprobada',fail:'Reprobada',inprogress:'En curso',pending:'Pendiente',special:'Especial ⭐'};
+const PDF_STATUS_BADGE_BG={pass:'#10b981',fail:'#ef4444',inprogress:'#f59e0b',pending:'#9ca3af',special:'#f59e0b'};
+const PDF_STATUS_ROW_BG={pass:'#d1fae5',fail:'#fee2e2',inprogress:'#fef3c7',pending:'#f9fafb',special:'#fef3c7'};
+
+function openPdfModal(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  const sel=document.getElementById('pdfCycleSelect');
+  sel.innerHTML=CYCLES.map(c=>`<option value="${c.id}">${escapeHtml(c.name)} — ${escapeHtml(c.year)}</option>`).join('');
+  const list=document.getElementById('pdfCustomCycleList');
+  list.innerHTML=CYCLES.map(c=>`<label><input type="checkbox" class="pdfCustomCycleChk" value="${c.id}"> ${escapeHtml(c.name)} — ${escapeHtml(c.year)}</label>`).join('');
+  ['pdfOptFull','pdfOptCycle','pdfOptDetailed','pdfOptCustom'].forEach(id=>{document.getElementById(id).checked=false;});
+  togglePdfCycleSelect();
+  togglePdfCustomList();
+  document.getElementById('pdfModal').classList.add('open');
+}
+function closePdfModal(){document.getElementById('pdfModal').classList.remove('open');}
+
+// "Ciclo específico" y "Personalizado" son mutuamente excluyentes (cada uno
+// maneja su propia lista de ciclos), y "Ciclo específico" ignora las demás
+// opciones por diseño (ver generatePdfFromModal) — por eso se deshabilitan
+// visualmente para que quede claro qué se va a generar.
+function updatePdfModalUIState(){
+  const cycleOn=document.getElementById('pdfOptCycle').checked;
+  const customOn=document.getElementById('pdfOptCustom').checked;
+  const fullChk=document.getElementById('pdfOptFull');
+  const detChk=document.getElementById('pdfOptDetailed');
+  fullChk.disabled=cycleOn;
+  detChk.disabled=cycleOn||customOn;
+  fullChk.closest('.pdf-opt-card').style.opacity=cycleOn?.45:1;
+  detChk.closest('.pdf-opt-card').style.opacity=(cycleOn||customOn)?.45:1;
+  if(cycleOn){fullChk.checked=false;detChk.checked=false;}
+  if(customOn){detChk.checked=false;}
+}
+function togglePdfCycleSelect(){
+  const on=document.getElementById('pdfOptCycle').checked;
+  document.getElementById('pdfCycleSelectWrap').style.display=on?'block':'none';
+  if(on){document.getElementById('pdfOptCustom').checked=false;document.getElementById('pdfCustomCycleList').style.display='none';}
+  updatePdfModalUIState();
+}
+function togglePdfCustomList(){
+  const on=document.getElementById('pdfOptCustom').checked;
+  document.getElementById('pdfCustomCycleList').style.display=on?'block':'none';
+  if(on){document.getElementById('pdfOptCycle').checked=false;document.getElementById('pdfCycleSelectWrap').style.display='none';}
+  updatePdfModalUIState();
+}
+
+function generatePdfFromModal(){
+  const fullChecked=document.getElementById('pdfOptFull').checked;
+  const cycleChecked=document.getElementById('pdfOptCycle').checked;
+  const detailedChecked=document.getElementById('pdfOptDetailed').checked;
+  const customChecked=document.getElementById('pdfOptCustom').checked;
+
+  let opts;
+  if(cycleChecked){
+    const cid=parseInt(document.getElementById('pdfCycleSelect').value,10);
+    opts={type:'single',cycleId:cid};
+  }else if(customChecked){
+    const ids=Array.from(document.querySelectorAll('.pdfCustomCycleChk:checked')).map(i=>parseInt(i.value,10));
+    if(!ids.length){showToast('Selecciona al menos un ciclo en Personalizado','error');return;}
+    opts={type:'custom',includeFull:fullChecked,cycleIds:ids};
+  }else if(!fullChecked&&!detailedChecked){
+    opts={type:'complete'}; // nada marcado -> reporte completo por defecto
+  }else if(fullChecked&&!detailedChecked){
+    opts={type:'full-only'};
+  }else{
+    opts={type:'complete'}; // "detallado" marcado (con o sin "completo") -> reporte completo
+  }
+  closePdfModal();
+  exportPDF(opts);
+}
+
+// ═══════════════════════════════════════════════════════════
+// GENERAR PDF — construcción del HTML imprimible
+// ═══════════════════════════════════════════════════════════
+function buildPdfHeaderHTML(subtitle){
+  const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  return `<div class="pdf-header">
+    <img src="Logotipo-horizontal-azul.png" onerror="this.style.display='none'">
+    <div class="pdf-header-text">
+      <h2>Pénsum — ${escapeHtml(careerLabel)}</h2>
+      <p>Estudiante: <strong>${escapeHtml(currentStudent||'?')}</strong>${subtitle?' · '+escapeHtml(subtitle):''} · ${new Date().toLocaleDateString('es-SV')}</p>
+    </div>
+  </div>`;
+}
+function buildPdfMiniHeaderHTML(){
+  const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  return `<div class="pdf-header-mini"><img src="Logotipo-horizontal-azul.png" onerror="this.style.display='none'"><span>${escapeHtml(currentStudent||'?')} · ${escapeHtml(careerLabel)} · ${new Date().toLocaleDateString('es-SV')}</span></div>`;
+}
+function buildPdfYearRowHTML(cycles){
+  let html='';
+  cycles.forEach((c,i)=>{
+    const showLabel=i===0||cycles[i-1].year!==c.year;
+    html+=`<div class="pdf-year-label">${showLabel?escapeHtml(c.year):''}</div>`;
+  });
+  return html;
+}
+function buildPdfSubjectCardHTML(sub){
+  const sd=getStudentData();
+  const subData=getSubjectData(sub.num);
+  const grade=getEffectiveGrade(subData);
+  const status=getEffectiveStatus(subData);
+  const isSpecial=!!(sd.specialCards&&sd.specialCards[sub.num]);
+  const progress=grade!==null?Math.round((grade/10)*100):0;
+  const statusKey=isSpecial?'special':status;
+  let bg='#fff';
+  if(grade!==null&&!isSpecial) bg=`linear-gradient(to right, rgba(16,185,129,.42) ${progress}%, rgba(239,68,68,.35) ${progress}%)`;
+  else if(status==='pass'&&!isSpecial) bg='linear-gradient(to right, rgba(16,185,129,.42) 60%, rgba(239,68,68,.35) 60%)';
+  else if(status==='fail'&&!isSpecial) bg='linear-gradient(to right, rgba(16,185,129,.42) 40%, rgba(239,68,68,.35) 40%)';
+  else if(status==='inprogress'&&!isSpecial) bg='rgba(251,191,36,.25)';
+  const gradeDisp=grade!==null?`<span class="pdf-card-grade" style="background:${PDF_STATUS_BADGE_BG[statusKey]}">${Math.floor(grade*10)/10}</span>`:'';
+  return `<div class="pdf-card" style="background:${bg};">
+    <div class="pdf-card-status" style="background:${PDF_STATUS_BADGE_BG[statusKey]}"></div>
+    <div class="pdf-card-top"><span>${sub.num} · ${sub.code}</span>${gradeDisp}</div>
+    <div class="pdf-card-body">
+      <div class="pdf-card-name">${escapeHtml(sub.name)}</div>
+      <div class="pdf-card-extra">${isSpecial?'⭐ Especial':'&nbsp;'}</div>
+    </div>
+    <div class="pdf-card-bottom"><span>${sub.prereq}</span>${progress>0&&!isSpecial?`<span style="color:#ef4444;font-weight:700;">${progress}%</span>`:'<span></span>'}<span>${sub.uv} UV</span></div>
+  </div>`;
+}
+
+// Página 1 — pénsum completo tipo cuadrícula (hoja horizontal), o un solo
+// ciclo (columna única, hoja vertical) cuando opts.singleColumn es true.
+function buildPensumPageHTML(cyclesList,opts){
+  opts=opts||{};
+  const singleColumn=!!opts.singleColumn;
+  const normalCycles=cyclesList.filter(c=>c.year!=='ASIGNATURAS ELECTIVAS');
+  const electiveCycles=cyclesList.filter(c=>c.year==='ASIGNATURAS ELECTIVAS');
+  let html=`<div class="pdf-page ${singleColumn?'pdf-page-portrait':'pdf-page-landscape'}">`;
+  html+=buildPdfHeaderHTML(singleColumn?cyclesList[0].name:'Pénsum completo');
+  html+=`<div class="pdf-section-title">${singleColumn?('Vista — '+escapeHtml(cyclesList[0].name)):'Vista general del pénsum'}</div>`;
+
+  if(normalCycles.length){
+    const cols=singleColumn?1:normalCycles.length;
+    html+=`<div class="pdf-year-row" style="grid-template-columns:repeat(${cols},1fr);">${buildPdfYearRowHTML(normalCycles)}</div>`;
+    html+=`<div class="pdf-pensum-grid${singleColumn?' pdf-single-col':''}" style="grid-template-columns:repeat(${cols},1fr);">`;
+    normalCycles.forEach(cycle=>{
+      html+=`<div class="pdf-cycle-col"><div class="pdf-cycle-header">${escapeHtml(cycle.name.toUpperCase())}</div>`;
+      cycle.subjects.forEach(sub=>{html+=buildPdfSubjectCardHTML(sub);});
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+  if(electiveCycles.length){
+    html+='<div class="pdf-electives-title"><span>Asignaturas Electivas</span></div><div class="pdf-electives-grid">';
+    electiveCycles.forEach(cycle=>{
+      html+=`<div style="display:flex;flex-direction:column;gap:5px;width:150px;"><div class="pdf-cycle-header">${escapeHtml(cycle.name.toUpperCase())}</div>`;
+      cycle.subjects.forEach(sub=>{html+=buildPdfSubjectCardHTML(sub);});
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function buildPdfCycleDetailBlockHTML(cycle){
+  const sd=getStudentData();
+  let html=`<div class="pdf-cycle-block"><div class="pdf-cycle-block-title">${escapeHtml(cycle.name)} · ${escapeHtml(cycle.year)}</div>`;
+  cycle.subjects.forEach(sub=>{
+    const subData=getSubjectData(sub.num);
+    const grade=getEffectiveGrade(subData);
+    const status=getEffectiveStatus(subData);
+    const isSpecial=!!(sd.specialCards&&sd.specialCards[sub.num]);
+    const statusKey=isSpecial?'special':status;
+    html+=`<div class="pdf-subject-detail">
+      <div class="pdf-subject-detail-head">
+        <div><span class="pdf-subject-detail-name">${escapeHtml(sub.name)}</span> <span class="pdf-subject-detail-code">(Cód. ${sub.code} · #${sub.num})</span></div>
+        <span class="pdf-subject-detail-grade" style="background:${PDF_STATUS_BADGE_BG[statusKey]}">${grade!==null?Math.floor(grade*10)/10:'—'} · ${PDF_STATUS_LABEL[statusKey]}</span>
+      </div>
+      <div class="pdf-computos-row">`;
+    subData.computos.forEach((c,idx)=>{
+      const cVal=calcComputo(c);
+      html+=`<div class="pdf-computo-box">
+        <b>Cómputo ${idx+1}</b>
+        <div><span>Lab 1</span><span>${c.lab1!==''&&c.lab1!==undefined?c.lab1:'—'}</span></div>
+        <div><span>Lab 2</span><span>${c.lab2!==''&&c.lab2!==undefined?c.lab2:'—'}</span></div>
+        <div><span>Parcial</span><span>${c.parcial!==''&&c.parcial!==undefined?c.parcial:'—'}</span></div>
+        <div class="pdf-computo-sub"><span>Subtotal</span><span>${cVal!==null?cVal.toFixed(2):'—'}</span></div>
+      </div>`;
+    });
+    html+='</div></div>';
+  });
+  html+='</div>';
+  return html;
+}
+
+// Páginas siguientes — una sección por ciclo, con los 3 cómputos desglosados
+// de cada materia. Acepta un ciclo único o un arreglo de ciclos (fluyen
+// dentro de la misma página vertical, cada tarjeta evita romperse a la mitad).
+function buildCyclePageHTML(cycleOrCycles,title){
+  const cycles=Array.isArray(cycleOrCycles)?cycleOrCycles:[cycleOrCycles];
+  let html='<div class="pdf-page pdf-page-portrait">';
+  html+=buildPdfMiniHeaderHTML();
+  html+=`<div class="pdf-section-title">${escapeHtml(title||'Detalle de notas por materia')}</div>`;
+  cycles.forEach(cycle=>{html+=buildPdfCycleDetailBlockHTML(cycle);});
+  html+='</div>';
+  return html;
+}
+
+// Tabla resumen final — Ciclo | Materia | Nota Final | Estado
+function buildSummaryTableHTML(cyclesList){
+  const sd=getStudentData();
+  let html='<div class="pdf-page pdf-page-portrait">';
+  html+=buildPdfMiniHeaderHTML();
+  html+='<div class="pdf-section-title">Resumen general — historial completo</div>';
+  html+='<table class="pdf-summary-table"><thead><tr><th>Ciclo</th><th>Materia</th><th style="text-align:center;">Nota Final</th><th style="text-align:center;">Estado</th></tr></thead><tbody>';
+  cyclesList.forEach(cycle=>{
+    cycle.subjects.forEach(sub=>{
+      const subData=getSubjectData(sub.num);
+      const grade=getEffectiveGrade(subData);
+      const status=getEffectiveStatus(subData);
+      const isSpecial=!!(sd.specialCards&&sd.specialCards[sub.num]);
+      const statusKey=isSpecial?'special':status;
+      html+=`<tr style="background:${PDF_STATUS_ROW_BG[statusKey]};">
+        <td>${escapeHtml(cycle.name)}</td>
+        <td>${escapeHtml(sub.name)}</td>
+        <td style="text-align:center;font-weight:700;">${grade!==null?Math.floor(grade*10)/10:'—'}</td>
+        <td style="text-align:center;">${PDF_STATUS_LABEL[statusKey]}</td>
+      </tr>`;
+    });
+  });
+  html+='</tbody></table></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// GENERAR PDF — orquestador (llamado directo, sin args = reporte completo)
+// ═══════════════════════════════════════════════════════════
+function exportPDF(reportOpts){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  reportOpts=reportOpts||{type:'complete'};
   const pt=document.title;document.title='Pensum_UGB_'+(currentStudent||'Estudiante');
-  const sMap={pass:'Aprobada',fail:'Reprobada',inprogress:'En curso',pending:'Pendiente'};
-  const bMap={pass:'#d1fae5',fail:'#fee2e2',inprogress:'#fef3c7',pending:'#f9fafb'};
-  let html=`<div style="text-align:center;margin-bottom:14px;"><img src="Logotipo-horizontal-azul.png" style="height:38px;object-fit:contain;" onerror="this.style.display='none'"><h2 style="color:#1e40af;margin:7px 0 2px;font-size:15px;font-family:sans-serif;">Pénsum — Ing. en Sistemas y Redes</h2><p style="color:#6b7280;font-size:11px;font-family:sans-serif;">Estudiante: <strong>${currentStudent||'?'}</strong> · ${new Date().toLocaleDateString('es-SV')}</p></div>`;
-  html+=`<table style="width:100%;border-collapse:collapse;font-family:sans-serif;font-size:10px;"><thead><tr style="background:#1e40af;color:white;"><th style="padding:4px 6px;text-align:left;">#</th><th style="padding:4px 6px;">Cód</th><th style="padding:4px 6px;text-align:left;">Materia</th><th style="padding:4px 6px;">Ciclo</th><th style="padding:4px 6px;">C1</th><th style="padding:4px 6px;">C2</th><th style="padding:4px 6px;">C3</th><th style="padding:4px 6px;">Nota</th><th style="padding:4px 6px;">Estado</th></tr></thead><tbody>`;
-  let ri=0;
-  CYCLES.forEach(cy=>cy.subjects.forEach(sub=>{
-    const sd=getSubjectData(sub.num);
-    const c1=calcComputo(sd.computos[0]),c2=calcComputo(sd.computos[1]),c3=calcComputo(sd.computos[2]);
-    const fg=calcFinal(sd.computos);const st=getStatus(fg,sd.computos);
-    const bg=ri%2===0?(bMap[st]||'#f9fafb'):'#fff';ri++;
-    html+=`<tr style="background:${bg};"><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;">${sub.num}</td><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;text-align:center;">${sub.code}</td><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;">${sub.name}</td><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;text-align:center;">${cy.name}</td><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;text-align:center;">${c1!==null?c1.toFixed(2):'—'}</td><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;text-align:center;">${c2!==null?c2.toFixed(2):'—'}</td><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;text-align:center;">${c3!==null?c3.toFixed(2):'—'}</td><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:700;">${fg!==null?(Math.floor(fg*10)/10):'—'}</td><td style="padding:3px 6px;border-bottom:1px solid #e5e7eb;text-align:center;">${sMap[st]||'—'}</td></tr>`;
-  }));
-  html+='</tbody></table>';
+
+  let html='<div class="pdf-doc">';
+  if(reportOpts.type==='single'){
+    const cycle=CYCLES.find(c=>c.id===reportOpts.cycleId);
+    if(!cycle){showToast('Ciclo no válido','error');document.title=pt;return;}
+    html+=buildPensumPageHTML([cycle],{singleColumn:true});
+    html+=buildCyclePageHTML(cycle,'Detalle de notas — '+cycle.name);
+  }else if(reportOpts.type==='full-only'){
+    html+=buildPensumPageHTML(CYCLES,{});
+  }else if(reportOpts.type==='custom'){
+    const cycles=CYCLES.filter(c=>reportOpts.cycleIds.includes(c.id));
+    if(reportOpts.includeFull) html+=buildPensumPageHTML(CYCLES,{});
+    if(cycles.length){
+      html+=buildCyclePageHTML(cycles,'Detalle de notas por materia');
+      html+=buildSummaryTableHTML(cycles);
+    }
+  }else{ // 'complete' (default)
+    html+=buildPensumPageHTML(CYCLES,{});
+    html+=buildCyclePageHTML(CYCLES,'Detalle de notas por materia');
+    html+=buildSummaryTableHTML(CYCLES);
+  }
+  html+='</div>';
+
   document.getElementById('printArea').innerHTML=html;
   document.body.classList.add('printing');
   setTimeout(()=>{window.print();setTimeout(()=>{document.body.classList.remove('printing');document.title=pt;},600);},280);

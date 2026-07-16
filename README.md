@@ -294,24 +294,11 @@ conexión, se sincroniza solo.
 
 ---
 
-## 🛠️ Pendiente / a futuro
-
-- Decidir si "En curso" debe redefinirse para que se mantenga visible hasta
-  completar los 3 cómputos.
-- Llevar las mejoras de notificaciones y sincronización automática de
-  `index_v_PRUEBA.html` a `index.html` (producción).
-- Revisar las reglas de seguridad de Firestore (`allow read, write: if
-  request.auth != null` es mínima — cualquier usuario autenticado
-  anónimamente puede leer/escribir cualquier documento). Migrar a reglas por
-  `request.auth.uid` si en algún momento se pasa a contraseñas reales de
-  Firebase Auth.
-- `migrar-exportar.gs`, `migrar-importar.html` y el backend viejo de Apps
-  Script quedan en desuso — se pueden archivar con seguridad.
 
 ---
 
 <div align="center">
 
-Hecho para la comunidad estudiantil de la **Universidad Gerardo Barrios**.
+Hecho por EMERSON CASTRO para la comunidad y amigos de la **Universidad Gerardo Barrios**.
 
 </div>

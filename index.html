@@ -43,7 +43,7 @@ body.printing #printArea{display:block!important;position:fixed;inset:0;z-index:
 #careerSelectView{position:fixed;inset:0;background:linear-gradient(135deg,var(--blue-dk),var(--blue));display:flex;align-items:center;justify-content:center;z-index:1000;}
 .login-box{background:var(--modal-bg);border-radius:20px;padding:38px;width:420px;max-width:93vw;box-shadow:0 32px 80px rgba(0,0,0,.3);}
 .login-logo-wrap{text-align:center;margin-bottom:18px;}
-.login-logo-wrap img{max-width:280px;max-height:110px;object-fit:contain;}
+.login-logo-wrap img{max-width:340px;max-height:110px;object-fit:contain;}
 /* ZOOMLOGO */
 .login-box h2{font-size:22px;font-weight:800;color:var(--blue-dk);margin-bottom:6px;text-align:center;}
 [data-theme="dark"] .login-box h2{color:var(--blue-lt);}
@@ -506,33 +506,68 @@ header{flex-wrap:wrap;row-gap:6px;}
    caber siempre en 1 sola hoja horizontal — ver comentarios
    en pdf-card / pdf-elective-row sobre el presupuesto de alto.
    ══════════════════════════════════════════════════════ */
-@page { size: letter portrait; margin: 12mm 10mm; }
-@page pdf-landscape { size: letter landscape; margin: 7mm 8mm; }
-@page pdf-portrait  { size: letter portrait;  margin: 10mm 10mm; }
+/* Margen izquierdo de 13mm (1.3cm) en todas las hojas — espacio reservado
+   para fastener/encuadernado. Se fija como 4to valor del shorthand
+   (top right bottom left) para no tocar los demás márgenes. */
+@page { size: letter portrait; margin: 12mm 10mm 12mm 13mm; }
+@page pdf-landscape { size: letter landscape; margin: 7mm 8mm 7mm 13mm; }
+@page pdf-portrait  { size: letter portrait;  margin: 10mm 10mm 10mm 13mm; }
 
 .pdf-doc{font-family:'Inter',Arial,sans-serif;color:#111827;}
 .pdf-doc *{box-sizing:border-box;}
 .pdf-page{page-break-after:always;break-after:page;}
 .pdf-page:last-child{page-break-after:auto;break-after:auto;}
 .pdf-page-landscape{page:pdf-landscape;}
-.pdf-page-portrait{page:pdf-portrait;}
+/* min-height en mm = alto de hoja carta menos los márgenes de @page
+   pdf-portrait (10mm arriba/abajo) — así, cuando el contenido de la
+   página (p.ej. un ciclo con pocas materias) no llena toda la hoja, el
+   bloque .pdf-page-body se centra verticalmente en el espacio restante
+   en vez de dejarlo en blanco al final. El encabezado y el título de
+   sección quedan fuera de ese bloque, así que siempre se mantienen
+   arriba. Este mm-height también sirve para "Descargar PDF" (html2canvas
+   mide el alto real en pantalla, que coincide con este valor). */
+.pdf-page-portrait{page:pdf-portrait;display:flex;flex-direction:column;min-height:259.4mm;}
+.pdf-page-body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;}
 
-/* header grande — solo en páginas de detalle (portrait) */
-.pdf-header{display:flex;align-items:center;justify-content:center;gap:16px;border-bottom:2.5px solid #1e40af;padding-bottom:9px;margin-bottom:15px;}
-.pdf-header-left{display:flex;align-items:center;gap:12px;}
-.pdf-header-left img{height:72px;object-fit:contain;image-rendering:-webkit-optimize-contrast;image-rendering:high-quality;}
-.pdf-header img{height:72px;object-fit:contain;image-rendering:-webkit-optimize-contrast;image-rendering:high-quality;}
+/* header grande — solo en páginas de detalle (portrait)
+   Los logos llevan un ancho máximo explícito (no solo alto) para que
+   html2canvas (usado en "Descargar PDF") los rasterice con el tamaño
+   correcto. IMPORTANTE: ese max-width tiene que alcanzar para el ancho
+   natural real del logo a esa altura (alto × su propio aspect ratio),
+   si no, el logo queda con una caja más angosta que su proporción real:
+   en impresión nativa (que sí respeta object-fit:contain) eso lo
+   encoge minúsculo dentro de esa caja, y en "Descargar PDF" (donde
+   html2canvas dibuja el PNG/SVG ignorando object-fit y solo estira la
+   imagen para llenar la caja) el mismo desajuste de proporción lo
+   deforma y hace lucir gigante/estirado. DI.svg es un logo compuesto
+   muy ancho (~4.6:1, más ancho que el de UGB ~2.6:1), así que necesita
+   más margen de max-width que UGB para no toparse con este problema.
+   flex-wrap evita que, si aun así no entra todo en una fila, el texto
+   se recorte fuera de la hoja. */
+.pdf-header{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px 16px;border-bottom:2.5px solid #1e40af;padding-bottom:9px;margin-bottom:15px;}
+.pdf-header-left{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.pdf-header-left img{height:68px;width:auto;max-width:320px;object-fit:contain;flex-shrink:0;image-rendering:-webkit-optimize-contrast;image-rendering:high-quality;}
+.pdf-header img{height:68px;width:auto;max-width:320px;object-fit:contain;flex-shrink:0;image-rendering:-webkit-optimize-contrast;image-rendering:high-quality;}
 .pdf-header-text{text-align:left;}
 .pdf-header-text h2{color:#1e40af;font-size:16px;font-weight:800;margin:0 0 2px;letter-spacing:.2px;}
 .pdf-header-text p{color:#6b7280;font-size:11px;margin:0;}
 
-/* header compacto — página del pénsum general (todo debe caber en 1 hoja) */
-.pdf-header-mini{display:flex;align-items:center;gap:12px;margin-bottom:7px;padding-bottom:6px;border-bottom:1.5px solid #dbe3f5;}
-.pdf-header-mini img{height:72px;object-fit:contain;image-rendering:-webkit-optimize-contrast;image-rendering:high-quality;}
-.pdf-hm-title{font-size:14px;font-weight:800;color:#1e3a8a;letter-spacing:.2px;}
-.pdf-hm-sep{color:#c7cedb;font-size:13px;}
-.pdf-hm-meta{font-size:11px;color:#6b7280;font-weight:500;}
-.pdf-hm-spacer{flex:1;}
+/* header compacto — página del pénsum general (todo debe caber en 1 hoja).
+   Altura menor que el header grande (a propósito, para no competir por
+   espacio con el título/fecha en una sola fila), pero el max-width sigue
+   la misma regla: tiene que cubrir alto × aspect ratio de cada logo. */
+.pdf-header-mini{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-bottom:7px;padding-bottom:6px;border-bottom:1.5px solid #dbe3f5;}
+.pdf-header-mini img{height:56px;width:auto;max-width:270px;object-fit:contain;flex-shrink:0;image-rendering:-webkit-optimize-contrast;image-rendering:high-quality;}
+/* Variante centrada (página "Resumen general — historial completo"):
+   los logos pasan a su propia fila centrada; el tamaño de imagen no
+   cambia porque sigue heredando la regla ".pdf-header-mini img" de arriba. */
+.pdf-header-mini-centered{flex-direction:column;align-items:stretch;gap:4px;}
+.pdf-header-mini-centered .pdf-header-mini-logos{display:flex;justify-content:center;align-items:center;gap:12px;width:100%;}
+.pdf-header-mini-centered .pdf-header-mini-info{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;width:100%;}
+.pdf-hm-title{font-size:14px;font-weight:800;color:#1e3a8a;letter-spacing:.2px;flex-shrink:1;min-width:60px;overflow-wrap:break-word;}
+.pdf-hm-sep{color:#c7cedb;font-size:13px;flex-shrink:0;}
+.pdf-hm-meta{font-size:11px;color:#6b7280;font-weight:500;white-space:nowrap;flex-shrink:0;}
+.pdf-hm-spacer{flex:1 1 auto;min-width:8px;}
 
 .pdf-section-title{font-size:13px;font-weight:800;color:#fff;background:linear-gradient(90deg,#1e40af,#2b52c4);padding:7px 16px;border-radius:8px;margin-bottom:8px;letter-spacing:.6px;text-transform:uppercase;}
 
@@ -594,8 +629,19 @@ header{flex-wrap:wrap;row-gap:6px;}
 .pdf-computo-box div{display:flex;justify-content:space-between;font-size:8px;color:#374151;padding:0.5px 0;}
 .pdf-computo-box .pdf-computo-sub{border-top:1px solid #e5e7eb;margin-top:2px;padding-top:2px;font-weight:700;color:#111827;}
 
+.pdf-summary-counter{display:flex;align-items:center;justify-content:center;gap:6px;background:#eaefff;border:1px solid #c7d3f7;border-radius:8px;padding:6px 12px;margin-bottom:10px;font-size:10.5px;color:#1e3a8a;font-weight:700;}
+.pdf-summary-counter b{font-size:13px;color:#1e40af;}
 .pdf-summary-table{width:100%;border-collapse:collapse;font-size:9px;}
 .pdf-summary-table thead th{background:#1e40af;color:#fff;padding:6px 8px;text-align:left;}
+/* Logos + título + contador viven ahora DENTRO del <thead> de la tabla
+   resumen (en vez de en <div>s sueltos antes de la tabla): así, cuando la
+   tabla es larga y el navegador (o "Descargar PDF", que copia el <thead>
+   tal cual al armar cada hoja de continuación) la reparte en varias hojas
+   impresas, el <thead> completo — logos incluidos — se repite
+   automáticamente en cada una. Un <div> afuera de la tabla solo aparecería
+   en la primera hoja. */
+.pdf-summary-table thead tr.pdf-summary-context-row th{background:transparent;color:inherit;padding:0;}
+.pdf-summary-table thead tr.pdf-summary-logo-row th{padding-bottom:2px;}
 .pdf-summary-table td{padding:5px 8px;border-bottom:1px solid #e5e7eb;}
 .pdf-summary-table tbody tr:nth-child(even){background:rgba(0,0,0,.015);}
 .pdf-summary-table tr{page-break-inside:avoid;break-inside:avoid;}
@@ -606,7 +652,7 @@ header{flex-wrap:wrap;row-gap:6px;}
 <div class="login-box" style="text-align:center;">
   <div class="login-logo-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
     <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height:92px;object-fit:contain;" onerror="this.parentElement.innerHTML='<div style=\'width:90px;height:90px;border-radius:24px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:900;margin:0 auto 18px\'>UGB</div>'">
-    <img src="DI.svg" alt="Dirección de Integración" style="height:48px;object-fit:contain;margin-top:6px;" onerror="this.style.display='none'">
+    <img src="DI.svg" alt="Dirección de Integración" style="height:64px;object-fit:contain;margin-top:6px;" onerror="this.style.display='none'">
   </div>
   <h2>PÉNSUM UGB</h2>
   <p style="margin-bottom:22px;">Selecciona tu carrera</p>
@@ -651,7 +697,7 @@ header{flex-wrap:wrap;row-gap:6px;}
 <div class="login-box">
   <div class="login-logo-wrap" style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:18px;">
     <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height:92px;object-fit:contain;" onerror="this.parentElement.innerHTML='<div style=\'width:90px;height:90px;border-radius:24px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:900;margin:0 auto 18px\'>UGB</div>'">
-    <img src="DI.svg" alt="Dirección de Integración" style="height:48px;object-fit:contain;margin-top:6px;" onerror="this.style.display='none'">
+    <img src="DI.svg" alt="Dirección de Integración" style="height:64px;object-fit:contain;margin-top:6px;" onerror="this.style.display='none'">
   </div>
   <h2>Pénsum UGB</h2>
   <p style="font-size:11px;color:var(--gm);margin-bottom:6px;text-align:center;">
@@ -1003,7 +1049,7 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="asist-logos">
       <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height:70px;object-fit:contain;" onerror="this.style.display='none'">
       <div style="width:1px;height:60px;background:var(--gl);"></div>
-      <img src="DI.svg" alt="Dirección de Integración" style="height:58px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
+      <img src="DI.svg" alt="Dirección de Integración" style="height:68px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
     </div>
     <h3 style="text-align:center;margin-bottom:3px;">🏛 Asistencia Diaria</h3>
     <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
@@ -1087,7 +1133,7 @@ header{flex-wrap:wrap;row-gap:6px;}
 
     <div class="modal-btns" style="flex-wrap:wrap;">
       <button class="modal-btn secondary" onclick="closePdfModal()">Cancelar</button>
-      <button class="modal-btn secondary" onclick="generatePdfFromModal('print')" title="Abre el diálogo de impresión del navegador; ahí eliges 'Guardar como PDF'.">🖨️ Vista de impresión</button>
+      <button class="modal-btn secondary" onclick="generatePdfFromModal('print')" title="Abre el diálogo de impresión del navegador. El reporte mezcla hojas horizontales y verticales, así que si el diálogo pregunta la orientación, dejala en 'Automática/Predeterminada' — si elegís una orientación fija ahí, el navegador la aplica a TODAS las hojas por igual. Si preferís evitar esa pregunta, usá 'Descargar PDF'.">🖨️ Vista de impresión</button>
       <button class="modal-btn primary" id="pdfDirectBtn" onclick="generatePdfFromModal('download')" title="Genera y descarga el .pdf directamente, sin diálogo.">📄 Descargar PDF</button>
     </div>
   </div>
@@ -4140,16 +4186,28 @@ function buildPdfHeaderHTML(subtitle){
     </div>
   </div>`;
 }
-function buildPdfMiniHeaderHTML(){
+// centerLogos=true produce una variante de 2 filas (logos centrados arriba,
+// título/estudiante/fecha abajo) solo para la página "Resumen general —
+// historial completo". El tamaño de los logos no cambia: siguen regidos
+// por la misma regla ".pdf-header-mini img" de siempre.
+function buildPdfMiniHeaderHTML(centerLogos){
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
-  return `<div class="pdf-header-mini">
-    <img src="Logotipo-horizontal-azul.png" onerror="this.style.display='none'">
-    <img src="DI.svg" onerror="this.style.display='none'">
-    <span class="pdf-hm-title">${escapeHtml(careerLabel)}</span>
+  const logosHTML=`<img src="Logotipo-horizontal-azul.png" onerror="this.style.display='none'">
+    <img src="DI.svg" onerror="this.style.display='none'">`;
+  const infoHTML=`<span class="pdf-hm-title">${escapeHtml(careerLabel)}</span>
     <span class="pdf-hm-sep">·</span>
     <span class="pdf-hm-meta">${escapeHtml(currentStudent||'?')}</span>
     <span class="pdf-hm-spacer"></span>
-    <span class="pdf-hm-meta">${new Date().toLocaleDateString('es-SV')}</span>
+    <span class="pdf-hm-meta">${new Date().toLocaleDateString('es-SV')}</span>`;
+  if(centerLogos){
+    return `<div class="pdf-header-mini pdf-header-mini-centered">
+      <div class="pdf-header-mini-logos">${logosHTML}</div>
+      <div class="pdf-header-mini-info">${infoHTML}</div>
+    </div>`;
+  }
+  return `<div class="pdf-header-mini">
+    ${logosHTML}
+    ${infoHTML}
   </div>`;
 }
 // Etiqueta de año — una sola vez por grupo de ciclos consecutivos del mismo
@@ -4307,18 +4365,36 @@ function buildCyclePageHTML(cycleOrCycles,title){
   let html='<div class="pdf-page pdf-page-portrait">';
   html+=buildPdfHeaderHTML();
   html+=`<div class="pdf-section-title pdf-section-title-large">${escapeHtml(title||'Detalle de notas por materia')}</div>`;
+  html+='<div class="pdf-page-body">';
   cycles.forEach(cycle=>{html+=buildPdfCycleDetailBlockHTML(cycle);});
+  html+='</div>';
   html+='</div>';
   return html;
 }
 
 // Tabla resumen final — Ciclo | Materia | Nota Final | Estado
+// Antes del cuadro se muestra un contador "X de Y" con la cantidad de
+// materias aprobadas sobre el total de materias de TODO el pénsum
+// (CYCLES global), sin importar si este reporte en particular solo
+// incluye algunos ciclos (custom) — es un indicador de avance general.
 function buildSummaryTableHTML(cyclesList){
   const sd=getStudentData();
+  let totalPensum=0, approvedPensum=0;
+  CYCLES.forEach(cycle=>{
+    cycle.subjects.forEach(sub=>{
+      totalPensum++;
+      const subData=getSubjectData(sub.num);
+      const isSpecial=!!(sd.specialCards&&sd.specialCards[sub.num]);
+      if(!isSpecial && getEffectiveStatus(subData)==='pass') approvedPensum++;
+    });
+  });
   let html='<div class="pdf-page pdf-page-portrait">';
-  html+=buildPdfMiniHeaderHTML();
-  html+='<div class="pdf-section-title">Resumen general — historial completo</div>';
-  html+='<table class="pdf-summary-table"><thead><tr><th>Ciclo</th><th>Materia</th><th style="text-align:center;">Nota Final</th><th style="text-align:center;">Estado</th></tr></thead><tbody>';
+  html+='<div class="pdf-page-body">';
+  html+='<table class="pdf-summary-table"><thead>';
+  html+=`<tr class="pdf-summary-context-row pdf-summary-logo-row"><th colspan="4">${buildPdfMiniHeaderHTML(true)}</th></tr>`;
+  html+=`<tr class="pdf-summary-context-row"><th colspan="4"><div class="pdf-section-title">Resumen general — historial completo</div></th></tr>`;
+  html+=`<tr class="pdf-summary-context-row"><th colspan="4"><div class="pdf-summary-counter">📚 Materias aprobadas <b>${approvedPensum}</b> de <b>${totalPensum}</b></div></th></tr>`;
+  html+='<tr><th>Ciclo</th><th>Materia</th><th style="text-align:center;">Nota Final</th><th style="text-align:center;">Estado</th></tr></thead><tbody>';
   cyclesList.forEach(cycle=>{
     cycle.subjects.forEach(sub=>{
       const subData=getSubjectData(sub.num);
@@ -4334,7 +4410,7 @@ function buildSummaryTableHTML(cyclesList){
       </tr>`;
     });
   });
-  html+='</tbody></table></div>';
+  html+='</tbody></table></div></div>';
   return html;
 }
 
@@ -4370,6 +4446,16 @@ function buildReportHTML(reportOpts){
   html+='</div>';
   return html;
 }
+// El reporte mezcla hojas horizontales (vista general) y verticales
+// (detalle por ciclo, resumen), vía @page con nombre — pero el diálogo
+// nativo de impresión del navegador solo permite UNA orientación para
+// todo el trabajo de impresión, y si el usuario la fija ahí (en vez de
+// dejarla en "Automática/Predeterminada") esa elección pisa la
+// orientación por página que define el CSS, deformando las hojas que no
+// coinciden. No hay forma de responder esa pregunta por código — es
+// una decisión de la UI del navegador/SO — así que el aviso es la única
+// mitigación posible desde acá. Se muestra una sola vez por sesión.
+let _printOrientationHintShown=false;
 function exportPDF(reportOpts){
   if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
   const html=buildReportHTML(reportOpts);
@@ -4378,6 +4464,10 @@ function exportPDF(reportOpts){
 
   document.getElementById('printArea').innerHTML=html;
   document.body.classList.add('printing');
+  if(!_printOrientationHintShown){
+    _printOrientationHintShown=true;
+    showToast('💡 En el diálogo de impresión, dejá la orientación en "Automática" — el reporte ya mezcla hojas horizontales y verticales.','success');
+  }
   setTimeout(()=>{window.print();setTimeout(()=>{document.body.classList.remove('printing');document.title=pt;},600);},280);
 }
 
@@ -4391,9 +4481,11 @@ function exportPDF(reportOpts){
 // así que esto funciona sin conexión a internet (salvo la tipografía
 // Inter, que sí se sirve desde Google Fonts).
 // ═══════════════════════════════════════════════════════════
+// Margen izquierdo de 13mm (1.3cm) en todas las hojas — espacio para
+// fastener/encuadernado, igual que en las reglas @page de impresión.
 const PDF_DIRECT_SPECS={
-  landscape:{wMM:279.4,hMM:215.9,margin:{top:7,bottom:7,left:8,right:8},orientation:'landscape'},
-  portrait:{wMM:215.9,hMM:279.4,margin:{top:10,bottom:10,left:10,right:10},orientation:'portrait'}
+  landscape:{wMM:279.4,hMM:215.9,margin:{top:7,bottom:7,left:13,right:8},orientation:'landscape'},
+  portrait:{wMM:215.9,hMM:279.4,margin:{top:10,bottom:10,left:13,right:10},orientation:'portrait'}
 };
 function pdfDirectMmToCssPx(mm){return mm/25.4*96;}
 function pdfDirectWaitImages(container){
@@ -4440,7 +4532,12 @@ async function exportPDFDirect(reportOpts){
       if(hMM>contentHMM){ const s=contentHMM/hMM; hMM=contentHMM; wMM=contentWMM*s; }
       if(!doc) doc=new jsPDF({orientation:spec.orientation,unit:'mm',format:'letter'});
       else doc.addPage('letter',spec.orientation);
-      doc.addImage(imgData,'JPEG',spec.margin.left,spec.margin.top,wMM,hMM);
+      // Cuando el contenido no llena toda la hoja (p.ej. un ciclo con pocas
+      // materias) se centra en vez de quedar pegado arriba, para no dejar
+      // todo ese espacio en blanco abajo.
+      const x=spec.margin.left+Math.max(0,(contentWMM-wMM)/2);
+      const y=spec.margin.top+Math.max(0,(contentHMM-hMM)/2);
+      doc.addImage(imgData,'JPEG',x,y,wMM,hMM);
     };
 
     // Reparte un contenido con "items" repetidos (filas de tabla, tarjetas

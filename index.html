@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UGB — Pénsum Ing. Sistemas y Redes</title>
+<title>UGB — PÉNSUM ING. SISTEMAS Y ING. CIVIL</title>
 <link rel="icon" type="image/png" href="Logotipo-horizontal-azul.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -506,12 +506,29 @@ header{flex-wrap:wrap;row-gap:6px;}
    caber siempre en 1 sola hoja horizontal — ver comentarios
    en pdf-card / pdf-elective-row sobre el presupuesto de alto.
    ══════════════════════════════════════════════════════ */
-/* Margen izquierdo de 13mm (1.3cm) en todas las hojas — espacio reservado
-   para fastener/encuadernado. Se fija como 4to valor del shorthand
-   (top right bottom left) para no tocar los demás márgenes. */
-@page { size: letter portrait; margin: 12mm 10mm 12mm 13mm; }
-@page pdf-landscape { size: letter landscape; margin: 7mm 8mm 7mm 13mm; }
-@page pdf-portrait  { size: letter portrait;  margin: 10mm 10mm 10mm 13mm; }
+/* Margen izquierdo — espacio reservado para fastener/encuadernado. Se fija
+   como 4to valor del shorthand (top right bottom left) para no tocar los
+   demás márgenes. La hoja horizontal del pénsum (landscape) se queda en
+   13mm (1.3cm), que ya es el margen correcto ahí. Las hojas verticales
+   (portrait: detalle por ciclo y resumen) llevan 1cm extra — 23mm en vez
+   de 13mm — porque en esas hojas el margen de 13mm solo no alcanzaba.
+   Esto aplica sin importar si la hoja portrait es la 2ª del documento o
+   la 1ª (p.ej. reportes "custom" que no incluyen la vista del pénsum).
+   Cada regla @page suma también un @bottom-right con el número de página
+   (numeración al pie, alineada a la derecha — así es como se comporta
+   por definición la caja @bottom-right en CSS Paged Media). */
+@page {
+  size: letter portrait; margin: 12mm 10mm 12mm 23mm;
+  @bottom-right{content:"Pág. " counter(page) " de " counter(pages);font-family:'Inter',Arial,sans-serif;font-size:8px;color:#6b7280;}
+}
+@page pdf-landscape {
+  size: letter landscape; margin: 7mm 8mm 7mm 13mm;
+  @bottom-right{content:"Pág. " counter(page) " de " counter(pages);font-family:'Inter',Arial,sans-serif;font-size:8px;color:#6b7280;}
+}
+@page pdf-portrait {
+  size: letter portrait;  margin: 10mm 10mm 10mm 23mm;
+  @bottom-right{content:"Pág. " counter(page) " de " counter(pages);font-family:'Inter',Arial,sans-serif;font-size:8px;color:#6b7280;}
+}
 
 .pdf-doc{font-family:'Inter',Arial,sans-serif;color:#111827;}
 .pdf-doc *{box-sizing:border-box;}
@@ -4481,11 +4498,12 @@ function exportPDF(reportOpts){
 // así que esto funciona sin conexión a internet (salvo la tipografía
 // Inter, que sí se sirve desde Google Fonts).
 // ═══════════════════════════════════════════════════════════
-// Margen izquierdo de 13mm (1.3cm) en todas las hojas — espacio para
-// fastener/encuadernado, igual que en las reglas @page de impresión.
+// Margen izquierdo — espacio para fastener/encuadernado, igual que en las
+// reglas @page de impresión. landscape se queda en 13mm (1.3cm); portrait
+// lleva 1cm extra (23mm) porque en esas hojas el margen de 13mm no alcanzaba.
 const PDF_DIRECT_SPECS={
   landscape:{wMM:279.4,hMM:215.9,margin:{top:7,bottom:7,left:13,right:8},orientation:'landscape'},
-  portrait:{wMM:215.9,hMM:279.4,margin:{top:10,bottom:10,left:13,right:10},orientation:'portrait'}
+  portrait:{wMM:215.9,hMM:279.4,margin:{top:10,bottom:10,left:23,right:10},orientation:'portrait'}
 };
 function pdfDirectMmToCssPx(mm){return mm/25.4*96;}
 function pdfDirectWaitImages(container){
@@ -4525,6 +4543,11 @@ async function exportPDFDirect(reportOpts){
     const { jsPDF }=window.jspdf;
     let doc=null;
     const SCALE=2.2;
+    // Guarda el spec (orientación/márgenes) de cada hoja en el orden en que
+    // se van agregando al PDF, para poder numerarlas todas al final (una
+    // hoja .pdf-page puede convertirse en varias hojas reales si se reparte
+    // por renderChunked, así que esto se arma sobre la marcha, no de antemano).
+    const pdfPageSpecs=[];
 
     const addCanvasAsPage=(canvas,spec,contentWMM,contentHMM)=>{
       const imgData=canvas.toDataURL('image/jpeg',0.92);
@@ -4538,6 +4561,7 @@ async function exportPDFDirect(reportOpts){
       const x=spec.margin.left+Math.max(0,(contentWMM-wMM)/2);
       const y=spec.margin.top+Math.max(0,(contentHMM-hMM)/2);
       doc.addImage(imgData,'JPEG',x,y,wMM,hMM);
+      pdfPageSpecs.push(spec);
     };
 
     // Reparte un contenido con "items" repetidos (filas de tabla, tarjetas
@@ -4617,6 +4641,21 @@ async function exportPDFDirect(reportOpts){
 
       const canvas=await html2canvas(pageEl,{scale:SCALE,useCORS:true,backgroundColor:'#ffffff',logging:false});
       addCanvasAsPage(canvas,spec,contentWMM,contentHMM);
+    }
+
+    // Numeración de página al pie, alineada a la derecha — se dibuja al
+    // final (con todas las hojas ya creadas) porque recién ahí se sabe el
+    // total real de hojas, incluyendo las que renderChunked haya repartido.
+    if(doc && pdfPageSpecs.length){
+      const totalPages=doc.getNumberOfPages();
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(8);
+      doc.setTextColor(107,114,128);
+      for(let p=1;p<=totalPages;p++){
+        doc.setPage(p);
+        const spec=pdfPageSpecs[p-1]||pdfPageSpecs[pdfPageSpecs.length-1];
+        doc.text('Pág. '+p+' de '+totalPages, spec.wMM-spec.margin.right, spec.hMM-4, {align:'right'});
+      }
     }
 
     doc.save('Pensum_UGB_'+(currentStudent||'Estudiante')+'.pdf');

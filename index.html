@@ -1069,7 +1069,7 @@ header{flex-wrap:wrap;row-gap:6px;}
 <div class="notif-toast-container" id="notifToastContainer"></div>
 
 <div class="modal-overlay" id="asistenciaModal">
-  <div class="modal" style="width:540px;">
+  <div class="modal" style="width:578px;">
     <div class="asist-logos">
       <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height:70px;object-fit:contain;" onerror="this.style.display='none'">
       <div style="width:1px;height:60px;background:var(--gl);"></div>
@@ -1080,11 +1080,11 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="asist-hoy-box" id="asistenciaHoy"></div>
     <div style="text-align:center;margin-bottom:16px;"><button class="asist-mark-btn" id="asistenciaBtn" onclick="marcarAsistencia()">✅ Marcar Asistencia de Hoy</button></div>
     <div class="filter-tabs" id="asistFilterTabs">
-      <button class="filter-tab" onclick="setAsistFilter('today',this)">Hoy</button>
+      <button class="filter-tab active" onclick="setAsistFilter('today',this)">Hoy</button>
       <button class="filter-tab" onclick="setAsistFilter('week',this)">Semana</button>
       <button class="filter-tab" onclick="setAsistFilter('month',this)">Mes</button>
       <button class="filter-tab" onclick="setAsistFilter('year',this)">Año</button>
-      <button class="filter-tab active" onclick="setAsistFilter('all',this)">Todas</button>
+      <button class="filter-tab" onclick="setAsistFilter('all',this)">Todas</button>
     </div>
     <div id="asistenciaHistorico" style="max-height:240px;overflow-y:auto;"></div>
     <div class="modal-btns" style="margin-top:10px;flex-wrap:wrap;">
@@ -1796,7 +1796,7 @@ let accountListVisible=true; // ajuste global (Firebase) — ver toggleAccountLi
 let currentZoom=85, currentCycleId=null;
 let autoSyncTimer=null;
 let editModeActive=false;
-let calFilter='all', asistFilter='all', histFilter='all';
+let calFilter='all', asistFilter='today', histFilter='all';
 
 // ═══════════════════════════════════════════════════════════
 // INIT
@@ -3977,7 +3977,14 @@ function stopNotifWatcher(){
 // ═══════════════════════════════════════════════════════════
 // ASISTENCIA
 // ═══════════════════════════════════════════════════════════
-function openAsistencia(){renderAsistencia();document.getElementById('asistenciaModal').classList.add('open');}
+function openAsistencia(){
+  asistFilter='today';
+  const tabs=document.querySelectorAll('#asistFilterTabs .filter-tab');
+  tabs.forEach(t=>t.classList.remove('active'));
+  if(tabs[0]) tabs[0].classList.add('active'); // "Hoy" es la primera pestaña
+  renderAsistencia();
+  document.getElementById('asistenciaModal').classList.add('open');
+}
 function getTodayKey(){return new Date().toISOString().slice(0,10);}
 function getAsistencias(){if(!appData[currentStudent].asistencias)appData[currentStudent].asistencias={};return appData[currentStudent].asistencias;}
 
@@ -4045,9 +4052,13 @@ function _asistFilterLabel(){
 // ── 📄 PDF de asistencia ──
 function generateAsistenciaPDF(){
   if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  if(!(window.jspdf&&window.jspdf.jsPDF)){
+    showToast('El generador de PDF no cargó. Recargá la página e intentá de nuevo.','error');return;
+  }
   const filtered=_asistenciaFilteredEntries();
   if(!filtered.length){showToast('No hay registros de asistencia en este período','error');return;}
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  const { jsPDF }=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
   doc.setFont('helvetica','bold');
   doc.setFontSize(15);

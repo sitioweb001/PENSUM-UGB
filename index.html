@@ -1036,6 +1036,13 @@ header{flex-wrap:wrap;row-gap:6px;}
       </label>
     </div>
     <div class="notif-cfg-row">
+      <label><span class="notif-swatch" style="background:var(--pass);"></span>🏛 Recordatorio de asistencia</label>
+      <label class="toggle-switch">
+        <input type="checkbox" id="notifCfgAttendance">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="notif-cfg-row">
       <label><span class="notif-swatch" style="background:var(--pass);"></span>Verde — días antes</label>
       <input type="number" id="notifCfgGreen" min="1" max="60">
     </div>
@@ -1073,13 +1080,18 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="asist-hoy-box" id="asistenciaHoy"></div>
     <div style="text-align:center;margin-bottom:16px;"><button class="asist-mark-btn" id="asistenciaBtn" onclick="marcarAsistencia()">✅ Marcar Asistencia de Hoy</button></div>
     <div class="filter-tabs" id="asistFilterTabs">
-      <button class="filter-tab active" onclick="setAsistFilter('all',this)">Todas</button>
+      <button class="filter-tab" onclick="setAsistFilter('today',this)">Hoy</button>
       <button class="filter-tab" onclick="setAsistFilter('week',this)">Semana</button>
       <button class="filter-tab" onclick="setAsistFilter('month',this)">Mes</button>
       <button class="filter-tab" onclick="setAsistFilter('year',this)">Año</button>
+      <button class="filter-tab active" onclick="setAsistFilter('all',this)">Todas</button>
     </div>
     <div id="asistenciaHistorico" style="max-height:240px;overflow-y:auto;"></div>
-    <div class="modal-btns" style="margin-top:13px;"><button class="modal-btn primary" onclick="document.getElementById('asistenciaModal').classList.remove('open')">Cerrar</button></div>
+    <div class="modal-btns" style="margin-top:10px;flex-wrap:wrap;">
+      <button class="modal-btn secondary" onclick="generateAsistenciaPDF()" title="Genera un PDF con el historial de asistencia del período filtrado">📄 PDF</button>
+      <button class="modal-btn secondary" onclick="exportAsistenciaExcel()" title="Exporta el historial de asistencia del período filtrado a Excel">📊 Excel</button>
+    </div>
+    <div class="modal-btns" style="margin-top:8px;"><button class="modal-btn primary" onclick="document.getElementById('asistenciaModal').classList.remove('open')">Cerrar</button></div>
   </div>
 </div>
 
@@ -3500,6 +3512,7 @@ function filterByPeriod(arr, dateField, period){
   return arr.filter(item=>{
     const d=new Date(item[dateField]||'');
     if(isNaN(d)) return true;
+    if(period==='today'){const t=new Date(now);t.setHours(0,0,0,0);const dd=new Date(d);dd.setHours(0,0,0,0);return dd.getTime()===t.getTime();}
     if(period==='week'){const w=new Date(now);w.setDate(w.getDate()-7);return d>=w;}
     if(period==='month'){return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();}
     if(period==='year'){return d.getFullYear()===now.getFullYear();}
@@ -3648,7 +3661,7 @@ function renderEvents(){
 // Todo esto vive solo en este dispositivo (localStorage), igual que el
 // tema/idioma o "recordar estudiante" — no pasa por Firebase.
 // ═══════════════════════════════════════════════════════════
-const NOTIF_DEFAULTS = { enabled:true, greenDays:7, yellowDays:4, redDays:2, duration:8 };
+const NOTIF_DEFAULTS = { enabled:true, greenDays:7, yellowDays:4, redDays:2, duration:8, attendanceReminder:true };
 let notifConfig = Object.assign({}, NOTIF_DEFAULTS);
 
 function _notifKeyBase(){ return (currentStudent||'')+'__'+(currentCareer||''); }
@@ -3697,6 +3710,22 @@ function notifDaysLabel(daysLeft){
 function notifTierColor(tier){ return tier==='red'?'var(--fail)':tier==='yellow'?'var(--pend)':'var(--pass)'; }
 function notifTierIcon(tier){ return tier==='red'?'🔴':tier==='yellow'?'🟡':'🟢'; }
 
+// Notificación 🟢 "Recuerda marcar tu asistencia" — se arma aparte de los
+// eventos del calendario porque no depende de una fecha límite sino de si
+// ya se marcó asistencia HOY. Al tocarla, abre el modal de Asistencia
+// Diaria en vez de la lista de notificaciones.
+function computeAttendanceNotifItem(){
+  if(!notifConfig.attendanceReminder) return null;
+  if(!currentStudent||!appData[currentStudent]) return null;
+  const key=getTodayKey();
+  const lista=getAsistencias();
+  if(lista[key]) return null; // ya marcada hoy
+  const id='attendance_'+key;
+  const dismissed=getNotifDismissed();
+  if(dismissed[id]) return null;
+  return { id, type:'Recuerda marcar tu asistencia', subject:null, sname:'', date:key, daysLeft:0, tier:'green', isAttendance:true };
+}
+
 // Calcula, para el estudiante actual, qué eventos del calendario caen
 // dentro de alguna franja de aviso configurada (y no están marcados hechos).
 function computeNotifications(){
@@ -3714,6 +3743,8 @@ function computeNotifications(){
     items.push({ id:ev.id, type:ev.type, subject:ev.subject, sname, date:ev.date, daysLeft, tier });
   });
   items.sort((a,b)=>a.daysLeft-b.daysLeft);
+  const attItem=computeAttendanceNotifItem();
+  if(attItem) items.unshift(attItem); // siempre primero
   return items;
 }
 
@@ -3739,6 +3770,18 @@ function renderNotifList(){
     return;
   }
   list.innerHTML=items.map(it=>{
+    if(it.isAttendance){
+      return `<div class="notif-row tier-green" style="cursor:pointer;" onclick="closeNotifModal();openAsistencia();">
+        <div class="notif-row-top">
+          <span class="notif-dot"></span>
+          <span class="notif-row-type">🔔 ${escapeHtml(it.type)}</span>
+          <div class="notif-row-actions">
+            <button class="notif-row-btn" title="Ocultar por hoy" onclick="event.stopPropagation();dismissAttendanceNotif('${it.id}')">🔕</button>
+          </div>
+        </div>
+        <div class="notif-row-sub">Toca para abrir 🏛 Asistencia Diaria</div>
+      </div>`;
+    }
     return `<div class="notif-row tier-${it.tier}">
       <div class="notif-row-top">
         <span class="notif-dot"></span>
@@ -3753,6 +3796,14 @@ function renderNotifList(){
       <div class="notif-row-date">📅 ${it.date}</div>
     </div>`;
   }).join('');
+}
+// ── Ocultar el recordatorio de asistencia solo por hoy (reaparece mañana) ──
+function dismissAttendanceNotif(id){
+  const map=getNotifDismissed();
+  map[id]=true;
+  setNotifDismissed(map);
+  renderNotifList();
+  showToast('Recordatorio ocultado por hoy','success');
 }
 // ── Ocultar una notificación puntual sin borrar el evento del calendario ──
 function notifDismissedStorageKey(){ return 'ugb_notif_dismissed_'+_notifKeyBase(); }
@@ -3775,6 +3826,7 @@ function dismissNotifItem(id){
 // ── Panel de configuración (engranaje dentro del modal) ──
 function openNotifConfig(){
   document.getElementById('notifCfgEnabled').checked = notifConfig.enabled;
+  document.getElementById('notifCfgAttendance').checked = notifConfig.attendanceReminder;
   document.getElementById('notifCfgGreen').value = notifConfig.greenDays;
   document.getElementById('notifCfgYellow').value = notifConfig.yellowDays;
   document.getElementById('notifCfgRed').value = notifConfig.redDays;
@@ -3800,6 +3852,7 @@ function saveNotifConfigUI(){
   if(red>yellow) red=yellow;
   notifConfig = {
     enabled: document.getElementById('notifCfgEnabled').checked,
+    attendanceReminder: document.getElementById('notifCfgAttendance').checked,
     greenDays: green, yellowDays: yellow, redDays: red, duration: duration
   };
   saveNotifConfig();
@@ -3811,6 +3864,7 @@ function resetNotifConfig(){
   notifConfig = Object.assign({}, NOTIF_DEFAULTS);
   saveNotifConfig();
   document.getElementById('notifCfgEnabled').checked = notifConfig.enabled;
+  document.getElementById('notifCfgAttendance').checked = notifConfig.attendanceReminder;
   document.getElementById('notifCfgGreen').value = notifConfig.greenDays;
   document.getElementById('notifCfgYellow').value = notifConfig.yellowDays;
   document.getElementById('notifCfgRed').value = notifConfig.redDays;
@@ -3828,7 +3882,13 @@ function showNotifToast(item){
   const el=document.createElement('div');
   el.className='notif-toast tier-'+item.tier;
   el.id=id;
-  el.innerHTML=`
+  el.innerHTML=item.isAttendance?`
+    <div class="notif-toast-icon">🔔</div>
+    <div class="notif-toast-body">
+      <div class="notif-toast-title">Recuerda marcar tu asistencia</div>
+      <div class="notif-toast-sub">Toca para abrir 🏛 Asistencia Diaria</div>
+    </div>
+    <div class="notif-toast-close" onclick="event.stopPropagation();dismissNotifToast('${id}')" title="Cerrar">✕</div>`:`
     <div class="notif-toast-icon">${notifTierIcon(item.tier)}</div>
     <div class="notif-toast-body">
       <div class="notif-toast-title">${escapeHtml(item.type)}${item.sname?' · '+escapeHtml(item.sname):''}</div>
@@ -3838,7 +3898,7 @@ function showNotifToast(item){
   el.addEventListener('click',()=>{
     if(el._dragged){ el._dragged=false; return; }
     dismissNotifToast(id);
-    openNotifModal();
+    if(item.isAttendance) openAsistencia(); else openNotifModal();
   });
   wrap.appendChild(el);
   requestAnimationFrame(()=>el.classList.add('show'));
@@ -3971,6 +4031,79 @@ function borrarAsistencia(fecha){
   delete getAsistencias()[fecha];saveLocal();renderAsistencia();
 }
 
+// Devuelve los registros de asistencia ya filtrados por el período activo
+// del modal (Hoy/Semana/Mes/Año/Todas), ordenados de más antiguo a más
+// reciente — usado tanto por el PDF como por el Excel.
+function _asistenciaFilteredEntries(){
+  const entries=Object.values(getAsistencias());
+  return filterByPeriod(entries,'ts',asistFilter).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+}
+function _asistFilterLabel(){
+  return {today:'Hoy',week:'Última semana',month:'Este mes',year:'Este año',all:'Todo el historial'}[asistFilter]||'Todo el historial';
+}
+
+// ── 📄 PDF de asistencia ──
+function generateAsistenciaPDF(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  const filtered=_asistenciaFilteredEntries();
+  if(!filtered.length){showToast('No hay registros de asistencia en este período','error');return;}
+  const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(15);
+  doc.text('🏛 Reporte de Asistencia', 14, 18);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(10);
+  doc.text('Dirección de Integración · Universidad Gerardo Barrios', 14, 24);
+  doc.text('Estudiante: '+currentStudent+(careerLabel?' · '+careerLabel:''), 14, 30);
+  doc.text('Período: '+_asistFilterLabel()+' · Generado: '+new Date().toLocaleDateString('es-SV'), 14, 35);
+  doc.setLineWidth(0.3);
+  doc.line(14, 39, 196, 39);
+  let y=47;
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(11);
+  doc.text('Fecha',14,y);
+  doc.text('Hora',90,y);
+  doc.setFont('helvetica','normal');
+  y+=2;
+  doc.line(14,y,196,y);
+  y+=7;
+  filtered.forEach(a=>{
+    if(y>270){doc.addPage();y=20;}
+    doc.text(a.fecha,14,y);
+    doc.text(a.hora,90,y);
+    y+=7;
+  });
+  y+=3;
+  doc.line(14,y,196,y);
+  y+=7;
+  doc.setFont('helvetica','bold');
+  doc.text('Total de registros: '+filtered.length,14,y);
+  doc.save('asistencia_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  showToast('✓ PDF de asistencia generado','success');
+}
+
+// ── 📊 Excel de asistencia (tabla HTML servida como .xls, sin depender de
+// librerías externas — Excel la abre igual que una hoja normal) ──
+function exportAsistenciaExcel(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  const filtered=_asistenciaFilteredEntries();
+  if(!filtered.length){showToast('No hay registros de asistencia en este período','error');return;}
+  const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  let html='<table border="1"><thead>'
+    +'<tr><th colspan="2">Asistencia — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
+    +'<tr><th colspan="2">Período: '+escapeHtml(_asistFilterLabel())+'</th></tr>'
+    +'<tr><th>Fecha</th><th>Hora</th></tr></thead><tbody>';
+  filtered.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td></tr>'; });
+  html+='<tr><td><b>Total</b></td><td><b>'+filtered.length+'</b></td></tr></tbody></table>';
+  const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='asistencia_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.click();
+  showToast('✓ Excel de asistencia exportado','success');
+}
+
 // ═══════════════════════════════════════════════════════════
 // PASTE FROM PORTAL
 // ═══════════════════════════════════════════════════════════
@@ -4066,10 +4199,60 @@ async function copyGradesToClipboard(){
 // ═══════════════════════════════════════════════════════════
 // EXPORT / IMPORT
 // ═══════════════════════════════════════════════════════════
-function exportJSON(){if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify({student:currentStudent,data:appData[currentStudent]||{}}));a.download='pensum_'+currentStudent.replace(/\s+/g,'_')+'_backup.json';a.click();showToast('✓ Backup descargado','success');}
+// El backup incluye TODO lo del estudiante actual (notas, cómputos, calendario,
+// ciclos hechos, asistencias, tarjetas especiales, historial de pénsum — todo
+// vive dentro de appData[currentStudent]) más la configuración de notificaciones
+// (colores/días, recordatorio de asistencia, notificaciones ocultas/vistas),
+// que se guarda aparte por dispositivo. Así "Exportar JSON" / "Importar JSON"
+// quedan sincronizados con cada función de la app, no solo con las notas.
+function exportJSON(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  const payload={
+    version:2,
+    student:currentStudent,
+    career:currentCareer,
+    data:appData[currentStudent]||{},
+    notif:{ config:notifConfig, dismissed:getNotifDismissed(), seen:getNotifSeen() }
+  };
+  const a=document.createElement('a');
+  a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(payload));
+  a.download='pensum_'+currentStudent.replace(/\s+/g,'_')+'_backup.json';
+  a.click();
+  showToast('✓ Backup descargado','success');
+}
 function importJSON(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
   const inp=document.createElement('input');inp.type='file';inp.accept='application/json';
-  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{appData=JSON.parse(ev.target.result);saveLocal();showToast('Importado','success');renderPensum();}catch(err){showToast('Error al importar','error');}};r.readAsText(f);};inp.click();
+  inp.onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const parsed=JSON.parse(ev.target.result);
+        // Compatible con backups antiguos ({student,data} sin "notif") y con
+        // el nuevo formato completo — siempre se restaura sobre el estudiante
+        // actualmente seleccionado, nunca reemplaza appData completo (eso
+        // borraba a TODOS los demás estudiantes — era el bug anterior).
+        const importedData=(parsed && typeof parsed==='object' && parsed.data)?parsed.data:parsed;
+        appData[currentStudent]=importedData||{};
+        if(parsed && parsed.notif){
+          if(parsed.notif.config){ notifConfig=Object.assign({}, NOTIF_DEFAULTS, parsed.notif.config); saveNotifConfig(); }
+          if(parsed.notif.dismissed) setNotifDismissed(parsed.notif.dismissed);
+          if(parsed.notif.seen) setNotifSeen(parsed.notif.seen);
+        }
+        saveLocal();
+        renderPensum();
+        renderAsistencia();
+        refreshNotifBadge();
+        showToast('✓ Backup importado en '+currentStudent,'success');
+      }catch(err){
+        console.error('[Import JSON]',err);
+        showToast('Error al importar','error');
+      }
+    };
+    r.readAsText(f);
+  };
+  inp.click();
 }
 function exportCSV(){
   const rows=[['Ciclo','#','Código','Materia','UV','Prerreq','L1-C1','L2-C1','P-C1','C1','L1-C2','L2-C2','P-C2','C2','L1-C3','L2-C3','P-C3','C3','Nota Final','Estado']];

@@ -806,6 +806,7 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="ham-item" onclick="openCalendarModal();closeHam()"><span class="ham-ico">📅</span> Calendario</div>
     <div class="ham-item" onclick="openNotifModal();closeHam()"><span class="ham-ico">🔔</span> Notificaciones <span class="notif-badge" id="notifBadge"></span></div>
     <div class="ham-item" onclick="openAsistencia();closeHam()"><span class="ham-ico">🏛</span> Asistencia diaria</div>
+    <div class="ham-item" onclick="openAsistenciaActividad();closeHam()"><span class="ham-ico">📝</span> Asistencia de actividad</div>
     <div class="ham-item" onclick="openHistPensum();closeHam()"><span class="ham-ico">📜</span> Historial de cambios</div>
 
     <div class="ham-divider"></div>
@@ -897,6 +898,7 @@ header{flex-wrap:wrap;row-gap:6px;}
   <button class="tool-btn" onclick="openPasteModal()" title="Pegar notas">📋</button>
   <button class="tool-btn" onclick="openCalendarModal()" title="Calendario">📅</button>
   <button class="tool-btn" onclick="openAsistencia()" title="Asistencia">🏛</button>
+  <button class="tool-btn" onclick="openAsistenciaActividad()" title="Asistencia de actividad">📝</button>
   <button class="tool-btn" onclick="openDondeEstoy()" title="¿Dónde debo estar?">📍</button>
   <button class="tool-btn" onclick="fetchFromFirebase()" title="Descargar">⬇️</button>
   <button class="tool-btn" onclick="syncToFirebase()" title="Subir">☁️</button>
@@ -1088,10 +1090,92 @@ header{flex-wrap:wrap;row-gap:6px;}
     </div>
     <div id="asistenciaHistorico" style="max-height:240px;overflow-y:auto;"></div>
     <div class="modal-btns" style="margin-top:10px;flex-wrap:wrap;">
-      <button class="modal-btn secondary" onclick="generateAsistenciaPDF()" title="Genera un PDF con el historial de asistencia del período filtrado">📄 PDF</button>
-      <button class="modal-btn secondary" onclick="exportAsistenciaExcel()" title="Exporta el historial de asistencia del período filtrado a Excel">📊 Excel</button>
+      <button class="modal-btn secondary" onclick="abrirExportAsistencia('pdf')" title="Genera un PDF de asistencia">📄 PDF</button>
+      <button class="modal-btn secondary" onclick="abrirExportAsistencia('excel')" title="Exporta la asistencia a Excel">📊 Excel</button>
     </div>
     <div class="modal-btns" style="margin-top:8px;"><button class="modal-btn primary" onclick="document.getElementById('asistenciaModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="asistActividadModal">
+  <div class="modal" style="width:578px;">
+    <div class="asist-logos">
+      <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height:70px;object-fit:contain;" onerror="this.style.display='none'">
+      <div style="width:1px;height:60px;background:var(--gl);"></div>
+      <img src="DI.svg" alt="Dirección de Integración" style="height:68px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
+    </div>
+    <h3 style="text-align:center;margin-bottom:3px;">📝 Formulario de Asistencia DI</h3>
+    <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
+
+    <div class="modal-field">
+      <label>NIE del estudiante</label>
+      <input type="text" id="actNie" placeholder="Ej: 20230012">
+    </div>
+    <div class="modal-field">
+      <label>Nombre completo</label>
+      <input type="text" id="actNombre" placeholder="Si se deja vacío, se usa el nombre de la cuenta">
+    </div>
+    <div class="modal-field">
+      <label>Tipo de asistencia</label>
+      <select id="actTipo" onchange="_toggleActOtro()">
+        <option value="Participante">Participante</option>
+        <option value="Comisión">Comisión</option>
+        <option value="Apoyo logístico">Apoyo logístico</option>
+        <option value="Hidratación">Hidratación</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="modal-field" id="actOtroField" style="display:none;">
+      <label>Describe el tipo de asistencia</label>
+      <input type="text" id="actOtroDesc" placeholder="Ej: Logística de sonido">
+    </div>
+
+    <div style="text-align:center;margin-bottom:16px;">
+      <button class="asist-mark-btn" id="actValidarBtn" onclick="validarAsistenciaActividad()">✅ Validar Asistencia</button>
+    </div>
+
+    <div class="filter-tabs" id="actFilterTabs">
+      <button class="filter-tab active" onclick="setActFilter('today',this)">Hoy</button>
+      <button class="filter-tab" onclick="setActFilter('week',this)">Semana</button>
+      <button class="filter-tab" onclick="setActFilter('month',this)">Mes</button>
+      <button class="filter-tab" onclick="setActFilter('year',this)">Año</button>
+      <button class="filter-tab" onclick="setActFilter('all',this)">Todas</button>
+    </div>
+    <div id="actHistorico" style="max-height:200px;overflow-y:auto;"></div>
+
+    <div class="modal-btns" style="margin-top:10px;flex-wrap:wrap;">
+      <button class="modal-btn secondary" onclick="abrirExportAsistencia('pdf')" title="Genera un PDF de asistencia">📄 PDF</button>
+      <button class="modal-btn secondary" onclick="abrirExportAsistencia('excel')" title="Exporta la asistencia a Excel">📊 Excel</button>
+    </div>
+    <div class="modal-btns" style="margin-top:8px;"><button class="modal-btn primary" onclick="document.getElementById('asistActividadModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Selector compartido: al pedir PDF o Excel desde CUALQUIERA de las dos
+     modales de asistencia (diaria o por actividad), esta modal pregunta qué
+     querés exportar antes de generar el archivo. -->
+<div class="modal-overlay" id="exportAsistOpcionesModal" style="z-index:9999;">
+  <div class="modal" style="width:420px;">
+    <h3 style="text-align:center;margin-bottom:13px;">📤 ¿Qué asistencia querés exportar?</h3>
+    <div class="modal-field">
+      <label>Tipo de asistencia</label>
+      <select id="exportAsistTipo" onchange="_toggleExportAsistCombo()">
+        <option value="diaria">Asistencia diaria</option>
+        <option value="actividad">Asistencia por actividad</option>
+        <option value="ambas">Las 2 (diaria + actividad)</option>
+      </select>
+    </div>
+    <div class="modal-field" id="exportAsistComboField" style="display:none;">
+      <label>¿Cómo querés el archivo?</label>
+      <select id="exportAsistCombo">
+        <option value="combinado">Un solo archivo combinado</option>
+        <option value="separado">Un archivo separado por cada tipo</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="document.getElementById('exportAsistOpcionesModal').classList.remove('open')">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmarExportAsistencia()">Generar</button>
+    </div>
   </div>
 </div>
 
@@ -2040,7 +2124,7 @@ async function chooseCareer(career) {
         await window.__firebaseReady;
         const nombres = await window.FirebaseDB.listarEstudiantes(career);
         nombres.forEach(name => {
-          if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
+          if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, specialCards:{}, undoStack:[] };
         });
         loaded = true;
         const n = nombres.length;
@@ -2158,7 +2242,7 @@ async function recargarLista() {
     const nombres = await window.FirebaseDB.listarEstudiantes(currentCareer);
     appData = {};
     nombres.forEach(name => {
-      appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[] };
+      appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, specialCards:{}, undoStack:[] };
     });
     accountListVisible = await window.FirebaseDB.getShowAccountList();
     applyAccountListVisibility();
@@ -2265,10 +2349,11 @@ async function selectStudent(name) {
   // Si la descarga trae datos, los sobreescribe aquí mismo; si falla,
   // esta estructura vacía queda como estado inicial limpio (no se sube nada
   // todavía porque la cola de subida solo se activa con cambios reales del usuario).
-  if (!appData[name]) appData[name] = {notas:{}, events:[], cyclesDone:{}, asistencias:{}, specialCards:{}, undoStack:[]};
+  if (!appData[name]) appData[name] = {notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, specialCards:{}, undoStack:[]};
   if (!appData[name].cyclesDone)   appData[name].cyclesDone   = {};
   if (!appData[name].specialCards) appData[name].specialCards = {};
   if (!appData[name].asistencias)  appData[name].asistencias  = {};
+  if (!appData[name].asistenciasActividad) appData[name].asistenciasActividad = {};
 
   // ── PANTALLA DE CARGA ──
   _showLoading('Cargando datos de ' + name + '...', 'Descargando desde Firebase');
@@ -2278,7 +2363,7 @@ async function selectStudent(name) {
   if (config.appsScriptUrl) {
     try {
       await window.__firebaseReady;
-      const { perfil, notas, eventos, asistencias, pensumHistorial } = await window.FirebaseDB.cargarEstudianteUnaVez(name, currentCareer);
+      const { perfil, notas, eventos, asistencias, asistenciasActividad, pensumHistorial } = await window.FirebaseDB.cargarEstudianteUnaVez(name, currentCareer);
       const local = appData[name];
       // Notas
       notas.forEach(row => {
@@ -2296,6 +2381,7 @@ async function selectStudent(name) {
       if (eventos && eventos.length) local.events = eventos;
       if (perfil && perfil.cyclesDone)   Object.assign(local.cyclesDone,  perfil.cyclesDone);
       if (asistencias) Object.assign(local.asistencias, asistencias);
+      if (asistenciasActividad) Object.assign(local.asistenciasActividad, asistenciasActividad);
       if (perfil && perfil.specialCards) local.specialCards = perfil.specialCards;
       local.horario = (perfil && perfil.horario) || local.horario || null;
       // Pénsum editado (arrastrar materias) + su historial — antes nunca
@@ -2504,7 +2590,7 @@ Esta acción NO se puede deshacer.`)) return;
   _showLoading('Borrando datos...', 'Conectando con el servidor');
 
   for (const name of selected) {
-    if (!appData[name]) appData[name] = {notas:{},events:[],cyclesDone:{},asistencias:{},specialCards:{},undoStack:[]};
+    if (!appData[name]) appData[name] = {notas:{},events:[],cyclesDone:{},asistencias:{}, asistenciasActividad:{},specialCards:{},undoStack:[]};
     const sd = appData[name];
 
     if (delAll) {
@@ -2826,6 +2912,7 @@ function startAutoSyncInterval() {
     onNotas: (notasArray) => _applyRemoteUpdate({ notas: notasArray }),
     onEventos: (eventosArray) => { if (!_calendarModalOpen) { _applyRemoteUpdate({ events: eventosArray }); checkAndShowNotifToasts(); } },
     onAsistencias: (asistObj) => _applyRemoteUpdate({ asistencias: asistObj }),
+    onAsistenciasActividad: (asistActObj) => _applyRemoteUpdate({ asistenciasActividad: asistActObj }),
     onPensumHistorial: (histArray) => _applyRemoteUpdate({ pensumHistorial: histArray })
   });
 }
@@ -2893,6 +2980,12 @@ function _applyRemoteUpdate(d) {
     const remA = JSON.stringify(d.asistencias || {});
     const locA = JSON.stringify(local.asistencias || {});
     if (remA !== locA) { local.asistencias = d.asistencias || {}; changed = true; }
+  }
+
+  if (d.asistenciasActividad !== undefined) {
+    const remAA = JSON.stringify(d.asistenciasActividad || {});
+    const locAA = JSON.stringify(local.asistenciasActividad || {});
+    if (remAA !== locAA) { local.asistenciasActividad = d.asistenciasActividad || {}; changed = true; }
   }
 
   if (d.horario !== undefined) {
@@ -4116,6 +4209,273 @@ function exportAsistenciaExcel(){
 }
 
 // ═══════════════════════════════════════════════════════════
+// ASISTENCIA POR ACTIVIDAD (Participante / Comisión / Apoyo logístico /
+// Hidratación / Otro) — a diferencia de la asistencia diaria, acá se puede
+// registrar más de una vez por día (una por cada actividad), y se pide el
+// NIE y nombre de quien asiste porque no siempre es el dueño de la cuenta
+// desde la que se abre el formulario.
+// ═══════════════════════════════════════════════════════════
+let actFilter='today';
+
+function openAsistenciaActividad(){
+  actFilter='today';
+  const tabs=document.querySelectorAll('#actFilterTabs .filter-tab');
+  tabs.forEach(t=>t.classList.remove('active'));
+  if(tabs[0]) tabs[0].classList.add('active'); // "Hoy" es la primera pestaña
+  const nie=document.getElementById('actNie'), nom=document.getElementById('actNombre'), tipo=document.getElementById('actTipo');
+  if(nie) nie.value='';
+  if(nom) nom.value='';
+  if(tipo) tipo.value='Participante';
+  _toggleActOtro();
+  renderAsistenciaActividad();
+  document.getElementById('asistActividadModal').classList.add('open');
+}
+
+function getAsistenciasActividad(){if(!appData[currentStudent].asistenciasActividad)appData[currentStudent].asistenciasActividad={};return appData[currentStudent].asistenciasActividad;}
+
+function _toggleActOtro(){
+  const tipo=document.getElementById('actTipo').value;
+  const otro=document.getElementById('actOtroField');
+  if(otro) otro.style.display=(tipo==='Otro')?'block':'none';
+}
+
+function validarAsistenciaActividad(){
+  const nieEl=document.getElementById('actNie');
+  const nie=(nieEl.value||'').trim();
+  if(!nie){showToast('Ingresá el NIE del estudiante','error');return;}
+  let nombre=(document.getElementById('actNombre').value||'').trim();
+  if(!nombre) nombre=currentStudent; // si se deja vacío, se usa el de la cuenta con la que inició sesión
+  const tipoSel=document.getElementById('actTipo').value;
+  let tipoFinal=tipoSel;
+  if(tipoSel==='Otro'){
+    const desc=(document.getElementById('actOtroDesc').value||'').trim();
+    if(!desc){showToast('Describí el tipo de asistencia','error');return;}
+    tipoFinal='Otro — '+desc;
+  }
+  const now=new Date();
+  const id=String(now.getTime());
+  const lista=getAsistenciasActividad();
+  lista[id]={id,nie,nombre,tipo:tipoFinal,fecha:getTodayKey(),hora:now.toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),ts:now.toISOString()};
+  saveLocal();
+  // Limpiar el formulario para la siguiente persona, pero dejar el tipo
+  // seleccionado (normalmente varias personas seguidas marcan el mismo tipo).
+  nieEl.value='';
+  document.getElementById('actNombre').value='';
+  const otroDesc=document.getElementById('actOtroDesc'); if(otroDesc) otroDesc.value='';
+  renderAsistenciaActividad();
+  showToast('✅ Asistencia de actividad registrada','success');
+  nieEl.focus();
+}
+
+function setActFilter(f,btn){
+  actFilter=f;
+  document.querySelectorAll('#actFilterTabs .filter-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderAsistenciaActividad();
+}
+
+function renderAsistenciaActividad(){
+  const hist=document.getElementById('actHistorico');
+  const entries=Object.values(getAsistenciasActividad());
+  const filtered=filterByPeriod(entries,'ts',actFilter).sort((a,b)=>b.ts.localeCompare(a.ts));
+  if(!filtered.length){hist.innerHTML='<div style="color:var(--gm);text-align:center;padding:12px;">Sin registros en este período.</div>';return;}
+  hist.innerHTML=filtered.map(a=>`<div class="asist-hist-row">
+      <span style="font-size:17px;">📝</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(a.nombre)} <span style="font-size:10px;color:var(--gm);font-weight:600;">(${escapeHtml(a.nie)})</span></div>
+        <div style="font-size:11px;color:var(--gm);">${escapeHtml(a.tipo)} · 📅 ${a.fecha} 🕐 ${a.hora}</div>
+      </div>
+      <button onclick="borrarAsistenciaActividad('${a.id}')" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:13px;">🗑</button>
+    </div>`).join('');
+}
+function borrarAsistenciaActividad(id){
+  if(!confirm('¿Eliminar este registro?')) return;
+  delete getAsistenciasActividad()[id];saveLocal();renderAsistenciaActividad();
+}
+
+// Registros de asistencia de actividad filtrados por el período activo del
+// modal, del más antiguo al más reciente — usado por PDF/Excel (igual patrón
+// que _asistenciaFilteredEntries de la asistencia diaria).
+function _actividadFilteredEntries(){
+  const entries=Object.values(getAsistenciasActividad());
+  return filterByPeriod(entries,'ts',actFilter).sort((a,b)=>a.ts.localeCompare(b.ts));
+}
+function _actFilterLabel(){
+  return {today:'Hoy',week:'Última semana',month:'Este mes',year:'Este año',all:'Todo el historial'}[actFilter]||'Todo el historial';
+}
+
+// ── 📄 PDF de asistencia por actividad ──
+function generateActividadPDF(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  if(!(window.jspdf&&window.jspdf.jsPDF)){showToast('El generador de PDF no cargó. Recargá la página e intentá de nuevo.','error');return;}
+  const filtered=_actividadFilteredEntries();
+  if(!filtered.length){showToast('No hay registros de asistencia de actividad en este período','error');return;}
+  const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+  doc.setFont('helvetica','bold');doc.setFontSize(15);
+  doc.text('📝 Reporte de Asistencia por Actividad', 14, 18);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  doc.text('Dirección de Integración · Universidad Gerardo Barrios', 14, 24);
+  doc.text('Cuenta: '+currentStudent+(careerLabel?' · '+careerLabel:''), 14, 30);
+  doc.text('Período: '+_actFilterLabel()+' · Generado: '+new Date().toLocaleDateString('es-SV'), 14, 35);
+  doc.setLineWidth(0.3);doc.line(14,39,196,39);
+  let y=47;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);
+  doc.text('Fecha',14,y);doc.text('Hora',40,y);doc.text('NIE',65,y);doc.text('Nombre',95,y);doc.text('Tipo',150,y);
+  doc.setFont('helvetica','normal');
+  y+=2;doc.line(14,y,196,y);y+=7;
+  filtered.forEach(a=>{
+    if(y>270){doc.addPage();y=20;}
+    doc.text(a.fecha,14,y);doc.text(a.hora,40,y);doc.text(String(a.nie||''),65,y);
+    doc.text(String(a.nombre||'').slice(0,28),95,y);doc.text(String(a.tipo||'').slice(0,26),150,y);
+    y+=7;
+  });
+  y+=3;doc.line(14,y,196,y);y+=7;
+  doc.setFont('helvetica','bold');
+  doc.text('Total de registros: '+filtered.length,14,y);
+  doc.save('asistencia_actividad_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  showToast('✓ PDF de asistencia de actividad generado','success');
+}
+
+// ── 📊 Excel de asistencia por actividad ──
+function exportActividadExcel(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  const filtered=_actividadFilteredEntries();
+  if(!filtered.length){showToast('No hay registros de asistencia de actividad en este período','error');return;}
+  const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  let html='<table border="1"><thead>'
+    +'<tr><th colspan="5">Asistencia por Actividad — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
+    +'<tr><th colspan="5">Período: '+escapeHtml(_actFilterLabel())+'</th></tr>'
+    +'<tr><th>Fecha</th><th>Hora</th><th>NIE</th><th>Nombre</th><th>Tipo</th></tr></thead><tbody>';
+  filtered.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td>'+escapeHtml(a.nie)+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(a.tipo)+'</td></tr>'; });
+  html+='<tr><td colspan="4"><b>Total</b></td><td><b>'+filtered.length+'</b></td></tr></tbody></table>';
+  const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='asistencia_actividad_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.click();
+  showToast('✓ Excel de asistencia de actividad exportado','success');
+}
+
+// ═══════════════════════════════════════════════════════════
+// SELECTOR COMPARTIDO DE EXPORTACIÓN — se abre desde el botón 📄 PDF / 📊
+// Excel de CUALQUIERA de las dos modales de asistencia (diaria o por
+// actividad). Pregunta qué tipo(s) exportar y, si son las 2, si van
+// combinadas en un solo archivo o en archivos separados.
+// ═══════════════════════════════════════════════════════════
+let _exportAsistFormatoPendiente=null; // 'pdf' | 'excel'
+
+function abrirExportAsistencia(formato){
+  _exportAsistFormatoPendiente=formato;
+  const tipoSel=document.getElementById('exportAsistTipo');
+  if(tipoSel) tipoSel.value='diaria';
+  _toggleExportAsistCombo();
+  document.getElementById('exportAsistOpcionesModal').classList.add('open');
+}
+
+function _toggleExportAsistCombo(){
+  const tipo=document.getElementById('exportAsistTipo').value;
+  const combo=document.getElementById('exportAsistComboField');
+  if(combo) combo.style.display=(tipo==='ambas')?'block':'none';
+}
+
+function confirmarExportAsistencia(){
+  const tipo=document.getElementById('exportAsistTipo').value;   // diaria | actividad | ambas
+  const combo=document.getElementById('exportAsistCombo').value; // combinado | separado
+  const formato=_exportAsistFormatoPendiente;
+  document.getElementById('exportAsistOpcionesModal').classList.remove('open');
+  if(!formato) return;
+
+  if(formato==='pdf'){
+    if(tipo==='diaria') generateAsistenciaPDF();
+    else if(tipo==='actividad') generateActividadPDF();
+    else if(combo==='combinado') generateAsistenciaCombinadaPDF();
+    else { generateAsistenciaPDF(); generateActividadPDF(); }
+  } else {
+    if(tipo==='diaria') exportAsistenciaExcel();
+    else if(tipo==='actividad') exportActividadExcel();
+    else if(combo==='combinado') exportAsistenciaCombinadaExcel();
+    else { exportAsistenciaExcel(); exportActividadExcel(); }
+  }
+}
+
+// ── 📄 PDF combinado (asistencia diaria + por actividad en un solo archivo) ──
+function generateAsistenciaCombinadaPDF(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  if(!(window.jspdf&&window.jspdf.jsPDF)){showToast('El generador de PDF no cargó. Recargá la página e intentá de nuevo.','error');return;}
+  const diarias=_asistenciaFilteredEntries();
+  const actividad=_actividadFilteredEntries();
+  if(!diarias.length && !actividad.length){showToast('No hay registros de asistencia en este período','error');return;}
+  const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+  doc.setFont('helvetica','bold');doc.setFontSize(15);
+  doc.text('🏛 Reporte de Asistencia (Diaria + Actividad)', 14, 18);
+  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  doc.text('Dirección de Integración · Universidad Gerardo Barrios', 14, 24);
+  doc.text('Cuenta: '+currentStudent+(careerLabel?' · '+careerLabel:''), 14, 30);
+  doc.text('Período: '+_asistFilterLabel()+' · Generado: '+new Date().toLocaleDateString('es-SV'), 14, 35);
+  doc.setLineWidth(0.3);doc.line(14,39,196,39);
+  let y=47;
+
+  doc.setFont('helvetica','bold');doc.setFontSize(12);
+  doc.text('🏛 Asistencia diaria', 14, y); y+=8;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  if(!diarias.length){ doc.text('Sin registros en este período.',14,y); y+=8; }
+  else {
+    diarias.forEach(a=>{
+      if(y>270){doc.addPage();y=20;}
+      doc.text(a.fecha,14,y);doc.text(a.hora,60,y);
+      y+=6;
+    });
+    y+=4;
+  }
+
+  if(y>255){doc.addPage();y=20;}
+  doc.setFont('helvetica','bold');doc.setFontSize(12);
+  doc.text('📝 Asistencia por actividad', 14, y); y+=8;
+  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  if(!actividad.length){ doc.text('Sin registros en este período.',14,y); y+=8; }
+  else {
+    actividad.forEach(a=>{
+      if(y>270){doc.addPage();y=20;}
+      doc.text(a.fecha,14,y);doc.text(a.hora,40,y);doc.text(String(a.nie||''),65,y);
+      doc.text(String(a.nombre||'').slice(0,28),95,y);doc.text(String(a.tipo||'').slice(0,26),150,y);
+      y+=6;
+    });
+  }
+  doc.save('asistencia_combinada_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  showToast('✓ PDF combinado de asistencia generado','success');
+}
+
+// ── 📊 Excel combinado (asistencia diaria + por actividad en un solo archivo) ──
+function exportAsistenciaCombinadaExcel(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  const diarias=_asistenciaFilteredEntries();
+  const actividad=_actividadFilteredEntries();
+  if(!diarias.length && !actividad.length){showToast('No hay registros de asistencia en este período','error');return;}
+  const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  let html='<table border="1"><thead>'
+    +'<tr><th colspan="5">Asistencia — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
+    +'<tr><th colspan="5">Período: '+escapeHtml(_asistFilterLabel())+'</th></tr>'
+    +'<tr><th colspan="5">🏛 Asistencia diaria</th></tr>'
+    +'<tr><th>Fecha</th><th>Hora</th><th></th><th></th><th></th></tr></thead><tbody>';
+  diarias.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td></td><td></td><td></td></tr>'; });
+  html+='<tr><td colspan="5">&nbsp;</td></tr>';
+  html+='<tr><th colspan="5">📝 Asistencia por actividad</th></tr>';
+  html+='<tr><th>Fecha</th><th>Hora</th><th>NIE</th><th>Nombre</th><th>Tipo</th></tr>';
+  actividad.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td>'+escapeHtml(a.nie)+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(a.tipo)+'</td></tr>'; });
+  html+='</tbody></table>';
+  const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='asistencia_combinada_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.click();
+  showToast('✓ Excel combinado de asistencia exportado','success');
+}
+
+// ═══════════════════════════════════════════════════════════
 // PASTE FROM PORTAL
 // ═══════════════════════════════════════════════════════════
 function openPasteModal(){document.getElementById('pasteModal').classList.add('open');document.getElementById('pasteTextarea').value='';}
@@ -4891,6 +5251,7 @@ async function syncToFirebase(isAuto=false){
       window.FirebaseDB.guardarCiclosDone(currentStudent, currentCareer, sd.cyclesDone||{}),
       window.FirebaseDB.guardarEspeciales(currentStudent, currentCareer, sd.specialCards||{}),
       window.FirebaseDB.guardarAsistencias(currentStudent, currentCareer, sd.asistencias||{}),
+      window.FirebaseDB.guardarAsistenciasActividad(currentStudent, currentCareer, sd.asistenciasActividad||{}),
       window.FirebaseDB.guardarPensumCycles(currentStudent, currentCareer, sd.cycles||CYCLES),
       window.FirebaseDB.guardarPensumHistorial(currentStudent, currentCareer, (sd.undoStack||undoStack||[]).slice(-MAX_HIST))
     ]);
@@ -4909,14 +5270,15 @@ async function fetchFromFirebase(silent=false){
   if(!silent) showToast('⏳ Descargando desde Firebase...','success');
   try{
     await window.__firebaseReady;
-    const { perfil, notas, eventos, asistencias, pensumHistorial } = await window.FirebaseDB.cargarEstudianteUnaVez(currentStudent, currentCareer);
-    if(!appData[currentStudent]) appData[currentStudent]={notas:{},events:[],cyclesDone:{},asistencias:{},specialCards:{},undoStack:[]};
+    const { perfil, notas, eventos, asistencias, asistenciasActividad, pensumHistorial } = await window.FirebaseDB.cargarEstudianteUnaVez(currentStudent, currentCareer);
+    if(!appData[currentStudent]) appData[currentStudent]={notas:{},events:[],cyclesDone:{},asistencias:{}, asistenciasActividad:{},specialCards:{},undoStack:[]};
     // Reemplazar completamente con datos de Firestore (Firestore = fuente de verdad)
     appData[currentStudent].notas={};
     notas.forEach(row=>{appData[currentStudent].notas[row.num]={status:row.status,finalGrade:(row.finalGrade===''||row.finalGrade===undefined)?null:parseFloat(row.finalGrade),computos:[{lab1:row.lab1_c1,lab2:row.lab2_c1,parcial:row.parcial_c1},{lab1:row.lab1_c2,lab2:row.lab2_c2,parcial:row.parcial_c2},{lab1:row.lab1_c3,lab2:row.lab2_c3,parcial:row.parcial_c3}]};});
     if(eventos && eventos.length) appData[currentStudent].events=eventos;
     if(perfil && perfil.cyclesDone) appData[currentStudent].cyclesDone=Object.assign(appData[currentStudent].cyclesDone||{},perfil.cyclesDone);
     if(asistencias) appData[currentStudent].asistencias=Object.assign(appData[currentStudent].asistencias||{},asistencias);
+    if(asistenciasActividad) appData[currentStudent].asistenciasActividad=Object.assign(appData[currentStudent].asistenciasActividad||{},asistenciasActividad);
     if(perfil && perfil.pensumCycles){ appData[currentStudent].cycles=perfil.pensumCycles; CYCLES=JSON.parse(JSON.stringify(perfil.pensumCycles)); }
     if(pensumHistorial){ appData[currentStudent].undoStack=pensumHistorial; undoStack=pensumHistorial; redoStack=[]; updateUndoRedoBtns(); }
     renderPensum();

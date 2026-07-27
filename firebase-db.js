@@ -72,7 +72,7 @@ export async function guardarPasswordHash(nombre, carrera, hash) {
 export async function eliminarEstudiante(nombre, carrera) {
   const id = studentId(nombre, carrera);
   // Borra subcolecciones primero (Firestore no borra en cascada solo).
-  for (const sub of ['notas', 'eventos', 'asistencias', 'pensumHistorial']) {
+  for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial']) {
     const snap = await getDocs(collection(db, 'estudiantes', id, sub));
     const batch = writeBatch(db);
     snap.docs.forEach(d => batch.delete(d.ref));
@@ -221,28 +221,64 @@ export function escucharAsistencias(nombre, carrera, callback) {
 }
 
 // ============================================================
+// ASISTENCIAS POR ACTIVIDAD (Participante/Comisión/Apoyo logístico/
+// Hidratación/Otro) — subcolección separada de "asistencias" (la diaria)
+// porque acá puede haber varios registros el mismo día, uno por actividad,
+// cada uno con su propio NIE/nombre/tipo. Mismo patrón atómico de
+// writeBatch que el resto de subcolecciones.
+// ============================================================
+
+export async function guardarAsistenciasActividad(nombre, carrera, asistenciasActividadObj) {
+  const id   = studentId(nombre, carrera);
+  const col  = collection(db, 'estudiantes', id, 'asistenciasActividad');
+  const prev = await getDocs(col);
+  const idsNuevos = new Set(Object.keys(asistenciasActividadObj || {}));
+
+  const batch = writeBatch(db);
+  prev.docs.forEach(d => { if (!idsNuevos.has(d.id)) batch.delete(d.ref); });
+  Object.entries(asistenciasActividadObj || {}).forEach(([regId, registro]) => {
+    batch.set(doc(col, regId), registro);
+  });
+  await batch.commit();
+}
+
+export function escucharAsistenciasActividad(nombre, carrera, callback) {
+  const col = collection(db, 'estudiantes', studentId(nombre, carrera), 'asistenciasActividad');
+  return onSnapshot(col, (snap) => {
+    const obj = {};
+    snap.docs.forEach(d => { obj[d.id] = d.data(); });
+    callback(obj);
+  });
+}
+
+// ============================================================
 // CARGA ÚNICA (para el botón manual "Refrescar" — no reemplaza al listener
 // en tiempo real, es un getDoc/getDocs de una sola vez).
 // ============================================================
 
 export async function cargarEstudianteUnaVez(nombre, carrera) {
   const id = studentId(nombre, carrera);
-  const [perfilSnap, notasSnap, eventosSnap, asistSnap, histSnap] = await Promise.all([
+  const [perfilSnap, notasSnap, eventosSnap, asistSnap, asistActSnap, histSnap] = await Promise.all([
     getDoc(doc(db, 'estudiantes', id)),
     getDocs(collection(db, 'estudiantes', id, 'notas')),
     getDocs(collection(db, 'estudiantes', id, 'eventos')),
     getDocs(collection(db, 'estudiantes', id, 'asistencias')),
+    getDocs(collection(db, 'estudiantes', id, 'asistenciasActividad')),
     getDocs(collection(db, 'estudiantes', id, 'pensumHistorial'))
   ]);
 
   const asistencias = {};
   asistSnap.docs.forEach(d => { asistencias[d.id] = d.data(); });
 
+  const asistenciasActividad = {};
+  asistActSnap.docs.forEach(d => { asistenciasActividad[d.id] = d.data(); });
+
   return {
     perfil: perfilSnap.exists() ? perfilSnap.data() : null,
     notas: notasSnap.docs.map(d => d.data()),
     eventos: eventosSnap.docs.map(d => d.data()),
     asistencias,
+    asistenciasActividad,
     pensumHistorial: histSnap.docs.map(d => d.data()).sort((a, b) => (a.ts||'').localeCompare(b.ts||''))
   };
 }
@@ -254,17 +290,18 @@ export async function cargarEstudianteUnaVez(nombre, carrera) {
 // o cerrar sesión).
 // ============================================================
 
-export function escucharEstudiante(nombre, carrera, { onPerfil, onNotas, onEventos, onAsistencias, onPensumHistorial }) {
+export function escucharEstudiante(nombre, carrera, { onPerfil, onNotas, onEventos, onAsistencias, onAsistenciasActividad, onPensumHistorial }) {
   const id = studentId(nombre, carrera);
   const unsubs = [];
 
   unsubs.push(onSnapshot(doc(db, 'estudiantes', id), (snap) => {
     if (snap.exists() && onPerfil) onPerfil(snap.data());
   }));
-  if (onNotas)           unsubs.push(escucharNotas(nombre, carrera, onNotas));
-  if (onEventos)         unsubs.push(escucharEventos(nombre, carrera, onEventos));
-  if (onAsistencias)     unsubs.push(escucharAsistencias(nombre, carrera, onAsistencias));
-  if (onPensumHistorial) unsubs.push(escucharPensumHistorial(nombre, carrera, onPensumHistorial));
+  if (onNotas)               unsubs.push(escucharNotas(nombre, carrera, onNotas));
+  if (onEventos)             unsubs.push(escucharEventos(nombre, carrera, onEventos));
+  if (onAsistencias)         unsubs.push(escucharAsistencias(nombre, carrera, onAsistencias));
+  if (onAsistenciasActividad) unsubs.push(escucharAsistenciasActividad(nombre, carrera, onAsistenciasActividad));
+  if (onPensumHistorial)     unsubs.push(escucharPensumHistorial(nombre, carrera, onPensumHistorial));
 
   return () => unsubs.forEach(u => u());
 }
@@ -323,7 +360,7 @@ export async function resetearBaseDeDatos(onProgress = () => {}) {
 
   let borrados = 0;
   for (const id of ids) {
-    for (const sub of ['notas', 'eventos', 'asistencias', 'pensumHistorial']) {
+    for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial']) {
       const subSnap = await getDocs(collection(db, 'estudiantes', id, sub));
       if (subSnap.docs.length) {
         const batch = writeBatch(db);

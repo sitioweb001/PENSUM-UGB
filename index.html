@@ -1099,10 +1099,8 @@ header{flex-wrap:wrap;row-gap:6px;}
 
 <div class="modal-overlay" id="asistActividadModal">
   <div class="modal" style="width:578px;">
-    <div class="asist-logos">
-      <img src="Logotipo-horizontal-azul.png" alt="UGB" style="height:70px;object-fit:contain;" onerror="this.style.display='none'">
-      <div style="width:1px;height:60px;background:var(--gl);"></div>
-      <img src="DI.svg" alt="Dirección de Integración" style="height:68px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
+    <div class="asist-logos" style="justify-content:center;">
+      <img src="DI.svg" alt="Dirección de Integración" style="height:90px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:12px;color:var(--gm);font-weight:700;\'>Dirección de Integración UGB</span>'">
     </div>
     <h3 style="text-align:center;margin-bottom:3px;">📝 Formulario de Asistencia DI</h3>
     <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
@@ -1112,12 +1110,29 @@ header{flex-wrap:wrap;row-gap:6px;}
       <input type="text" id="actNie" placeholder="Ej: 20230012">
     </div>
     <div class="modal-field">
-      <label>Nombre completo</label>
+      <label>Nombre del técnico</label>
+      <input type="text" id="actTecnico" placeholder="Ej: Juan Pérez">
+    </div>
+    <div class="modal-field">
+      <label>Hora de salida</label>
+      <input type="time" id="actHoraSalida">
+    </div>
+    <div class="modal-field">
+      <label>Cantidad de cupos</label>
+      <input type="number" min="0" id="actCupos" placeholder="Si se deja vacío: Desconocido / N/A">
+    </div>
+    <div class="modal-field">
+      <label>Sede</label>
+      <input type="text" id="actSede" placeholder="Ej: Sede Central">
+    </div>
+    <div class="modal-field">
+      <label>Nombre completo del estudiante</label>
       <input type="text" id="actNombre" placeholder="Si se deja vacío, se usa el nombre de la cuenta">
     </div>
     <div class="modal-field">
       <label>Tipo de asistencia</label>
       <select id="actTipo" onchange="_toggleActOtro()">
+        <option value="Líder de ruta">Líder de ruta</option>
         <option value="Participante">Participante</option>
         <option value="Comisión">Comisión</option>
         <option value="Apoyo logístico">Apoyo logístico</option>
@@ -1148,6 +1163,19 @@ header{flex-wrap:wrap;row-gap:6px;}
       <button class="modal-btn secondary" onclick="abrirExportAsistencia('excel')" title="Exporta la asistencia a Excel">📊 Excel</button>
     </div>
     <div class="modal-btns" style="margin-top:8px;"><button class="modal-btn primary" onclick="document.getElementById('asistActividadModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Detalle de un registro de asistencia por actividad — se abre al tocar
+     cualquier fila del historial (ver renderAsistenciaActividad). -->
+<div class="modal-overlay" id="actDetalleModal" style="z-index:9999;">
+  <div class="modal" style="width:420px;">
+    <h3 style="text-align:center;margin-bottom:13px;">📝 Detalle de Asistencia</h3>
+    <div id="actDetalleBody" style="font-size:13px;"></div>
+    <div class="modal-btns" style="margin-top:14px;">
+      <button class="modal-btn danger" onclick="borrarAsistenciaActividadDesdeDetalle()">🗑 Eliminar</button>
+      <button class="modal-btn primary" onclick="document.getElementById('actDetalleModal').classList.remove('open')">Cerrar</button>
+    </div>
   </div>
 </div>
 
@@ -4143,6 +4171,51 @@ function _asistFilterLabel(){
 }
 
 // ── 📄 PDF de asistencia ──
+// ═══════════════════════════════════════════════════════════
+// DISEÑO COMPARTIDO DE LOS PDF DE ASISTENCIA — banner de color con el
+// título, tabla con encabezado resaltado y filas en franjas alternadas
+// (zebra), y pie de página con numeración. Usado por los tres generadores
+// de PDF de asistencia (diaria, actividad, combinado) para que los tres
+// se vean como parte del mismo sistema.
+// ═══════════════════════════════════════════════════════════
+const ASIST_PDF_BLUE    = [29, 64, 175];
+const ASIST_PDF_BLUE_DK = [23, 37, 84];
+const ASIST_PDF_LIGHT   = [224, 234, 255];
+
+function _asistPdfHeader(doc, title, subtitleLines){
+  const pageW=doc.internal.pageSize.getWidth();
+  doc.setFillColor(...ASIST_PDF_BLUE);
+  doc.rect(0,0,pageW,32,'F');
+  doc.setFillColor(...ASIST_PDF_BLUE_DK);
+  doc.rect(0,30,pageW,1.4,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold');doc.setFontSize(15);
+  doc.text(title,14,15);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);
+  let y=21;
+  subtitleLines.forEach(line=>{ doc.text(line,14,y); y+=5; });
+  doc.setTextColor(0,0,0);
+  return 41;
+}
+
+function _asistPdfFooter(doc){
+  const pageCount=doc.internal.getNumberOfPages();
+  const pageW=doc.internal.pageSize.getWidth();
+  const pageH=doc.internal.pageSize.getHeight();
+  for(let i=1;i<=pageCount;i++){
+    doc.setPage(i);
+    doc.setDrawColor(210,210,210);doc.setLineWidth(0.2);
+    doc.line(14,pageH-14,pageW-14,pageH-14);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);
+    doc.setTextColor(140,140,140);
+    doc.text('Generado el '+new Date().toLocaleString('es-SV'),14,pageH-9);
+    doc.text('Dirección de Integración · UGB',pageW/2,pageH-9,{align:'center'});
+    doc.text('Página '+i+' / '+pageCount,pageW-14,pageH-9,{align:'right'});
+    doc.setTextColor(0,0,0);
+  }
+}
+
+// ── 📄 PDF de asistencia diaria ──
 function generateAsistenciaPDF(){
   if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
   if(!(window.jspdf&&window.jspdf.jsPDF)){
@@ -4153,36 +4226,44 @@ function generateAsistenciaPDF(){
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
   const { jsPDF }=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(15);
-  doc.text('🏛 Reporte de Asistencia', 14, 18);
-  doc.setFont('helvetica','normal');
-  doc.setFontSize(10);
-  doc.text('Dirección de Integración · Universidad Gerardo Barrios', 14, 24);
-  doc.text('Estudiante: '+currentStudent+(careerLabel?' · '+careerLabel:''), 14, 30);
-  doc.text('Período: '+_asistFilterLabel()+' · Generado: '+new Date().toLocaleDateString('es-SV'), 14, 35);
-  doc.setLineWidth(0.3);
-  doc.line(14, 39, 196, 39);
-  let y=47;
-  doc.setFont('helvetica','bold');
-  doc.setFontSize(11);
-  doc.text('Fecha',14,y);
-  doc.text('Hora',90,y);
-  doc.setFont('helvetica','normal');
-  y+=2;
-  doc.line(14,y,196,y);
-  y+=7;
-  filtered.forEach(a=>{
-    if(y>270){doc.addPage();y=20;}
-    doc.text(a.fecha,14,y);
-    doc.text(a.hora,90,y);
-    y+=7;
+  const pageW=doc.internal.pageSize.getWidth();
+
+  let y=_asistPdfHeader(doc,'Reporte de Asistencia Diaria',[
+    'Estudiante: '+currentStudent+(careerLabel?' · '+careerLabel:''),
+    'Período: '+_asistFilterLabel()+'  ·  '+filtered.length+' registro(s)'
+  ]);
+
+  const drawTableHead=()=>{
+    doc.setFillColor(...ASIST_PDF_LIGHT);
+    doc.rect(14,y,pageW-28,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...ASIST_PDF_BLUE_DK);
+    doc.text('#',18,y+5.5);
+    doc.text('Fecha',34,y+5.5);
+    doc.text('Hora',95,y+5.5);
+    doc.setTextColor(0,0,0);
+    y+=12;
+  };
+  drawTableHead();
+
+  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  filtered.forEach((a,i)=>{
+    if(y>262){ doc.addPage(); y=20; drawTableHead(); doc.setFont('helvetica','normal');doc.setFontSize(10); }
+    if(i%2===0){ doc.setFillColor(248,250,252); doc.rect(14,y-5.5,pageW-28,8,'F'); }
+    doc.text(String(i+1),18,y);
+    doc.text(a.fecha,34,y);
+    doc.text(a.hora,95,y);
+    y+=8;
   });
-  y+=3;
-  doc.line(14,y,196,y);
+
+  y+=5;
+  doc.setDrawColor(...ASIST_PDF_BLUE);doc.setLineWidth(0.5);
+  doc.line(14,y,pageW-14,y);
   y+=7;
-  doc.setFont('helvetica','bold');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...ASIST_PDF_BLUE_DK);
   doc.text('Total de registros: '+filtered.length,14,y);
+  doc.setTextColor(0,0,0);
+
+  _asistPdfFooter(doc);
   doc.save('asistencia_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
   showToast('✓ PDF de asistencia generado','success');
 }
@@ -4194,10 +4275,11 @@ function exportAsistenciaExcel(){
   const filtered=_asistenciaFilteredEntries();
   if(!filtered.length){showToast('No hay registros de asistencia en este período','error');return;}
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  const thStyle='style="background:#1d40af;color:#fff;font-weight:bold;"';
   let html='<table border="1"><thead>'
-    +'<tr><th colspan="2">Asistencia — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
-    +'<tr><th colspan="2">Período: '+escapeHtml(_asistFilterLabel())+'</th></tr>'
-    +'<tr><th>Fecha</th><th>Hora</th></tr></thead><tbody>';
+    +'<tr><th colspan="2" '+thStyle+'>🏛 Asistencia Diaria — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
+    +'<tr><th colspan="2" '+thStyle+'>Período: '+escapeHtml(_asistFilterLabel())+'</th></tr>'
+    +'<tr><th '+thStyle+'>Fecha</th><th '+thStyle+'>Hora</th></tr></thead><tbody>';
   filtered.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td></tr>'; });
   html+='<tr><td><b>Total</b></td><td><b>'+filtered.length+'</b></td></tr></tbody></table>';
   const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
@@ -4222,10 +4304,18 @@ function openAsistenciaActividad(){
   const tabs=document.querySelectorAll('#actFilterTabs .filter-tab');
   tabs.forEach(t=>t.classList.remove('active'));
   if(tabs[0]) tabs[0].classList.add('active'); // "Hoy" es la primera pestaña
-  const nie=document.getElementById('actNie'), nom=document.getElementById('actNombre'), tipo=document.getElementById('actTipo');
+  const nie=document.getElementById('actNie'), tecnico=document.getElementById('actTecnico'),
+        horaSalida=document.getElementById('actHoraSalida'), cupos=document.getElementById('actCupos'),
+        sede=document.getElementById('actSede'), nom=document.getElementById('actNombre'),
+        tipo=document.getElementById('actTipo'), otroDesc=document.getElementById('actOtroDesc');
   if(nie) nie.value='';
+  if(tecnico) tecnico.value='';
+  if(horaSalida) horaSalida.value='';
+  if(cupos) cupos.value='';
+  if(sede) sede.value='';
   if(nom) nom.value='';
-  if(tipo) tipo.value='Participante';
+  if(tipo) tipo.value='Líder de ruta';
+  if(otroDesc) otroDesc.value='';
   _toggleActOtro();
   renderAsistenciaActividad();
   document.getElementById('asistActividadModal').classList.add('open');
@@ -4243,6 +4333,11 @@ function validarAsistenciaActividad(){
   const nieEl=document.getElementById('actNie');
   const nie=(nieEl.value||'').trim();
   if(!nie){showToast('Ingresá el NIE del estudiante','error');return;}
+  const tecnico=(document.getElementById('actTecnico').value||'').trim();
+  const horaSalida=document.getElementById('actHoraSalida').value||'';
+  const cuposRaw=(document.getElementById('actCupos').value||'').trim();
+  const cupos=cuposRaw===''?'Desconocido / N/A':cuposRaw; // si no se llena, queda como desconocido
+  const sede=(document.getElementById('actSede').value||'').trim();
   let nombre=(document.getElementById('actNombre').value||'').trim();
   if(!nombre) nombre=currentStudent; // si se deja vacío, se usa el de la cuenta con la que inició sesión
   const tipoSel=document.getElementById('actTipo').value;
@@ -4255,13 +4350,13 @@ function validarAsistenciaActividad(){
   const now=new Date();
   const id=String(now.getTime());
   const lista=getAsistenciasActividad();
-  lista[id]={id,nie,nombre,tipo:tipoFinal,fecha:getTodayKey(),hora:now.toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),ts:now.toISOString()};
+  lista[id]={id,nie,tecnico,horaSalida,cupos,sede,nombre,tipo:tipoFinal,fecha:getTodayKey(),hora:now.toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),ts:now.toISOString()};
   saveLocal();
-  // Limpiar el formulario para la siguiente persona, pero dejar el tipo
-  // seleccionado (normalmente varias personas seguidas marcan el mismo tipo).
+  // Limpiar solo NIE y nombre del estudiante para la siguiente persona —
+  // técnico/hora de salida/cupos/sede/tipo normalmente se repiten para
+  // todo el grupo que va en la misma ruta, así que se dejan como están.
   nieEl.value='';
   document.getElementById('actNombre').value='';
-  const otroDesc=document.getElementById('actOtroDesc'); if(otroDesc) otroDesc.value='';
   renderAsistenciaActividad();
   showToast('✅ Asistencia de actividad registrada','success');
   nieEl.focus();
@@ -4279,18 +4374,49 @@ function renderAsistenciaActividad(){
   const entries=Object.values(getAsistenciasActividad());
   const filtered=filterByPeriod(entries,'ts',actFilter).sort((a,b)=>b.ts.localeCompare(a.ts));
   if(!filtered.length){hist.innerHTML='<div style="color:var(--gm);text-align:center;padding:12px;">Sin registros en este período.</div>';return;}
-  hist.innerHTML=filtered.map(a=>`<div class="asist-hist-row">
+  hist.innerHTML=filtered.map(a=>`<div class="asist-hist-row" style="cursor:pointer;" onclick="verDetalleActividad('${a.id}')">
       <span style="font-size:17px;">📝</span>
       <div style="flex:1;">
         <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(a.nombre)} <span style="font-size:10px;color:var(--gm);font-weight:600;">(${escapeHtml(a.nie)})</span></div>
         <div style="font-size:11px;color:var(--gm);">${escapeHtml(a.tipo)} · 📅 ${a.fecha} 🕐 ${a.hora}</div>
       </div>
-      <button onclick="borrarAsistenciaActividad('${a.id}')" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:13px;">🗑</button>
+      <button onclick="event.stopPropagation();borrarAsistenciaActividad('${a.id}')" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:13px;">🗑</button>
     </div>`).join('');
 }
 function borrarAsistenciaActividad(id){
   if(!confirm('¿Eliminar este registro?')) return;
   delete getAsistenciasActividad()[id];saveLocal();renderAsistenciaActividad();
+}
+
+// ── Detalle de un registro (se abre al tocar la fila en el historial) ──
+let _actDetalleIdActual=null;
+function verDetalleActividad(id){
+  const reg=getAsistenciasActividad()[id];
+  if(!reg) return;
+  _actDetalleIdActual=id;
+  const row=(label,val)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--gl);">
+      <span style="color:var(--gm);font-weight:600;">${label}</span>
+      <span style="font-weight:700;text-align:right;">${escapeHtml(val||'—')}</span>
+    </div>`;
+  document.getElementById('actDetalleBody').innerHTML =
+    row('NIE', reg.nie) +
+    row('Estudiante', reg.nombre) +
+    row('Tipo de asistencia', reg.tipo) +
+    row('Técnico', reg.tecnico) +
+    row('Hora de salida', reg.horaSalida) +
+    row('Cupos', reg.cupos) +
+    row('Sede', reg.sede) +
+    row('Fecha', reg.fecha) +
+    row('Hora de registro', reg.hora);
+  document.getElementById('actDetalleModal').classList.add('open');
+}
+function borrarAsistenciaActividadDesdeDetalle(){
+  if(!_actDetalleIdActual) return;
+  if(!confirm('¿Eliminar este registro?')) return;
+  delete getAsistenciasActividad()[_actDetalleIdActual];
+  saveLocal();
+  document.getElementById('actDetalleModal').classList.remove('open');
+  renderAsistenciaActividad();
 }
 
 // Registros de asistencia de actividad filtrados por el período activo del
@@ -4312,28 +4438,66 @@ function generateActividadPDF(){
   if(!filtered.length){showToast('No hay registros de asistencia de actividad en este período','error');return;}
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
   const { jsPDF }=window.jspdf;
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
-  doc.setFont('helvetica','bold');doc.setFontSize(15);
-  doc.text('📝 Reporte de Asistencia por Actividad', 14, 18);
-  doc.setFont('helvetica','normal');doc.setFontSize(10);
-  doc.text('Dirección de Integración · Universidad Gerardo Barrios', 14, 24);
-  doc.text('Cuenta: '+currentStudent+(careerLabel?' · '+careerLabel:''), 14, 30);
-  doc.text('Período: '+_actFilterLabel()+' · Generado: '+new Date().toLocaleDateString('es-SV'), 14, 35);
-  doc.setLineWidth(0.3);doc.line(14,39,196,39);
-  let y=47;
-  doc.setFont('helvetica','bold');doc.setFontSize(10);
-  doc.text('Fecha',14,y);doc.text('Hora',40,y);doc.text('NIE',65,y);doc.text('Nombre',95,y);doc.text('Tipo',150,y);
-  doc.setFont('helvetica','normal');
-  y+=2;doc.line(14,y,196,y);y+=7;
-  filtered.forEach(a=>{
-    if(y>270){doc.addPage();y=20;}
-    doc.text(a.fecha,14,y);doc.text(a.hora,40,y);doc.text(String(a.nie||''),65,y);
-    doc.text(String(a.nombre||'').slice(0,28),95,y);doc.text(String(a.tipo||'').slice(0,26),150,y);
-    y+=7;
+  // Horizontal: con NIE/nombre/tipo/técnico/salida/cupos/sede no entran
+  // cómodos en vertical sin amontonar texto.
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'letter'});
+  const pageW=doc.internal.pageSize.getWidth();
+
+  let y=_asistPdfHeader(doc,'Reporte de Asistencia por Actividad',[
+    'Cuenta: '+currentStudent+(careerLabel?' · '+careerLabel:''),
+    'Período: '+_actFilterLabel()+'  ·  '+filtered.length+' registro(s)'
+  ]);
+
+  const cols=[
+    {label:'#',       x:14,  w:9},
+    {label:'Fecha',   x:23,  w:19},
+    {label:'Hora',    x:42,  w:16},
+    {label:'NIE',     x:58,  w:21},
+    {label:'Nombre',  x:79,  w:46},
+    {label:'Tipo',    x:125, w:37},
+    {label:'Técnico', x:162, w:34},
+    {label:'Salida',  x:196, w:16},
+    {label:'Cupos',   x:212, w:20},
+    {label:'Sede',    x:232, w:pageW-14-232}
+  ];
+  const trunc=(s,n)=>{ s=String(s||'').trim(); return s.length>n? s.slice(0,n-1)+'…' : (s||'—'); };
+
+  const drawTableHead=()=>{
+    doc.setFillColor(...ASIST_PDF_LIGHT);
+    doc.rect(14,y,pageW-28,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...ASIST_PDF_BLUE_DK);
+    cols.forEach(c=>doc.text(c.label,c.x+1,y+5.5));
+    doc.setTextColor(0,0,0);
+    y+=12;
+  };
+  drawTableHead();
+
+  doc.setFont('helvetica','normal');doc.setFontSize(8.3);
+  filtered.forEach((a,i)=>{
+    if(y>178){ doc.addPage(); y=20; drawTableHead(); doc.setFont('helvetica','normal');doc.setFontSize(8.3); }
+    if(i%2===0){ doc.setFillColor(248,250,252); doc.rect(14,y-5.5,pageW-28,8,'F'); }
+    doc.text(String(i+1),cols[0].x+1,y);
+    doc.text(a.fecha,cols[1].x+1,y);
+    doc.text(a.hora,cols[2].x+1,y);
+    doc.text(trunc(a.nie,13),cols[3].x+1,y);
+    doc.text(trunc(a.nombre,30),cols[4].x+1,y);
+    doc.text(trunc(a.tipo,25),cols[5].x+1,y);
+    doc.text(trunc(a.tecnico,22),cols[6].x+1,y);
+    doc.text(a.horaSalida||'—',cols[7].x+1,y);
+    doc.text(trunc(a.cupos,11),cols[8].x+1,y);
+    doc.text(trunc(a.sede,16),cols[9].x+1,y);
+    y+=8;
   });
-  y+=3;doc.line(14,y,196,y);y+=7;
-  doc.setFont('helvetica','bold');
+
+  y+=5;
+  doc.setDrawColor(...ASIST_PDF_BLUE);doc.setLineWidth(0.5);
+  doc.line(14,y,pageW-14,y);
+  y+=7;
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...ASIST_PDF_BLUE_DK);
   doc.text('Total de registros: '+filtered.length,14,y);
+  doc.setTextColor(0,0,0);
+
+  _asistPdfFooter(doc);
   doc.save('asistencia_actividad_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
   showToast('✓ PDF de asistencia de actividad generado','success');
 }
@@ -4344,12 +4508,15 @@ function exportActividadExcel(){
   const filtered=_actividadFilteredEntries();
   if(!filtered.length){showToast('No hay registros de asistencia de actividad en este período','error');return;}
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  const thStyle='style="background:#1d40af;color:#fff;font-weight:bold;"';
   let html='<table border="1"><thead>'
-    +'<tr><th colspan="5">Asistencia por Actividad — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
-    +'<tr><th colspan="5">Período: '+escapeHtml(_actFilterLabel())+'</th></tr>'
-    +'<tr><th>Fecha</th><th>Hora</th><th>NIE</th><th>Nombre</th><th>Tipo</th></tr></thead><tbody>';
-  filtered.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td>'+escapeHtml(a.nie)+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(a.tipo)+'</td></tr>'; });
-  html+='<tr><td colspan="4"><b>Total</b></td><td><b>'+filtered.length+'</b></td></tr></tbody></table>';
+    +'<tr><th colspan="9" '+thStyle+'>📝 Asistencia por Actividad — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
+    +'<tr><th colspan="9" '+thStyle+'>Período: '+escapeHtml(_actFilterLabel())+'</th></tr>'
+    +'<tr><th '+thStyle+'>Fecha</th><th '+thStyle+'>Hora</th><th '+thStyle+'>NIE</th><th '+thStyle+'>Nombre</th><th '+thStyle+'>Tipo</th><th '+thStyle+'>Técnico</th><th '+thStyle+'>Hora salida</th><th '+thStyle+'>Cupos</th><th '+thStyle+'>Sede</th></tr></thead><tbody>';
+  filtered.forEach(a=>{
+    html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td>'+escapeHtml(a.nie)+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(a.tipo)+'</td><td>'+escapeHtml(a.tecnico)+'</td><td>'+escapeHtml(a.horaSalida)+'</td><td>'+escapeHtml(a.cupos)+'</td><td>'+escapeHtml(a.sede)+'</td></tr>';
+  });
+  html+='<tr><td colspan="8"><b>Total</b></td><td><b>'+filtered.length+'</b></td></tr></tbody></table>';
   const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -4401,6 +4568,7 @@ function confirmarExportAsistencia(){
 }
 
 // ── 📄 PDF combinado (asistencia diaria + por actividad en un solo archivo) ──
+// ── 📄 PDF combinado (asistencia diaria + por actividad en un solo archivo) ──
 function generateAsistenciaCombinadaPDF(){
   if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
   if(!(window.jspdf&&window.jspdf.jsPDF)){showToast('El generador de PDF no cargó. Recargá la página e intentá de nuevo.','error');return;}
@@ -4410,41 +4578,69 @@ function generateAsistenciaCombinadaPDF(){
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
   const { jsPDF }=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
-  doc.setFont('helvetica','bold');doc.setFontSize(15);
-  doc.text('🏛 Reporte de Asistencia (Diaria + Actividad)', 14, 18);
-  doc.setFont('helvetica','normal');doc.setFontSize(10);
-  doc.text('Dirección de Integración · Universidad Gerardo Barrios', 14, 24);
-  doc.text('Cuenta: '+currentStudent+(careerLabel?' · '+careerLabel:''), 14, 30);
-  doc.text('Período: '+_asistFilterLabel()+' · Generado: '+new Date().toLocaleDateString('es-SV'), 14, 35);
-  doc.setLineWidth(0.3);doc.line(14,39,196,39);
-  let y=47;
+  const pageW=doc.internal.pageSize.getWidth();
+  const trunc=(s,n)=>{ s=String(s||'').trim(); return s.length>n? s.slice(0,n-1)+'…' : (s||'—'); };
 
-  doc.setFont('helvetica','bold');doc.setFontSize(12);
-  doc.text('🏛 Asistencia diaria', 14, y); y+=8;
-  doc.setFont('helvetica','normal');doc.setFontSize(10);
-  if(!diarias.length){ doc.text('Sin registros en este período.',14,y); y+=8; }
+  let y=_asistPdfHeader(doc,'Reporte de Asistencia (Diaria + Actividad)',[
+    'Cuenta: '+currentStudent+(careerLabel?' · '+careerLabel:''),
+    'Período: '+_asistFilterLabel()+'  ·  Generado: '+new Date().toLocaleDateString('es-SV')
+  ]);
+
+  const sectionBanner=(icon,label,count)=>{
+    doc.setFillColor(...ASIST_PDF_BLUE_DK);
+    doc.rect(14,y,pageW-28,7.5,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10.5);
+    doc.text(icon+'  '+label+'  ·  '+count+' registro(s)',18,y+5.3);
+    doc.setTextColor(0,0,0);
+    y+=11.5;
+  };
+  const emptyNote=()=>{
+    doc.setFont('helvetica','italic');doc.setFontSize(9.5);doc.setTextColor(150,150,150);
+    doc.text('Sin registros en este período.',18,y);
+    doc.setTextColor(0,0,0);
+    y+=9;
+  };
+
+  // — Asistencia diaria —
+  sectionBanner('🏛','ASISTENCIA DIARIA',diarias.length);
+  if(!diarias.length){ emptyNote(); }
   else {
-    diarias.forEach(a=>{
-      if(y>270){doc.addPage();y=20;}
-      doc.text(a.fecha,14,y);doc.text(a.hora,60,y);
-      y+=6;
+    doc.setFillColor(...ASIST_PDF_LIGHT);doc.rect(14,y,pageW-28,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...ASIST_PDF_BLUE_DK);
+    doc.text('Fecha',18,y+4.8);doc.text('Hora',85,y+4.8);
+    doc.setTextColor(0,0,0);y+=10.5;
+    doc.setFont('helvetica','normal');doc.setFontSize(9.5);
+    diarias.forEach((a,i)=>{
+      if(y>258){doc.addPage();y=20;}
+      if(i%2===0){doc.setFillColor(248,250,252);doc.rect(14,y-5,pageW-28,7,'F');}
+      doc.text(a.fecha,18,y);doc.text(a.hora,85,y);
+      y+=7;
     });
-    y+=4;
+    y+=7;
   }
 
-  if(y>255){doc.addPage();y=20;}
-  doc.setFont('helvetica','bold');doc.setFontSize(12);
-  doc.text('📝 Asistencia por actividad', 14, y); y+=8;
-  doc.setFont('helvetica','normal');doc.setFontSize(10);
-  if(!actividad.length){ doc.text('Sin registros en este período.',14,y); y+=8; }
+  // — Asistencia por actividad —
+  if(y>235){doc.addPage();y=20;}
+  sectionBanner('📝','ASISTENCIA POR ACTIVIDAD',actividad.length);
+  if(!actividad.length){ emptyNote(); }
   else {
-    actividad.forEach(a=>{
+    doc.setFillColor(...ASIST_PDF_LIGHT);doc.rect(14,y,pageW-28,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...ASIST_PDF_BLUE_DK);
+    doc.text('Fecha',18,y+4.8);doc.text('Hora',42,y+4.8);doc.text('NIE',60,y+4.8);
+    doc.text('Nombre',82,y+4.8);doc.text('Tipo',128,y+4.8);doc.text('Técnico',162,y+4.8);doc.text('Sede',188,y+4.8);
+    doc.setTextColor(0,0,0);y+=10.5;
+    doc.setFont('helvetica','normal');doc.setFontSize(8);
+    actividad.forEach((a,i)=>{
       if(y>270){doc.addPage();y=20;}
-      doc.text(a.fecha,14,y);doc.text(a.hora,40,y);doc.text(String(a.nie||''),65,y);
-      doc.text(String(a.nombre||'').slice(0,28),95,y);doc.text(String(a.tipo||'').slice(0,26),150,y);
-      y+=6;
+      if(i%2===0){doc.setFillColor(248,250,252);doc.rect(14,y-5,pageW-28,7,'F');}
+      doc.text(a.fecha,18,y);doc.text(a.hora,42,y);doc.text(trunc(a.nie,13),60,y);
+      doc.text(trunc(a.nombre,22),82,y);doc.text(trunc(a.tipo,20),128,y);
+      doc.text(trunc(a.tecnico,18),162,y);doc.text(trunc(a.sede,14),188,y);
+      y+=7;
     });
   }
+
+  _asistPdfFooter(doc);
   doc.save('asistencia_combinada_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
   showToast('✓ PDF combinado de asistencia generado','success');
 }
@@ -4456,16 +4652,20 @@ function exportAsistenciaCombinadaExcel(){
   const actividad=_actividadFilteredEntries();
   if(!diarias.length && !actividad.length){showToast('No hay registros de asistencia en este período','error');return;}
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
+  const thStyle='style="background:#1d40af;color:#fff;font-weight:bold;"';
+  const thStyle2='style="background:#17254e;color:#fff;font-weight:bold;"';
   let html='<table border="1"><thead>'
-    +'<tr><th colspan="5">Asistencia — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
-    +'<tr><th colspan="5">Período: '+escapeHtml(_asistFilterLabel())+'</th></tr>'
-    +'<tr><th colspan="5">🏛 Asistencia diaria</th></tr>'
-    +'<tr><th>Fecha</th><th>Hora</th><th></th><th></th><th></th></tr></thead><tbody>';
-  diarias.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td></td><td></td><td></td></tr>'; });
-  html+='<tr><td colspan="5">&nbsp;</td></tr>';
-  html+='<tr><th colspan="5">📝 Asistencia por actividad</th></tr>';
-  html+='<tr><th>Fecha</th><th>Hora</th><th>NIE</th><th>Nombre</th><th>Tipo</th></tr>';
-  actividad.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td>'+escapeHtml(a.nie)+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(a.tipo)+'</td></tr>'; });
+    +'<tr><th colspan="9" '+thStyle+'>Asistencia — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
+    +'<tr><th colspan="9" '+thStyle+'>Período: '+escapeHtml(_asistFilterLabel())+'</th></tr>'
+    +'<tr><th colspan="9" '+thStyle2+'>🏛 Asistencia diaria</th></tr>'
+    +'<tr><th '+thStyle+'>Fecha</th><th '+thStyle+'>Hora</th><th '+thStyle+'></th><th '+thStyle+'></th><th '+thStyle+'></th><th '+thStyle+'></th><th '+thStyle+'></th><th '+thStyle+'></th><th '+thStyle+'></th></tr></thead><tbody>';
+  diarias.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'; });
+  html+='<tr><td colspan="9">&nbsp;</td></tr>';
+  html+='<tr><th colspan="9" '+thStyle2+'>📝 Asistencia por actividad</th></tr>';
+  html+='<tr><th '+thStyle+'>Fecha</th><th '+thStyle+'>Hora</th><th '+thStyle+'>NIE</th><th '+thStyle+'>Nombre</th><th '+thStyle+'>Tipo</th><th '+thStyle+'>Técnico</th><th '+thStyle+'>Hora salida</th><th '+thStyle+'>Cupos</th><th '+thStyle+'>Sede</th></tr>';
+  actividad.forEach(a=>{
+    html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td><td>'+escapeHtml(a.nie)+'</td><td>'+escapeHtml(a.nombre)+'</td><td>'+escapeHtml(a.tipo)+'</td><td>'+escapeHtml(a.tecnico)+'</td><td>'+escapeHtml(a.horaSalida)+'</td><td>'+escapeHtml(a.cupos)+'</td><td>'+escapeHtml(a.sede)+'</td></tr>';
+  });
   html+='</tbody></table>';
   const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
   const a=document.createElement('a');

@@ -4215,6 +4215,96 @@ function _asistPdfFooter(doc){
   }
 }
 
+// ── Hora corta (24h, "HH:MM") para las tablas del PDF — el timestamp
+// completo con segundos y "a. m./p. m." en español (el que sí se guarda y
+// se muestra en el historial en pantalla) es demasiado ancho para estas
+// columnas y se solapaba con la columna siguiente. El PDF usa esta versión
+// corta, calculada directo del `ts` guardado; el historial en pantalla y el
+// Excel siguen mostrando la hora completa sin cambios. ──
+function _horaCorta(ts){
+  const d=ts?new Date(ts):null;
+  if(!d||isNaN(d.getTime())) return '—';
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+// "Desconocido / N/A" es el valor completo que se guarda y se muestra en el
+// detalle del registro, pero es demasiado largo para la columna "Cupos" del
+// PDF — ahí se abrevia a "N/A".
+function _cuposCorto(c){
+  if(!c) return '—';
+  return String(c).trim()==='Desconocido / N/A' ? 'N/A' : String(c);
+}
+
+// Corta un texto a `n` caracteres con "…" si no entra en su columna — usado
+// en todas las tablas de asistencia del PDF para que ningún dato largo
+// (nombre, "Otro — descripción larga", etc.) se desborde ni se solape con
+// la columna de al lado.
+function _asistPdfTrunc(s,n){
+  s=String(s==null?'':s).trim();
+  if(!s) return '—';
+  return s.length>n ? s.slice(0,n-1)+'…' : s;
+}
+
+// Banner de sección azul oscuro (lo usa el PDF combinado para separar
+// "ASISTENCIA DIARIA" de "ASISTENCIA POR ACTIVIDAD"). SIN emoji a propósito:
+// jsPDF con las fuentes estándar (helvetica) no soporta caracteres
+// pictográficos — pasarle uno a doc.text() corrompe el texto completo de esa
+// línea (esto fue justo lo que generaba el texto ilegible tipo "Ø<BÛ&...").
+// El "ícono" es un cuadrito blanco dibujado a mano, no un carácter de texto.
+function _asistPdfSectionBanner(doc,y,pageW,label,count){
+  doc.setFillColor(...ASIST_PDF_BLUE_DK);
+  doc.rect(14,y,pageW-28,7.5,'F');
+  doc.setFillColor(255,255,255);
+  doc.roundedRect(18,y+2.4,2.8,2.8,0.6,0.6,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10.5);
+  doc.text(label+'  ·  '+count+' registro(s)',25,y+5.3);
+  doc.setTextColor(0,0,0);
+  return y+11.5;
+}
+
+// ── Tabla "asistencia por actividad": columnas y dibujo compartidos entre
+// el PDF standalone (generateActividadPDF) y la sección de actividad del
+// PDF combinado, para que ambos midan exactamente igual y nunca se
+// desincronicen entre sí — eso fue justo lo que causó el solapamiento de
+// columnas (Hora/NIE pegados) que había antes. ──
+function _actividadPdfColumnas(pageW){
+  return [
+    {label:'#',           x:14,  w:8},
+    {label:'Fecha',       x:22,  w:20},
+    {label:'Hora',        x:42,  w:14},
+    {label:'NIE',         x:56,  w:20},
+    {label:'Nombre',      x:76,  w:42},
+    {label:'Tipo',        x:118, w:34},
+    {label:'Técnico',     x:152, w:32},
+    {label:'Hora salida', x:184, w:24},
+    {label:'Cupos',       x:208, w:18},
+    {label:'Sede',        x:226, w:pageW-14-226}
+  ];
+}
+function _actividadPdfDrawHead(doc,cols,y){
+  const pageW=doc.internal.pageSize.getWidth();
+  doc.setFillColor(...ASIST_PDF_LIGHT);
+  doc.rect(14,y,pageW-28,8,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...ASIST_PDF_BLUE_DK);
+  cols.forEach(c=>doc.text(c.label,c.x+1,y+5.5));
+  doc.setTextColor(0,0,0);
+  return y+12;
+}
+function _actividadPdfDrawRow(doc,cols,a,i,y){
+  const pageW=doc.internal.pageSize.getWidth();
+  if(i%2===0){ doc.setFillColor(248,250,252); doc.rect(14,y-5.5,pageW-28,8,'F'); }
+  doc.text(String(i+1),cols[0].x+1,y);
+  doc.text(a.fecha||'—',cols[1].x+1,y);
+  doc.text(_horaCorta(a.ts),cols[2].x+1,y);
+  doc.text(_asistPdfTrunc(a.nie,12),cols[3].x+1,y);
+  doc.text(_asistPdfTrunc(a.nombre,26),cols[4].x+1,y);
+  doc.text(_asistPdfTrunc(a.tipo,21),cols[5].x+1,y);
+  doc.text(_asistPdfTrunc(a.tecnico,19),cols[6].x+1,y);
+  doc.text(a.horaSalida||'—',cols[7].x+1,y);
+  doc.text(_cuposCorto(a.cupos),cols[8].x+1,y);
+  doc.text(_asistPdfTrunc(a.sede,19),cols[9].x+1,y);
+}
+
 // ── 📄 PDF de asistencia diaria ──
 function generateAsistenciaPDF(){
   if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
@@ -4251,7 +4341,7 @@ function generateAsistenciaPDF(){
     if(i%2===0){ doc.setFillColor(248,250,252); doc.rect(14,y-5.5,pageW-28,8,'F'); }
     doc.text(String(i+1),18,y);
     doc.text(a.fecha,34,y);
-    doc.text(a.hora,95,y);
+    doc.text(_horaCorta(a.ts),95,y);
     y+=8;
   });
 
@@ -4438,8 +4528,8 @@ function generateActividadPDF(){
   if(!filtered.length){showToast('No hay registros de asistencia de actividad en este período','error');return;}
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
   const { jsPDF }=window.jspdf;
-  // Horizontal: con NIE/nombre/tipo/técnico/salida/cupos/sede no entran
-  // cómodos en vertical sin amontonar texto.
+  // Horizontal: con NIE/nombre/tipo/técnico/hora de salida/cupos/sede no
+  // entran cómodos en vertical sin amontonar texto.
   const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'letter'});
   const pageW=doc.internal.pageSize.getWidth();
 
@@ -4448,44 +4538,17 @@ function generateActividadPDF(){
     'Período: '+_actFilterLabel()+'  ·  '+filtered.length+' registro(s)'
   ]);
 
-  const cols=[
-    {label:'#',       x:14,  w:9},
-    {label:'Fecha',   x:23,  w:19},
-    {label:'Hora',    x:42,  w:16},
-    {label:'NIE',     x:58,  w:21},
-    {label:'Nombre',  x:79,  w:46},
-    {label:'Tipo',    x:125, w:37},
-    {label:'Técnico', x:162, w:34},
-    {label:'Salida',  x:196, w:16},
-    {label:'Cupos',   x:212, w:20},
-    {label:'Sede',    x:232, w:pageW-14-232}
-  ];
-  const trunc=(s,n)=>{ s=String(s||'').trim(); return s.length>n? s.slice(0,n-1)+'…' : (s||'—'); };
-
-  const drawTableHead=()=>{
-    doc.setFillColor(...ASIST_PDF_LIGHT);
-    doc.rect(14,y,pageW-28,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...ASIST_PDF_BLUE_DK);
-    cols.forEach(c=>doc.text(c.label,c.x+1,y+5.5));
-    doc.setTextColor(0,0,0);
-    y+=12;
-  };
-  drawTableHead();
+  const cols=_actividadPdfColumnas(pageW);
+  y=_actividadPdfDrawHead(doc,cols,y);
 
   doc.setFont('helvetica','normal');doc.setFontSize(8.3);
   filtered.forEach((a,i)=>{
-    if(y>178){ doc.addPage(); y=20; drawTableHead(); doc.setFont('helvetica','normal');doc.setFontSize(8.3); }
-    if(i%2===0){ doc.setFillColor(248,250,252); doc.rect(14,y-5.5,pageW-28,8,'F'); }
-    doc.text(String(i+1),cols[0].x+1,y);
-    doc.text(a.fecha,cols[1].x+1,y);
-    doc.text(a.hora,cols[2].x+1,y);
-    doc.text(trunc(a.nie,13),cols[3].x+1,y);
-    doc.text(trunc(a.nombre,30),cols[4].x+1,y);
-    doc.text(trunc(a.tipo,25),cols[5].x+1,y);
-    doc.text(trunc(a.tecnico,22),cols[6].x+1,y);
-    doc.text(a.horaSalida||'—',cols[7].x+1,y);
-    doc.text(trunc(a.cupos,11),cols[8].x+1,y);
-    doc.text(trunc(a.sede,16),cols[9].x+1,y);
+    if(y>178){
+      doc.addPage();y=20;
+      y=_actividadPdfDrawHead(doc,cols,y);
+      doc.setFont('helvetica','normal');doc.setFontSize(8.3);
+    }
+    _actividadPdfDrawRow(doc,cols,a,i,y);
     y+=8;
   });
 
@@ -4577,23 +4640,17 @@ function generateAsistenciaCombinadaPDF(){
   if(!diarias.length && !actividad.length){showToast('No hay registros de asistencia en este período','error');return;}
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
   const { jsPDF }=window.jspdf;
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'letter'});
+  // Horizontal: la sección de actividad usa las mismas 10 columnas del
+  // reporte standalone (NIE/nombre/tipo/técnico/hora de salida/cupos/sede),
+  // que no entran cómodas en una hoja vertical.
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'letter'});
   const pageW=doc.internal.pageSize.getWidth();
-  const trunc=(s,n)=>{ s=String(s||'').trim(); return s.length>n? s.slice(0,n-1)+'…' : (s||'—'); };
 
   let y=_asistPdfHeader(doc,'Reporte de Asistencia (Diaria + Actividad)',[
     'Cuenta: '+currentStudent+(careerLabel?' · '+careerLabel:''),
     'Período: '+_asistFilterLabel()+'  ·  Generado: '+new Date().toLocaleDateString('es-SV')
   ]);
 
-  const sectionBanner=(icon,label,count)=>{
-    doc.setFillColor(...ASIST_PDF_BLUE_DK);
-    doc.rect(14,y,pageW-28,7.5,'F');
-    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10.5);
-    doc.text(icon+'  '+label+'  ·  '+count+' registro(s)',18,y+5.3);
-    doc.setTextColor(0,0,0);
-    y+=11.5;
-  };
   const emptyNote=()=>{
     doc.setFont('helvetica','italic');doc.setFontSize(9.5);doc.setTextColor(150,150,150);
     doc.text('Sin registros en este período.',18,y);
@@ -4602,7 +4659,7 @@ function generateAsistenciaCombinadaPDF(){
   };
 
   // — Asistencia diaria —
-  sectionBanner('🏛','ASISTENCIA DIARIA',diarias.length);
+  y=_asistPdfSectionBanner(doc,y,pageW,'ASISTENCIA DIARIA',diarias.length);
   if(!diarias.length){ emptyNote(); }
   else {
     doc.setFillColor(...ASIST_PDF_LIGHT);doc.rect(14,y,pageW-28,7,'F');
@@ -4611,32 +4668,30 @@ function generateAsistenciaCombinadaPDF(){
     doc.setTextColor(0,0,0);y+=10.5;
     doc.setFont('helvetica','normal');doc.setFontSize(9.5);
     diarias.forEach((a,i)=>{
-      if(y>258){doc.addPage();y=20;}
+      if(y>178){doc.addPage();y=20;}
       if(i%2===0){doc.setFillColor(248,250,252);doc.rect(14,y-5,pageW-28,7,'F');}
-      doc.text(a.fecha,18,y);doc.text(a.hora,85,y);
+      doc.text(a.fecha,18,y);doc.text(_horaCorta(a.ts),85,y);
       y+=7;
     });
     y+=7;
   }
 
   // — Asistencia por actividad —
-  if(y>235){doc.addPage();y=20;}
-  sectionBanner('📝','ASISTENCIA POR ACTIVIDAD',actividad.length);
+  if(y>150){doc.addPage();y=20;}
+  y=_asistPdfSectionBanner(doc,y,pageW,'ASISTENCIA POR ACTIVIDAD',actividad.length);
   if(!actividad.length){ emptyNote(); }
   else {
-    doc.setFillColor(...ASIST_PDF_LIGHT);doc.rect(14,y,pageW-28,7,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...ASIST_PDF_BLUE_DK);
-    doc.text('Fecha',18,y+4.8);doc.text('Hora',42,y+4.8);doc.text('NIE',60,y+4.8);
-    doc.text('Nombre',82,y+4.8);doc.text('Tipo',128,y+4.8);doc.text('Técnico',162,y+4.8);doc.text('Sede',188,y+4.8);
-    doc.setTextColor(0,0,0);y+=10.5;
-    doc.setFont('helvetica','normal');doc.setFontSize(8);
+    const cols=_actividadPdfColumnas(pageW);
+    y=_actividadPdfDrawHead(doc,cols,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.3);
     actividad.forEach((a,i)=>{
-      if(y>270){doc.addPage();y=20;}
-      if(i%2===0){doc.setFillColor(248,250,252);doc.rect(14,y-5,pageW-28,7,'F');}
-      doc.text(a.fecha,18,y);doc.text(a.hora,42,y);doc.text(trunc(a.nie,13),60,y);
-      doc.text(trunc(a.nombre,22),82,y);doc.text(trunc(a.tipo,20),128,y);
-      doc.text(trunc(a.tecnico,18),162,y);doc.text(trunc(a.sede,14),188,y);
-      y+=7;
+      if(y>178){
+        doc.addPage();y=20;
+        y=_actividadPdfDrawHead(doc,cols,y);
+        doc.setFont('helvetica','normal');doc.setFontSize(8.3);
+      }
+      _actividadPdfDrawRow(doc,cols,a,i,y);
+      y+=8;
     });
   }
 
@@ -5267,6 +5322,83 @@ function pdfDirectWaitImages(container){
     return new Promise(res=>{img.onload=res;img.onerror=res;});
   }));
 }
+
+// ═══════════════════════════════════════════════════════════
+// FIX LOGO GIGANTE/DEFORMADO EN "DESCARGAR PDF": html2canvas NO respeta
+// object-fit:contain en <img> — dibuja la imagen fuente completa estirada
+// para llenar la caja CSS del elemento (ver comentario junto a .pdf-header
+// arriba). Con PNG casi no se nota porque el archivo ya trae las
+// proporciones correctas, pero con SVG (como DI.svg) el tamaño "natural"
+// que el navegador expone para ese estiramiento puede no coincidir con la
+// proporción real del archivo, y el logo sale gigante, recortado o con
+// partes fuera de lugar — SOLO en "Descargar PDF" (html2canvas), no al
+// imprimir de forma nativa ("Vista de impresión"), que sí respeta
+// object-fit:contain con normalidad.
+//
+// Solución: antes de llamar a html2canvas, convertimos cada <img> de SVG
+// dentro del contenedor a un PNG pre-renderizado ya recortado/centrado con
+// la proporción real del archivo y del tamaño EXACTO de su caja en
+// pantalla. Así, cuando html2canvas "estira para llenar la caja", ya no
+// deforma nada — el PNG resultante llena la caja perfectamente sin dejar
+// margen para el estirado.
+// ═══════════════════════════════════════════════════════════
+async function pdfDirectRasterizeSvgLogos(container){
+  const svgImgs=Array.from(container.querySelectorAll('img'))
+    .filter(img=>/\.svg(\?|#|$)/i.test(img.getAttribute('src')||'') && img.complete && img.naturalWidth>0);
+
+  await Promise.all(svgImgs.map(async (img)=>{
+    try{
+      const rect=img.getBoundingClientRect();
+      const boxW=Math.max(1,Math.round(rect.width));
+      const boxH=Math.max(1,Math.round(rect.height));
+      if(!boxW||!boxH) return;
+
+      // Proporción real del SVG: se lee directo del archivo (viewBox o
+      // width/height), que es la fuente de verdad más confiable — el
+      // "natural width/height" que reporta el navegador para un SVG puede
+      // no coincidir con eso. Si fetch() falla (p.ej. abierto como archivo
+      // local con doble clic, sin servidor — file:// bloquea fetch), se cae
+      // de respaldo a naturalWidth/Height del propio <img>.
+      let ratio=null;
+      try{
+        const res=await fetch(img.src);
+        if(res.ok){
+          const svgText=await res.text();
+          const svgEl=new DOMParser().parseFromString(svgText,'image/svg+xml').documentElement;
+          if(svgEl && svgEl.nodeName.toLowerCase()==='svg'){
+            let w=parseFloat(svgEl.getAttribute('width'));
+            let h=parseFloat(svgEl.getAttribute('height'));
+            if(!w||!h){
+              const vb=(svgEl.getAttribute('viewBox')||'').trim().split(/[\s,]+/).map(Number);
+              if(vb.length===4 && vb[2]>0 && vb[3]>0){ w=vb[2]; h=vb[3]; }
+            }
+            if(w>0 && h>0) ratio=w/h;
+          }
+        }
+      }catch(_e){ /* sin red (file://) u otro bloqueo — seguimos con el respaldo de abajo */ }
+      if(!ratio && img.naturalWidth>0 && img.naturalHeight>0) ratio=img.naturalWidth/img.naturalHeight;
+      if(!ratio) return; // sin forma confiable de saber la proporción real: no tocar el <img>
+
+      const DPR=Math.max(2,window.devicePixelRatio||1);
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(boxW*DPR);
+      canvas.height=Math.round(boxH*DPR);
+      const ctx=canvas.getContext('2d');
+
+      // object-fit:contain a mano: escalar preservando proporción y centrar
+      // dentro de la caja, en vez de dejar que html2canvas estire sin más.
+      let drawW=canvas.width, drawH=canvas.width/ratio;
+      if(drawH>canvas.height){ drawH=canvas.height; drawW=canvas.height*ratio; }
+      const dx=(canvas.width-drawW)/2, dy=(canvas.height-drawH)/2;
+      ctx.drawImage(img,dx,dy,drawW,drawH);
+
+      const pngUrl=canvas.toDataURL('image/png');
+      await new Promise((resolve)=>{ img.onload=resolve; img.onerror=resolve; img.src=pngUrl; });
+    }catch(err){
+      console.warn('[PDF] No se pudo pre-renderizar un logo SVG, se deja como estaba:',err);
+    }
+  }));
+}
 async function exportPDFDirect(reportOpts){
   if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
   if(!(window.jspdf&&window.jspdf.jsPDF&&window.html2canvas)){
@@ -5288,6 +5420,7 @@ async function exportPDFDirect(reportOpts){
 
   try{
     await pdfDirectWaitImages(offscreen);
+    await pdfDirectRasterizeSvgLogos(offscreen);
     if(document.fonts&&document.fonts.ready) await document.fonts.ready;
     await new Promise(r=>setTimeout(r,80));
 

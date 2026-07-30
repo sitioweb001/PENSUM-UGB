@@ -115,6 +115,18 @@ export async function guardarPensumCycles(nombre, carrera, cycles) {
   await updateDoc(ref, { pensumCycles: cycles || null, updatedAt: serverTimestamp() });
 }
 
+// ============================================================
+// BITÁCORA DI — perfil del becario + técnico responsable usados para
+// generar la Constancia de Actividades (PDF). Es un objeto pequeño que
+// vive directo en el doc principal del estudiante, igual que horario/
+// pensumCycles: no necesita subcolección propia.
+// ============================================================
+
+export async function guardarBitacoraPerfil(nombre, carrera, bitacoraPerfil) {
+  const ref = doc(db, 'estudiantes', studentId(nombre, carrera));
+  await updateDoc(ref, { bitacoraPerfil: bitacoraPerfil || null, updatedAt: serverTimestamp() });
+}
+
 export async function guardarPensumHistorial(nombre, carrera, undoStackArray) {
   const id   = studentId(nombre, carrera);
   const col  = collection(db, 'estudiantes', id, 'pensumHistorial');

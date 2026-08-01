@@ -1,0 +1,71 @@
+LA PRIMERA SEÑAL SERA QUE ADEMAS DE PONER LA MARCA DE AGUA .SVG DEL LOGO EL ESCUDO 
+DEBE DE IR FUE EL CAMBIO QUE TE EPDI Y ARRIBA ALA IZQUIERDA
+
+VA EL LOGO logo2.jpg QUE BASICAMENETE ES EL LOGO D ELA IZQUEIRDA DE LA PARTE SUPERIOR 
+QUE ES LOGO DIRECCIOND E INTEGRACION
+
+
+ADEMAS CADA FILA QUE EL USUARIO VAYA LLENANDO PRO DEFECTO NO DEBE NINGUN NOMBRE TECNICOS
+
+AGRAGA EN EL MENU DE HAMBURGUESA UN MENU DE TECNICOS DONDE IRA NOMBRE, NUMERO,CORREO,ENCARGADO EN UNIVERSIDAD, O SEDE 
+
+
+ADEMAS AGREGA UN BOTON DE ASISTENCIAS AL DAR CLIP LE SALDRA ASISTENCIA DIARIA O ASISTENCIA DIARIA
+EL CUAL SERA UN MODULO PARA VER MEJOR EL HISTORIAL DE ACTIVIDADES O ASISTENCIAS RELIZADAS 
+
+ADEMAS EN ESE DE ASISTENCIA UN BOTON DE HISTORIAL DE BITACORAS DONDE SALDRA LOS REGISTROS DE 
+HISOTIRAL DE BITACORAS REGISTRADAS QSE PODRA VISULIZAR LA INFOM Y SE PODRA DESCARGAR DE NUEVO 
+
+ADEMAS EL MENU DE📄 Bitácora DI
+Constancia de Actividades del becario — mismo diseño oficial en cada PDF generado. MEJORALO SEA MAS LIMPIO O QUE SE MEJORE CADA MODULO FILA 
+
+
+ademas edite la bitacora te la anexo 
+
+todos estos campos lo debe tener en blanco 📄 Bitácora DI
+Constancia de Actividades del becario — mismo diseño oficial en cada PDF generado.
+
+Teléfono y correo
++503 5322 2323
+Universidad de estudio
+Regional
+SEDE DE SAN MIGUEL ORIENTE
+Carrera que estudia
+Ciclo en curso
+CICLO 2
+Técnico responsable (firma de cierre)
+
+
+
+agreaga en OK
+📄 Bitácora DI
+Constancia de Actividades del becario — mismo diseño oficial en cada PDF generado.
+
+justo de bajo 
+
+borrador 
+se le podra poner nombres; es decir que lo borradores me permitira ir llenando la bitacora antes de hacer una final
+
+
+en el control de historial de bitacoras se podra editar y antes editarla le pedira un porque lo edito, por lo cual tambien debera salir en el historial el porque se edito
+
+
+
+hay un como bug se puede decir que en el
+
+📝 Formulario de Asistencia DI
+Dirección de Integración · Universidad Gerardo Barrios
+
+al darl Validar asistencia se borra el nie y lso demas datos se quedan en el formulario mientras se ristra o cargan los datos de la asistencia
+pero si se gistra bien pero paso eso le doy validar aisstencia y se borra el nie y se activa el teclado es un bug menor pero hasta que se cargge y se valide la asistencia le saldra asistencia verificada cierre el modal o revise su historial a continucacione sto mensaje puedes ponerlo en lso asistenci di y asistencia diairia
+
+a demas en "Hora de salida" agrega hora entrada porfa
+
+y en tipo asistencia siempre que sea seleccionable que no salga una seleccionad apreviamenete
+
+agrega la opcion de apoyo en sede, apoyo administrativo en sede Di y apoyo administrativo con tecnico en Universidad  y apoyo administrativo con tecnico en sede DI
+
+
+el docx y pdf que anexo de la bitacora mejorada es "BITACORA DI - COMPARTIR.docx" "BITACORA DI - COMPARTIR.pdf"
+
+te anexo las imagenes logo2 y DI.svg y logo_direccion_integracion_unidad_becados.png

@@ -127,6 +127,58 @@ export async function guardarBitacoraPerfil(nombre, carrera, bitacoraPerfil) {
   await updateDoc(ref, { bitacoraPerfil: bitacoraPerfil || null, updatedAt: serverTimestamp() });
 }
 
+// Borradores con nombre — permiten ir llenando la bitácora antes de
+// generar la versión final. Se guardan como un mapa {nombreBorrador: datos}
+// directo en el doc del estudiante, igual que bitacoraPerfil.
+export async function guardarBitacoraBorradores(nombre, carrera, borradores) {
+  const ref = doc(db, 'estudiantes', studentId(nombre, carrera));
+  await updateDoc(ref, { bitacoraBorradores: borradores || {}, updatedAt: serverTimestamp() });
+}
+
+// Historial de bitácoras generadas — sí necesita subcolección propia
+// (una por PDF generado), para poder listarlas, volver a descargarlas, y
+// guardar el motivo cada vez que se edita una ya generada.
+export async function guardarRegistroBitacora(nombre, carrera, registroId, data) {
+  const id  = studentId(nombre, carrera);
+  const col = collection(db, 'estudiantes', id, 'bitacoras');
+  const ref = registroId ? doc(col, registroId) : doc(col);
+  await setDoc(ref, data, { merge: true });
+  return ref.id;
+}
+
+export async function listarBitacoras(nombre, carrera) {
+  const id = studentId(nombre, carrera);
+  const snap = await getDocs(collection(db, 'estudiantes', id, 'bitacoras'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => String(b.generadoTs || '').localeCompare(String(a.generadoTs || '')));
+}
+
+export async function eliminarRegistroBitacora(nombre, carrera, registroId) {
+  const id = studentId(nombre, carrera);
+  await deleteDoc(doc(db, 'estudiantes', id, 'bitacoras', registroId));
+}
+
+// ============================================================
+// TÉCNICOS DI — lista compartida entre todos los estudiantes (no es un
+// dato por-estudiante, así que vive en su propia colección al nivel raíz).
+// ============================================================
+
+export async function listarTecnicos() {
+  const snap = await getDocs(collection(db, 'tecnicos'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function guardarTecnico(id, data) {
+  const col = collection(db, 'tecnicos');
+  const ref = id ? doc(col, id) : doc(col);
+  await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+  return ref.id;
+}
+
+export async function eliminarTecnico(id) {
+  await deleteDoc(doc(db, 'tecnicos', id));
+}
+
 export async function guardarPensumHistorial(nombre, carrera, undoStackArray) {
   const id   = studentId(nombre, carrera);
   const col  = collection(db, 'estudiantes', id, 'pensumHistorial');

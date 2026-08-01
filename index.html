@@ -810,6 +810,7 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="ham-item" onclick="openAsistenciaActividad();closeHam()"><span class="ham-ico">📝</span> Asistencia de actividad</div>
     <div class="ham-item" onclick="openBitacoraDI();closeHam()"><span class="ham-ico">📄</span> Bitácora DI</div>
     <div class="ham-item" onclick="openTecnicosModal();closeHam()"><span class="ham-ico">🧑‍💼</span> Técnicos</div>
+    <div class="ham-item" onclick="openConfigUsuario();closeHam()"><span class="ham-ico">⚙️</span> Configuración</div>
     <div class="ham-item" onclick="openHistPensum();closeHam()"><span class="ham-ico">📜</span> Historial de cambios</div>
 
     <div class="ham-divider"></div>
@@ -977,6 +978,7 @@ header{flex-wrap:wrap;row-gap:6px;}
       <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="addEvent('Lab 2')">+ Lab 2</button>
       <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="addEvent('Parcial')">+ Parcial</button>
       <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="addEvent('Otra')">+ Otra</button>
+      <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;background:rgba(139,92,246,.12);border-color:#8b5cf6;color:#8b5cf6;" onclick="addEvent('Actividad DI')">🏛 + Actividad DI</button>
     </div>
     <div class="filter-tabs" id="calFilterTabs">
       <button class="filter-tab active" onclick="setCalFilter('all',this)">Todos</button>
@@ -992,9 +994,9 @@ header{flex-wrap:wrap;row-gap:6px;}
 <div class="modal-overlay" id="addEventModal" style="z-index:9999;">
   <div class="modal">
     <h3>Anotar <span id="eventActivityName"></span></h3>
-    <div class="modal-field"><label>Ciclo</label>
+    <div class="modal-field" id="eventCicloField"><label>Ciclo</label>
       <select id="eventCycle" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;" onchange="updateEventSubjects()"></select></div>
-    <div class="modal-field"><label>Materia</label>
+    <div class="modal-field" id="eventSubjectField"><label>Materia</label>
       <select id="eventSubject" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></select></div>
     <div class="modal-field" id="eventComputoField" style="display:none;"><label>Cómputo</label>
       <select id="eventComputo" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;">
@@ -1006,7 +1008,7 @@ header{flex-wrap:wrap;row-gap:6px;}
     </div>
     <div class="modal-field"><label>Fecha</label>
       <input type="date" id="eventDate" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
-    <div class="modal-field"><label>Comentario (opcional)</label>
+    <div class="modal-field"><label id="eventCommentLabel">Comentario (opcional)</label>
       <input type="text" id="eventComment" placeholder="Ej. Estudiar tema 4..." style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
     <div class="modal-btns">
       <button class="modal-btn secondary" onclick="document.getElementById('addEventModal').classList.remove('open')">Cancelar</button>
@@ -1201,7 +1203,8 @@ header{flex-wrap:wrap;row-gap:6px;}
       <div class="modal-field"><label>Regional</label><input type="text" id="bitRegional" placeholder="Ej: Sede de San Miguel Oriente"></div>
       <div class="modal-field"><label>Carrera que estudia</label><input type="text" id="bitCarrera" placeholder="Ej: Ingeniería en Sistemas"></div>
       <div class="modal-field"><label>Ciclo en curso</label><input type="text" id="bitCiclo" placeholder="Ej: Ciclo II - 2026"></div>
-      <div class="modal-field"><label>Técnico responsable (firma de cierre)</label><select id="bitTecResp"></select></div>
+      <div class="modal-field"><label>Técnico responsable (firma de cierre)</label><select id="bitTecResp" onchange="_bitacTecRespChange()"></select></div>
+      <div class="modal-field"><label>Sello del pie de página</label><select id="bitSelloResp"></select></div>
     </div>
 
     <div class="ham-divider" style="margin:14px 0;"></div>
@@ -1258,6 +1261,33 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="ham-divider" style="margin-bottom:12px;"></div>
     <div id="tecnicosList"></div>
     <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('tecnicosModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Configuración de usuario — preferencias personales de este dispositivo -->
+<div class="modal-overlay" id="configUsuarioModal">
+  <div class="modal" style="width:560px;max-width:94vw;max-height:88vh;overflow-y:auto;">
+    <h3 style="text-align:center;margin-bottom:3px;">⚙️ Configuración</h3>
+    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">Personalizá lo que se usa por defecto en este dispositivo.</p>
+
+    <div class="modal-field"><label>Técnico encargado por defecto (asistencias y bitácora)</label><select id="cfgTecnicoDefault"></select></div>
+    <div class="modal-field"><label>Sello por defecto</label><select id="cfgSelloDefault"></select></div>
+    <div style="text-align:right;margin-bottom:16px;">
+      <button type="button" class="modal-btn primary" onclick="guardarConfigUsuario()" style="padding:7px 12px;font-size:12px;">Guardar preferencias</button>
+    </div>
+
+    <div class="ham-divider" style="margin-bottom:12px;"></div>
+    <h4 style="margin-bottom:2px;">Actividades pregrabadas</h4>
+    <p style="font-size:11px;color:var(--gm);margin-bottom:8px;">Aparecen como opción rápida al llenar una fila manual de la Bitácora.</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input type="text" id="cfgActividadInput" placeholder="Ej: Apoyo administrativo en sede DI en Berlín" style="flex:1;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-size:13px;">
+      <button type="button" class="modal-btn primary" onclick="agregarActividadPregrabada()" style="padding:7px 14px;font-size:12px;white-space:nowrap;">+ Agregar</button>
+    </div>
+    <div id="cfgActividadesList"></div>
+
+    <div class="ham-divider" style="margin:14px 0 12px;"></div>
+    <button type="button" class="modal-btn secondary" style="width:100%;" onclick="document.getElementById('configUsuarioModal').classList.remove('open');openTecnicosModal();">🧑‍💼 Administrar técnicos…</button>
+    <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('configUsuarioModal').classList.remove('open')">Cerrar</button></div>
   </div>
 </div>
 
@@ -2012,6 +2042,13 @@ function updateUndoRedoBtns() {
 // STATE
 // ═══════════════════════════════════════════════════════════
 let currentStudent=null, appData={}, config={};
+
+// Configuración personal del dispositivo (técnico/sello por defecto) —
+// ver menú hamburguesa → Configuración. Vive en localStorage porque es
+// una preferencia de "quién está usando este navegador", no del estudiante.
+let _userConfig = { tecnicoDefault: '', selloDefault: '' };
+try { _userConfig = Object.assign(_userConfig, JSON.parse(localStorage.getItem('userConfigDI') || '{}')); } catch (e) {}
+function _guardarUserConfig() { try { localStorage.setItem('userConfigDI', JSON.stringify(_userConfig)); } catch (e) {} }
 let pendingDeleteAction=null, loginMode='name';
 let accountListVisible=true; // ajuste global (Firebase) — ver toggleAccountListVisibility()
 let currentZoom=85, currentCycleId=null;
@@ -3768,6 +3805,11 @@ let currentEventType='';
 function addEvent(type){
   currentEventType=type;
   document.getElementById('eventActivityName').textContent=type;
+  const isDI = type === 'Actividad DI';
+  document.getElementById('eventCicloField').style.display = isDI ? 'none' : '';
+  document.getElementById('eventSubjectField').style.display = isDI ? 'none' : '';
+  document.getElementById('eventCommentLabel').textContent = isDI ? 'Descripción de la actividad' : 'Comentario (opcional)';
+  document.getElementById('eventComment').placeholder = isDI ? 'Ej. Jornada de asistencia en sede DI Berlín' : 'Ej. Estudiar tema 4...';
   const sel=document.getElementById('eventCycle');
   sel.innerHTML='<option value="">-- Selecciona ciclo --</option>';
   const sd=getStudentData();
@@ -3804,10 +3846,13 @@ function saveEvent(){
   const date=document.getElementById('eventDate').value;
   const comment=document.getElementById('eventComment').value.trim();
   if(!date){showToast('Selecciona una fecha','error');return;}
+  const isDI = currentEventType === 'Actividad DI';
+  if(isDI && !comment){showToast('Describí la actividad DI programada','error');return;}
   if(!appData[currentStudent].events) appData[currentStudent].events=[];
   const needsComputo=eventTypeNeedsComputo(currentEventType);
   const computo=needsComputo?parseInt(document.getElementById('eventComputo').value,10):null;
-  appData[currentStudent].events.push({id:Date.now(),type:currentEventType,subject:document.getElementById('eventSubject').value,date,comment,done:false,nota:undefined,computo});
+  const subject=isDI?null:document.getElementById('eventSubject').value;
+  appData[currentStudent].events.push({id:Date.now(),type:currentEventType,subject,date,comment,done:false,nota:undefined,computo});
   saveLocal();
   document.getElementById('addEventModal').classList.remove('open');
   renderEvents();showToast('Actividad guardada','success');
@@ -3868,17 +3913,19 @@ function renderEvents(){
   const filtered=filterByPeriod(sorted,'date',calFilter);
   if(!filtered.length){list.innerHTML='<div style="color:var(--gm);text-align:center;padding:20px;">No hay actividades '+(calFilter!=='all'?'en este período.':'anotadas.')+' </div>';return;}
   const today=new Date().toISOString().slice(0,10);
+  const accent={'Lab 1':'var(--blue)','Lab 2':'var(--blue)','Parcial':'var(--pend)','Actividad DI':'#8b5cf6','Otra':'var(--gl)'};
   list.innerHTML=filtered.map(ev=>{
     let sname='';CYCLES.forEach(c=>c.subjects.forEach(s=>{if(s.num===ev.subject)sname=s.name;}));
     const past=ev.date<today&&!ev.done;
-    return `<div class="cal-event-row${ev.done?' ev-done':''}">
+    const isDI=ev.type==='Actividad DI';
+    return `<div class="cal-event-row${ev.done?' ev-done':''}" style="border-left:4px solid ${accent[ev.type]||'var(--gl)'};">
       <div class="ev-top">
         <input type="checkbox" class="ev-check" ${ev.done?'checked':''} onchange="toggleEventDone(${ev.id},this.checked)">
-        <span class="ev-type${ev.done?' done-txt':''}">${ev.type}</span>
+        <span class="ev-type${ev.done?' done-txt':''}">${isDI?'🏛 ':''}${ev.type}</span>
         <span class="ev-date" style="color:${past?'var(--fail)':'var(--gm)'};">📅 ${ev.date}</span>
         ${(ev.computo!==undefined&&ev.computo!==null)?`<span class="ev-computo-tag">Cómputo ${ev.computo+1}</span>`:''}
-        <label style="font-size:11px;color:var(--gm);margin-left:auto;display:flex;align-items:center;gap:4px;">Nota:<input type="number" class="ev-nota-inp" min="0" max="10" step="0.01" value="${ev.nota!==undefined?ev.nota:''}" placeholder="—" oninput="setEventNota(${ev.id},this.value)"></label>
-        <button class="ev-del-btn" onclick="askDeleteEvent(${ev.id})">🗑</button>
+        ${isDI?'':`<label style="font-size:11px;color:var(--gm);margin-left:auto;display:flex;align-items:center;gap:4px;">Nota:<input type="number" class="ev-nota-inp" min="0" max="10" step="0.01" value="${ev.nota!==undefined?ev.nota:''}" placeholder="—" oninput="setEventNota(${ev.id},this.value)"></label>`}
+        <button class="ev-del-btn" style="${isDI?'margin-left:auto;':''}" onclick="askDeleteEvent(${ev.id})">🗑</button>
       </div>
       ${sname?`<div class="ev-sub">${sname}</div>`:''}
       ${ev.comment?`<div class="ev-sub" style="font-style:italic;">"${ev.comment}"</div>`:''}
@@ -4523,7 +4570,7 @@ function openAsistenciaActividad(){
         sede=document.getElementById('actSede'), nom=document.getElementById('actNombre'),
         tipo=document.getElementById('actTipo'), otroDesc=document.getElementById('actOtroDesc');
   if(nie) nie.value='';
-  if(tecnico) tecnico.value='';
+  if(tecnico) tecnico.value=_userConfig.tecnicoDefault||'';
   if(horaEntrada) horaEntrada.value='';
   if(horaSalida) horaSalida.value='';
   if(cupos) cupos.value='';
@@ -5981,6 +6028,49 @@ const TECNICOS_DI_SEED = [
 ];
 let TECNICOS_DI = TECNICOS_DI_SEED.slice();
 
+// Sellos disponibles para la columna SELLO de la bitácora y para el pie de
+// página. Cada fila/pie deja elegir cuál usar — o usar el nombre y firma
+// del técnico en su lugar, para cuando no hay un sello registrado.
+// (Cuando suban "DI JEFE Y SELLO.png" u otro sello, se agrega acá.)
+const SELLOS_DI = [
+  { id: 'berlin', nombre: 'Sello DI Berlín', img: BITAC_SELLO_B64 }
+];
+function _bitacSelloPorId(id) { return SELLOS_DI.find(s => s.id === id) || null; }
+function _bitacSelloOptionsHTML(selected) {
+  let html = '';
+  SELLOS_DI.forEach(s => { html += `<option value="sello:${s.id}"${selected === ('sello:' + s.id) ? ' selected' : ''}>${s.nombre}</option>`; });
+  html += `<option value="firma"${selected === 'firma' ? ' selected' : ''}>Usar nombre y firma del técnico</option>`;
+  html += `<option value=""${selected === '' ? ' selected' : ''}>Sin sello</option>`;
+  return html;
+}
+// Recuerda qué sello se usó la última vez para cada técnico, para
+// sugerirlo de una vez la próxima vez que se elija ese mismo técnico
+// (queda guardado en este dispositivo).
+function _bitacSelloPrefGet(tecNombre) {
+  try { return localStorage.getItem('bitacSelloPref_' + tecNombre) || ''; } catch (e) { return ''; }
+}
+function _bitacSelloPrefSet(tecNombre, value) {
+  try { if (tecNombre) localStorage.setItem('bitacSelloPref_' + tecNombre, value); } catch (e) {}
+}
+
+// Actividades pregrabadas — frases reusables para llenar más rápido el
+// campo "Actividad realizada" de una fila manual. Se administran desde
+// Configuración de usuario y se comparten entre todos (Firestore).
+let _actividadesPregrabadasCache = [];
+async function _bitacCargarActividadesPregrabadas() {
+  try { _actividadesPregrabadasCache = await window.FirebaseDB.listarActividadesPregrabadas(); }
+  catch (e) { console.error('No se pudieron cargar las actividades pregrabadas', e); }
+  return _actividadesPregrabadasCache;
+}
+function _bitacPregrabadaOptionsHTML() {
+  let html = '<option value="">▾ Usar actividad pregrabada…</option>';
+  _actividadesPregrabadasCache.forEach(a => { html += `<option value="${escapeHtml(a.texto)}">${escapeHtml(a.texto)}</option>`; });
+  return html;
+}
+function _bitacRefrescarPregrabadasSelects() {
+  document.querySelectorAll('.bit-pregrabada-select').forEach(sel => { sel.innerHTML = _bitacPregrabadaOptionsHTML(); });
+}
+
 async function _bitacCargarTecnicos() {
   try {
     const remotos = await window.FirebaseDB.listarTecnicos();
@@ -6051,6 +6141,7 @@ function _bitacRecolectarFormulario() {
       ciclo:          document.getElementById('bitCiclo').value || ''
     },
     tecnicoResponsable: document.getElementById('bitTecResp').value || '',
+    selloResponsable: document.getElementById('bitSelloResp').value || '',
     filas: {
       o: [1,2,3].map(n => _bitacLeerFilaCruda('o', n)),
       e: [1,2,3].map(n => _bitacLeerFilaCruda('e', n))
@@ -6071,6 +6162,8 @@ function _bitacLeerFilaCruda(group, n) {
   const tecSel = document.getElementById(`bitTec_${group}_${n}`);
   out.tec = tecSel ? tecSel.value : '';
   out.tecOtro = (document.getElementById(`bitTecOtro_${group}_${n}`)||{}).value || '';
+  const selloSel = document.getElementById(`bitSello_${group}_${n}`);
+  out.sello = selloSel ? selloSel.value : '';
   return out;
 }
 
@@ -6083,6 +6176,7 @@ function _bitacAplicarFormulario(datos) {
   document.getElementById('bitCarrera').value = p.carrera || '';
   document.getElementById('bitCiclo').value = p.ciclo || '';
   document.getElementById('bitTecResp').value = datos.tecnicoResponsable || '';
+  document.getElementById('bitSelloResp').innerHTML = _bitacSelloOptionsHTML(datos.selloResponsable || '');
   ['o','e'].forEach(group => {
     const filas = (datos.filas && datos.filas[group]) || [];
     filas.forEach((f, idx) => {
@@ -6100,6 +6194,7 @@ function _bitacAplicarFormulario(datos) {
       const t = document.getElementById(`bitTec_${group}_${n}`); if (t) t.value = f.tec || '';
       _bitacTecOtroToggle(group, n);
       const to = document.getElementById(`bitTecOtro_${group}_${n}`); if (to) to.value = f.tecOtro || '';
+      const selloSel = document.getElementById(`bitSello_${group}_${n}`); if (selloSel) selloSel.innerHTML = _bitacSelloOptionsHTML(f.sello || '');
     });
   });
 }
@@ -6143,12 +6238,14 @@ function bitacBorrarBorradorSeleccionado() {
 function openBitacoraDI() {
   if (!currentStudent) { showToast('Selecciona un estudiante primero', 'error'); return; }
   const bp = (appData[currentStudent] && appData[currentStudent].bitacoraPerfil) || {};
+  const tecRespDefault = bp.tecnicoResponsable || _userConfig.tecnicoDefault || '';
   document.getElementById('bitTelCorreo').value    = bp.telefonoCorreo || '';
   document.getElementById('bitUniversidad').value  = bp.universidad || '';
   document.getElementById('bitRegional').value     = bp.regional || '';
   document.getElementById('bitCarrera').value      = bp.carrera || '';
   document.getElementById('bitCiclo').value        = bp.ciclo || '';
-  document.getElementById('bitTecResp').innerHTML  = _bitacTecnicoOptionsHTML(bp.tecnicoResponsable || '');
+  document.getElementById('bitTecResp').innerHTML  = _bitacTecnicoOptionsHTML(tecRespDefault);
+  document.getElementById('bitSelloResp').innerHTML = _bitacSelloOptionsHTML(bp.selloResponsable || _userConfig.selloDefault || _bitacSelloPrefGet(tecRespDefault) || '');
   _bitacEditingRecordId = null;
   const editBanner = document.getElementById('bitEditingBanner'); if (editBanner) editBanner.style.display = 'none';
   _bitacRenderRows('o');
@@ -6156,6 +6253,26 @@ function openBitacoraDI() {
   _bitacRenderBorradorSelect();
   document.getElementById('bitacoraDIModal').classList.add('open');
   _bitacCargarTecnicos().then(_bitacRefrescarSelectsTecnico);
+  _bitacCargarActividadesPregrabadas().then(_bitacRefrescarPregrabadasSelects);
+}
+
+// Se dispara al cambiar el técnico responsable: sugiere el sello guardado
+// para ese técnico (o el que tiene registrado, si tiene uno).
+function _bitacTecRespChange() {
+  const nombre = document.getElementById('bitTecResp').value;
+  const selloSel = document.getElementById('bitSelloResp');
+  if (!selloSel) return;
+  let pref = _bitacSelloPrefGet(nombre);
+  if (!pref) {
+    const tecObj = _bitacTecnicoPorNombre(nombre);
+    if (tecObj && tecObj.sello) {
+      const match = SELLOS_DI.find(s => s.img === tecObj.sello);
+      pref = match ? ('sello:' + match.id) : 'firma';
+    } else if (nombre) {
+      pref = 'firma';
+    }
+  }
+  selloSel.innerHTML = _bitacSelloOptionsHTML(pref || '');
 }
 
 function _bitacRenderRows(group) {
@@ -6182,8 +6299,12 @@ function _bitacRenderRows(group) {
 function _bitacTecFieldHTML(group, n) {
   return `<div class="modal-field" style="margin-bottom:0;">
       <label>Técnico</label>
-      <select id="bitTec_${group}_${n}" class="bit-tec-select" onchange="_bitacTecOtroToggle('${group}',${n})">${_bitacTecnicoOptionsHTML('')}<option value="__otro__">Otro (escribir nombre)…</option></select>
-      <input type="text" id="bitTecOtro_${group}_${n}" placeholder="Nombre del técnico" style="margin-top:6px;display:none;">
+      <select id="bitTec_${group}_${n}" class="bit-tec-select" onchange="_bitacTecChange('${group}',${n})">${_bitacTecnicoOptionsHTML('')}<option value="__otro__">Otro (escribir nombre)…</option></select>
+      <input type="text" id="bitTecOtro_${group}_${n}" placeholder="Nombre del técnico" style="margin-top:6px;display:none;" oninput="_bitacTecChange('${group}',${n})">
+    </div>
+    <div class="modal-field" style="margin-bottom:0;">
+      <label>Sello de esta fila</label>
+      <select id="bitSello_${group}_${n}" onchange="_bitacSelloPrefSet(_bitacTecActualNombre('${group}',${n}), this.value)">${_bitacSelloOptionsHTML('')}</select>
     </div>`;
 }
 function _bitacTecOtroToggle(group, n) {
@@ -6192,12 +6313,46 @@ function _bitacTecOtroToggle(group, n) {
   if (sel && otro) otro.style.display = sel.value === '__otro__' ? 'block' : 'none';
 }
 
+// Nombre "efectivo" del técnico elegido en una fila (resuelve el caso "Otro").
+function _bitacTecActualNombre(group, n) {
+  const sel = document.getElementById(`bitTec_${group}_${n}`);
+  const otro = document.getElementById(`bitTecOtro_${group}_${n}`);
+  if (!sel) return '';
+  if (sel.value === '__otro__') return otro ? otro.value.trim() : '';
+  return sel.value || '';
+}
+
+// Se dispara al elegir/escribir un técnico en una fila: muestra el campo
+// "otro nombre" si aplica, y sugiere el sello guardado para ese técnico
+// (o el que tiene registrado, o el de nombre+firma si no tiene sello).
+function _bitacTecChange(group, n) {
+  _bitacTecOtroToggle(group, n);
+  const nombre = _bitacTecActualNombre(group, n);
+  const selloSel = document.getElementById(`bitSello_${group}_${n}`);
+  if (!selloSel) return;
+  let pref = _bitacSelloPrefGet(nombre);
+  if (!pref) {
+    const tecObj = _bitacTecnicoPorNombre(nombre);
+    if (tecObj && tecObj.sello) {
+      const match = SELLOS_DI.find(s => s.img === tecObj.sello);
+      pref = match ? ('sello:' + match.id) : 'firma';
+    } else if (nombre) {
+      pref = 'firma';
+    }
+  }
+  selloSel.innerHTML = _bitacSelloOptionsHTML(pref || '');
+}
+
 function _bitacSourceChange(group, n) {
   const src = document.getElementById(`bitSrc_${group}_${n}`).value;
   const cont = document.getElementById(`bitFields_${group}_${n}`);
   if (src === 'manual') {
     cont.innerHTML = `
-      <div class="modal-field" style="margin-bottom:0;grid-column:1/-1;"><label>Actividad realizada</label><input type="text" id="bitAct_${group}_${n}" placeholder="Ej: Apoyo administrativo en sede de DI en Berlín"></div>
+      <div class="modal-field" style="margin-bottom:0;grid-column:1/-1;">
+        <label>Actividad realizada</label>
+        <input type="text" id="bitAct_${group}_${n}" placeholder="Ej: Apoyo administrativo en sede de DI en Berlín">
+        <select class="bit-pregrabada-select" style="margin-top:6px;" onchange="if(this.value){document.getElementById('bitAct_${group}_${n}').value=this.value;this.value='';}">${_bitacPregrabadaOptionsHTML()}</select>
+      </div>
       <div class="modal-field" style="margin-bottom:0;"><label>Fecha</label><input type="text" id="bitFecha_${group}_${n}" placeholder="Ej: V-10/07/2026"></div>
       ${_bitacTecFieldHTML(group, n)}`;
   } else if (src === 'diaria') {
@@ -6245,9 +6400,18 @@ function _bitacLeerFila(group, n) {
   if (tecSel && tecSel.value === '__otro__' && tecOtro && tecOtro.value.trim()) tecNombre = tecOtro.value.trim();
   else if (tecSel && tecSel.value && tecSel.value !== '__otro__') tecNombre = tecSel.value;
 
-  if (!actividad) return { actividad: '', fecha: '', tecNombre: '', firma: null, sello: null };
+  if (!actividad) return { actividad: '', fecha: '', tecNombre: '', firma: null, sello: null, selloUsaFirma: false, selloSelVal: '' };
   const tecObj = _bitacTecnicoPorNombre(tecNombre);
-  return { actividad, fecha, tecNombre, firma: tecObj ? tecObj.firma : null, sello: tecObj ? tecObj.sello : null };
+  const selloSel = document.getElementById(`bitSello_${group}_${n}`);
+  const selloVal = selloSel ? selloSel.value : '';
+  let sello = null, selloUsaFirma = false;
+  if (selloVal.startsWith('sello:')) {
+    const s = _bitacSelloPorId(selloVal.slice(6));
+    sello = s ? s.img : null;
+  } else if (selloVal === 'firma') {
+    selloUsaFirma = true;
+  }
+  return { actividad, fecha, tecNombre, firma: tecObj ? tecObj.firma : null, sello, selloUsaFirma, selloSelVal: selloVal };
 }
 
 // ── Dibujo del PDF — coordenadas fijas (puntos, igual que el original en
@@ -6281,7 +6445,7 @@ function _bitacDrawWatermark(doc, withLogoCompleto) {
   if (withLogoCompleto) {
     try {
       doc.saveGraphicsState();
-      doc.setGState(new doc.GState({ opacity: 0.22 }));
+      doc.setGState(new doc.GState({ opacity: 0.2 }));
       doc.addImage(BITAC_LOGOFULL_B64, 'PNG', 294.8, 145.6, 448.2, 96.7);
       doc.restoreGraphicsState();
     } catch (e) {}
@@ -6368,6 +6532,18 @@ function _bitacDrawTable(doc, y0, rows, rowH, actLabelLines, startNum) {
           const sz = Math.min(colX[5] - colX[4] - 14, rowH - 12);
           doc.addImage(r.sello, 'PNG', (colX[4] + colX[5]) / 2 - sz / 2, y + (rowH - sz) / 2, sz, sz);
         } catch (e) {}
+      } else if (r.selloUsaFirma && r.tecNombre) {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(0, 0, 0);
+        doc.text(r.tecNombre, (colX[4] + colX[5]) / 2, y + 11, { align: 'center', maxWidth: colX[5] - colX[4] - 8 });
+        if (r.firma) {
+          try {
+            const iw = Math.min(colX[5] - colX[4] - 16, 120);
+            const ih = iw * (280 / 420);
+            const maxH = rowH - 16;
+            const fh = Math.min(ih, maxH), fw = fh / ih * iw;
+            doc.addImage(r.firma, 'PNG', (colX[4] + colX[5]) / 2 - fw / 2, y + 14, fw, fh);
+          } catch (e) {}
+        }
       }
     }
     y += rowH;
@@ -6376,7 +6552,7 @@ function _bitacDrawTable(doc, y0, rows, rowH, actLabelLines, startNum) {
   return y;
 }
 
-function _bitacDrawFirmaBlock(doc, lineY, tecRespNombre, tecRespObj) {
+function _bitacDrawFirmaBlock(doc, lineY, tecRespNombre, tecRespObj, selloImg) {
   const seg = [
     { x0: 40,  x1: 310, label: ['NOMBRE COMPLETO DE TÉCNICO', 'RESPONSABLE EN LA UNIVERSIDAD'] },
     { x0: 340, x1: 500, label: ['FIRMA'] },
@@ -6390,19 +6566,19 @@ function _bitacDrawFirmaBlock(doc, lineY, tecRespNombre, tecRespObj) {
     s.label.forEach(l => { doc.text(l, (s.x0 + s.x1) / 2, ly, { align: 'center' }); ly += 11; });
   });
   if (tecRespNombre) {
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...BITAC_BLUE_TXT);
-    doc.text(tecRespNombre.toUpperCase(), (seg[0].x0 + seg[0].x1) / 2, lineY - 6, { align: 'center', maxWidth: seg[0].x1 - seg[0].x0 });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5); doc.setTextColor(...BITAC_BLUE_TXT);
+    doc.text(tecRespNombre.toUpperCase(), (seg[0].x0 + seg[0].x1) / 2, lineY - 7, { align: 'center', maxWidth: seg[0].x1 - seg[0].x0 });
   }
   if (tecRespObj && tecRespObj.firma) {
     try {
-      const iw = 120, ih = iw * (280 / 420);
+      const iw = 145, ih = iw * (280 / 420);
       doc.addImage(tecRespObj.firma, 'PNG', (seg[1].x0 + seg[1].x1) / 2 - iw / 2, lineY - ih - 6, iw, ih);
     } catch (e) {}
   }
-  if (tecRespObj && tecRespObj.sello) {
+  if (selloImg) {
     try {
-      const sz = 46;
-      doc.addImage(tecRespObj.sello, 'PNG', (seg[2].x0 + seg[2].x1) / 2 - sz / 2, lineY - sz - 4, sz, sz);
+      const sz = 64;
+      doc.addImage(selloImg, 'PNG', (seg[2].x0 + seg[2].x1) / 2 - sz / 2, lineY - sz - 4, sz, sz);
     } catch (e) {}
   }
   doc.setTextColor(0, 0, 0);
@@ -6421,7 +6597,7 @@ function _bitacDrawFooter(doc, pageNum) {
 // Dibuja el PDF completo a partir de datos ya resueltos (perfil + filas con
 // firma/sello resueltos). Reusable tanto para "Generar" como para volver a
 // descargar un registro guardado en el historial.
-function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, extra) {
+function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, extra, selloRespImg) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
 
@@ -6450,12 +6626,12 @@ function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, ext
   doc.splitTextToSize(introTxt, 700).forEach(l => { doc.text(l, 396, ly, { align: 'center' }); ly += 17.5; });
   _bitacDrawTable(doc, 120, extra, 71.3, ['ACTIVIDAD REALIZADA', '(OBLIGATORIA / EXTRA)'], 4);
   doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.75);
-  doc.rect(27, 400, 745, 58);
+  doc.rect(27, 400, 745, 48);
   const usoTxt = 'USO EXCLUSIVO COORDINACIÓN CONTINUIDAD ACADÉMICA Y TÉCNICA Y UNIDAD DE BECADOS (FIRMA DEL TÉCNICO A CARGO CUANDO FINALICEN LAS 3 ACTIVIDADES ESTABLECIDAS). | ANEXADO A LAS ACTIVIDADES EXTRA QUE EL BECADO HAGA PUEDE SER ACTIVIDADES OBLIGATORIAS EXTRA A LAS 3 QUE EL REALICE.';
   doc.setFontSize(9.5);
-  let uy = 417;
-  doc.splitTextToSize(usoTxt, 715).forEach(l => { doc.text(l, 396, uy, { align: 'center' }); uy += 13; });
-  _bitacDrawFirmaBlock(doc, 552, tecRespNombre, tecRespObj);
+  let uy = 415;
+  doc.splitTextToSize(usoTxt, 715).forEach(l => { doc.text(l, 396, uy, { align: 'center' }); uy += 12.5; });
+  _bitacDrawFirmaBlock(doc, 555, tecRespNombre, tecRespObj, selloRespImg);
   _bitacDrawFooter(doc, 2);
 
   // ---- PÁGINA 3: anexos (N° 7-12, en blanco para uso posterior a mano) ----
@@ -6464,8 +6640,8 @@ function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, ext
   doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(0, 0, 0);
   doc.text('ANEXOS', 36, 58);
   doc.setLineWidth(0.9); doc.line(36, 63, 94, 63);
-  _bitacDrawTable(doc, 72, [null, null, null, null, null, null], 60.1, ['ACTIVIDAD REALIZADA', '(OBLIGATORIA / EXTRA)'], 7);
-  _bitacDrawFirmaBlock(doc, 561, tecRespNombre, tecRespObj);
+  _bitacDrawTable(doc, 72, [null, null, null, null, null, null], 56, ['ACTIVIDAD REALIZADA', '(OBLIGATORIA / EXTRA)'], 7);
+  _bitacDrawFirmaBlock(doc, 550, tecRespNombre, tecRespObj, selloRespImg);
   _bitacDrawFooter(doc, 3);
 
   return doc;
@@ -6488,6 +6664,9 @@ function generarBitacoraDIPDF() {
   };
   const tecRespNombre = document.getElementById('bitTecResp').value;
   const tecRespObj = _bitacTecnicoPorNombre(tecRespNombre);
+  const selloRespVal = document.getElementById('bitSelloResp').value;
+  const selloRespImg = selloRespVal.startsWith('sello:') ? ((_bitacSelloPorId(selloRespVal.slice(6))||{}).img || null) : null;
+  _bitacSelloPrefSet(tecRespNombre, selloRespVal);
 
   const obligatorias = [1, 2, 3].map(n => _bitacLeerFila('o', n));
   const extra = [1, 2, 3].map(n => _bitacLeerFila('e', n));
@@ -6506,11 +6685,11 @@ function generarBitacoraDIPDF() {
 
   // Guardar el perfil para la próxima vez que se abra esta modal (no bloquea la generación).
   if (!appData[currentStudent]) appData[currentStudent] = {};
-  appData[currentStudent].bitacoraPerfil = Object.assign({}, perfil, { tecnicoResponsable: tecRespNombre });
+  appData[currentStudent].bitacoraPerfil = Object.assign({}, perfil, { tecnicoResponsable: tecRespNombre, selloResponsable: selloRespVal });
   try { saveLocal(); } catch (e) {}
   window.FirebaseDB.guardarBitacoraPerfil(currentStudent, currentCareer, appData[currentStudent].bitacoraPerfil).catch(()=>{});
 
-  const doc = _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, extra);
+  const doc = _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, extra, selloRespImg);
   const fname = 'Bitacora_DI_' + currentStudent.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
   doc.save(fname);
 
@@ -6519,9 +6698,9 @@ function generarBitacoraDIPDF() {
   const registro = {
     generadoTs: nowIso,
     generadoFecha: getTodayKey(),
-    perfil, tecnicoResponsable: tecRespNombre,
-    obligatorias: obligatorias.map(r => ({ actividad: r.actividad, fecha: r.fecha, tecNombre: r.tecNombre })),
-    extra: extra.map(r => ({ actividad: r.actividad, fecha: r.fecha, tecNombre: r.tecNombre })),
+    perfil, tecnicoResponsable: tecRespNombre, selloResponsable: selloRespVal,
+    obligatorias: obligatorias.map(r => ({ actividad: r.actividad, fecha: r.fecha, tecNombre: r.tecNombre, selloSelVal: r.selloSelVal })),
+    extra: extra.map(r => ({ actividad: r.actividad, fecha: r.fecha, tecNombre: r.tecNombre, selloSelVal: r.selloSelVal })),
     ediciones: []
   };
   const guardarHistorial = (id) => {
@@ -6607,13 +6786,20 @@ function verBitacoraHist(id) {
 function descargarBitacoraHist(id) {
   const r = _bitacHistBuscar(id); if (!r) return;
   const tecRespObj = _bitacTecnicoPorNombre(r.tecnicoResponsable);
+  const selloRespVal = r.selloResponsable || '';
+  const selloRespImg = selloRespVal.startsWith('sello:') ? ((_bitacSelloPorId(selloRespVal.slice(6))||{}).img || null) : null;
   const resolve = arr => (arr || []).map(f => {
     const t = _bitacTecnicoPorNombre(f.tecNombre);
-    return { actividad: f.actividad, fecha: f.fecha, tecNombre: f.tecNombre, firma: t ? t.firma : null, sello: t ? t.sello : null };
+    const selloVal = f.selloSelVal || '';
+    let sello = null, selloUsaFirma = false;
+    if (selloVal.startsWith('sello:')) sello = (_bitacSelloPorId(selloVal.slice(6))||{}).img || null;
+    else if (selloVal === 'firma') selloUsaFirma = true;
+    else if (!selloVal && t && t.sello) sello = t.sello; // registros viejos sin sello guardado explícito
+    return { actividad: f.actividad, fecha: f.fecha, tecNombre: f.tecNombre, firma: t ? t.firma : null, sello, selloUsaFirma };
   });
   const obligatorias = resolve(r.obligatorias); while (obligatorias.length < 3) obligatorias.push({ actividad: '', fecha: '', tecNombre: '' });
   const extra = resolve(r.extra); while (extra.length < 3) extra.push({ actividad: '', fecha: '', tecNombre: '' });
-  const doc = _bitacConstruirPDF(r.perfil, r.tecnicoResponsable, tecRespObj, obligatorias, extra);
+  const doc = _bitacConstruirPDF(r.perfil, r.tecnicoResponsable, tecRespObj, obligatorias, extra, selloRespImg);
   doc.save('Bitacora_DI_' + currentStudent.replace(/\s+/g, '_') + '_' + (r.generadoTs || '').slice(0, 10) + '.pdf');
 }
 
@@ -6637,6 +6823,7 @@ function editarBitacoraHist(id) {
     document.getElementById('bitCarrera').value = (r.perfil && r.perfil.carrera) || '';
     document.getElementById('bitCiclo').value = (r.perfil && r.perfil.ciclo) || '';
     document.getElementById('bitTecResp').value = r.tecnicoResponsable || '';
+    document.getElementById('bitSelloResp').innerHTML = _bitacSelloOptionsHTML(r.selloResponsable || '');
     ['o', 'e'].forEach(group => {
       const arr = group === 'o' ? (r.obligatorias || []) : (r.extra || []);
       arr.forEach((f, idx) => {
@@ -6646,6 +6833,7 @@ function editarBitacoraHist(id) {
         const a = document.getElementById(`bitAct_${group}_${n}`); if (a) a.value = f.actividad || '';
         const fe = document.getElementById(`bitFecha_${group}_${n}`); if (fe) fe.value = f.fecha || '';
         _bitacSetTecSelect(group, n, f.tecNombre || '');
+        const selloSel = document.getElementById(`bitSello_${group}_${n}`); if (selloSel) selloSel.innerHTML = _bitacSelloOptionsHTML(f.selloSelVal || '');
       });
     });
     _bitacEditingRecordId = id;
@@ -6725,6 +6913,61 @@ async function borrarTecnico(id) {
     await window.FirebaseDB.eliminarTecnico(id);
     await _bitacCargarTecnicos();
     _renderTecnicosList();
+  } catch (e) { showToast('No se pudo eliminar', 'error'); }
+}
+
+// ══════════════════════════════════════════════════════════
+// CONFIGURACIÓN DE USUARIO — preferencias de este dispositivo (técnico y
+// sello por defecto) + administración de actividades pregrabadas.
+// ══════════════════════════════════════════════════════════
+async function openConfigUsuario() {
+  document.getElementById('configUsuarioModal').classList.add('open');
+  await _bitacCargarTecnicos();
+  document.getElementById('cfgTecnicoDefault').innerHTML = _bitacTecnicoOptionsHTML(_userConfig.tecnicoDefault || '');
+  document.getElementById('cfgSelloDefault').innerHTML = _bitacSelloOptionsHTML(_userConfig.selloDefault || '');
+  document.getElementById('cfgActividadesList').innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Cargando…</div>';
+  await _bitacCargarActividadesPregrabadas();
+  _renderActividadesPregrabadasList();
+}
+
+function guardarConfigUsuario() {
+  _userConfig.tecnicoDefault = document.getElementById('cfgTecnicoDefault').value || '';
+  _userConfig.selloDefault = document.getElementById('cfgSelloDefault').value || '';
+  _guardarUserConfig();
+  showToast('✓ Preferencias guardadas en este dispositivo', 'success');
+}
+
+function _renderActividadesPregrabadasList() {
+  const cont = document.getElementById('cfgActividadesList');
+  if (!_actividadesPregrabadasCache.length) { cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Todavía no hay actividades pregrabadas.</div>'; return; }
+  cont.innerHTML = _actividadesPregrabadasCache.map(a => `<div class="asist-hist-row">
+      <span style="font-size:15px;">📌</span>
+      <div style="flex:1;font-size:12.5px;color:var(--text);">${escapeHtml(a.texto)}</div>
+      <button onclick="eliminarActividadPregrabadaUI('${a.id}')" title="Eliminar" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:14px;">🗑</button>
+    </div>`).join('');
+}
+
+async function agregarActividadPregrabada() {
+  const inp = document.getElementById('cfgActividadInput');
+  const texto = (inp.value || '').trim();
+  if (!texto) { showToast('Escribí el texto de la actividad', 'error'); return; }
+  try {
+    await window.FirebaseDB.guardarActividadPregrabada(null, texto);
+    inp.value = '';
+    await _bitacCargarActividadesPregrabadas();
+    _renderActividadesPregrabadasList();
+    _bitacRefrescarPregrabadasSelects();
+    showToast('✓ Actividad pregrabada agregada', 'success');
+  } catch (e) { showToast('No se pudo guardar', 'error'); }
+}
+
+async function eliminarActividadPregrabadaUI(id) {
+  if (!confirm('¿Eliminar esta actividad pregrabada?')) return;
+  try {
+    await window.FirebaseDB.eliminarActividadPregrabada(id);
+    await _bitacCargarActividadesPregrabadas();
+    _renderActividadesPregrabadasList();
+    _bitacRefrescarPregrabadasSelects();
   } catch (e) { showToast('No se pudo eliminar', 'error'); }
 }
 

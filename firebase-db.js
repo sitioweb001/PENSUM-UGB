@@ -179,6 +179,28 @@ export async function eliminarTecnico(id) {
   await deleteDoc(doc(db, 'tecnicos', id));
 }
 
+// ============================================================
+// ACTIVIDADES PREGRABADAS — frases de "actividad realizada" reusables
+// para llenar más rápido las filas de la Bitácora. Compartidas entre
+// todos, igual que los técnicos.
+// ============================================================
+
+export async function listarActividadesPregrabadas() {
+  const snap = await getDocs(collection(db, 'actividadesPregrabadas'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function guardarActividadPregrabada(id, texto) {
+  const col = collection(db, 'actividadesPregrabadas');
+  const ref = id ? doc(col, id) : doc(col);
+  await setDoc(ref, { texto, updatedAt: serverTimestamp() }, { merge: true });
+  return ref.id;
+}
+
+export async function eliminarActividadPregrabada(id) {
+  await deleteDoc(doc(db, 'actividadesPregrabadas', id));
+}
+
 export async function guardarPensumHistorial(nombre, carrera, undoStackArray) {
   const id   = studentId(nombre, carrera);
   const col  = collection(db, 'estudiantes', id, 'pensumHistorial');

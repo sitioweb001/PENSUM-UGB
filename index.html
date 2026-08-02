@@ -1261,17 +1261,26 @@ header{flex-wrap:wrap;row-gap:6px;}
       <div class="modal-field"><label>Correo</label><input type="text" id="tecCorreoInput" placeholder="correo@ejemplo.com"></div>
       <div class="modal-field"><label>Encargado en universidad o sede</label><input type="text" id="tecEncargadoInput" placeholder="Ej: Sede DI Berlín"></div>
       <div class="modal-field">
-        <label>Firma (imagen, opcional)</label>
-        <input type="file" accept="image/*" id="tecFirmaInput" onchange="_tecPreviewImg(this,'tecFirmaPreview')">
-        <img id="tecFirmaPreview" style="display:none;max-height:40px;margin-top:6px;">
+        <label>Firma</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+          <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="document.getElementById('tecFirmaInput').click()">📁 Elegir archivo</button>
+          <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="abrirFirmaPad()">✍️ Dibujar firma</button>
+        </div>
+        <input type="file" accept="image/*" id="tecFirmaInput" style="display:none;" onchange="_tecPreviewImg(this,'tecFirmaPreview')">
+        <img id="tecFirmaPreview" style="display:none;max-height:44px;margin-top:4px;background:var(--bg);border:1px solid var(--gl);border-radius:6px;padding:4px;">
       </div>
       <div class="modal-field">
-        <label>Sello (imagen, opcional)</label>
-        <input type="file" accept="image/*" id="tecSelloInput" onchange="_tecPreviewImg(this,'tecSelloPreview')">
-        <img id="tecSelloPreview" style="display:none;max-height:40px;margin-top:6px;">
+        <label>Sello</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+          <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="document.getElementById('tecSelloInput').click()">📁 Elegir archivo</button>
+          <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="document.getElementById('tecSelloCam').click()">📷 Tomar foto</button>
+        </div>
+        <input type="file" accept="image/*" id="tecSelloInput" style="display:none;" onchange="_tecEditarSello(this)">
+        <input type="file" accept="image/*" capture="environment" id="tecSelloCam" style="display:none;" onchange="_tecEditarSello(this)">
+        <img id="tecSelloPreview" style="display:none;max-height:44px;margin-top:4px;background:var(--bg);border:1px solid var(--gl);border-radius:6px;padding:4px;">
       </div>
     </div>
-    <p style="font-size:10.5px;color:var(--gm);margin:-4px 0 10px;">Subí la firma y el sello desde tu computadora o celular — no hace falta que existan en la misma carpeta del sistema ni pasármelos a mí; quedan guardados para todos los que usan la app.</p>
+    <p style="font-size:10.5px;color:var(--gm);margin:-4px 0 10px;">Subí, dibujá o tomá una foto de la firma/sello desde tu computadora o celular — no hace falta que existan en la misma carpeta del sistema ni pasármelos a mí; quedan guardados para todos los que usan la app.</p>
     <div style="text-align:right;margin-bottom:14px;">
       <button type="button" class="modal-btn secondary" onclick="_limpiarFormTecnico()" style="padding:7px 12px;font-size:12px;">Limpiar</button>
       <button type="button" class="modal-btn primary" onclick="guardarTecnicoNuevo()" style="padding:7px 12px;font-size:12px;">Guardar técnico</button>
@@ -1279,6 +1288,40 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="ham-divider" style="margin-bottom:12px;"></div>
     <div id="tecnicosList"></div>
     <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('tecnicosModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Dibujar firma con dedo / mouse / lápiz óptico -->
+<div class="modal-overlay" id="firmaPadModal">
+  <div class="modal" style="width:520px;max-width:94vw;">
+    <h3 style="text-align:center;margin-bottom:4px;">✍️ Dibujar firma</h3>
+    <p style="text-align:center;font-size:11px;color:var(--gm);margin-bottom:10px;">Usá el dedo, el mouse o un lápiz óptico (S Pen y similares).</p>
+    <canvas id="firmaPadCanvas" style="width:100%;height:200px;touch-action:none;background:#fff;border:1.5px solid var(--inp-b);border-radius:8px;cursor:crosshair;"></canvas>
+    <div class="modal-btns" style="margin-top:12px;">
+      <button class="modal-btn secondary" onclick="_firmaPadLimpiar()">🗑 Limpiar</button>
+      <button class="modal-btn secondary" onclick="document.getElementById('firmaPadModal').classList.remove('open')">Cancelar</button>
+      <button class="modal-btn primary" onclick="_firmaPadUsar()">✓ Usar esta firma</button>
+    </div>
+  </div>
+</div>
+
+<!-- Editar foto del sello: brillo/contraste + fondo transparente -->
+<div class="modal-overlay" id="selloEditorModal">
+  <div class="modal" style="width:480px;max-width:94vw;max-height:92vh;overflow-y:auto;">
+    <h3 style="text-align:center;margin-bottom:10px;">🖼️ Editar sello</h3>
+    <div style="background-image:repeating-conic-gradient(#e2e5ea 0% 25%, #fff 0% 50%);background-size:16px 16px;border-radius:8px;padding:10px;text-align:center;margin-bottom:14px;">
+      <canvas id="selloEditorCanvas" style="max-width:100%;"></canvas>
+    </div>
+    <div class="modal-field"><label>Brillo</label><input type="range" id="selloBrillo" min="50" max="200" value="100" oninput="_selloAplicarFiltros()" style="width:100%;"></div>
+    <div class="modal-field"><label>Contraste</label><input type="range" id="selloContraste" min="50" max="300" value="130" oninput="_selloAplicarFiltros()" style="width:100%;"></div>
+    <div class="modal-field"><label><input type="checkbox" id="selloTransparente" checked onchange="_selloAplicarFiltros()" style="width:auto;margin-right:6px;"> Hacer fondo transparente</label></div>
+    <div class="modal-field" id="selloUmbralField"><label>Sensibilidad del fondo transparente</label><input type="range" id="selloUmbral" min="0" max="255" value="200" oninput="_selloAplicarFiltros()" style="width:100%;">
+      <p style="font-size:10px;color:var(--gm);margin:4px 0 0;">Subilo si todavía se ve fondo blanco; bajalo si está borrando parte del sello.</p>
+    </div>
+    <div class="modal-btns" style="margin-top:10px;">
+      <button class="modal-btn secondary" onclick="document.getElementById('selloEditorModal').classList.remove('open')">Cancelar</button>
+      <button class="modal-btn primary" onclick="_selloEditorUsar()">✓ Usar este sello</button>
+    </div>
   </div>
 </div>
 
@@ -6083,33 +6126,6 @@ function _bitacSelloPrefSet(tecNombre, value) {
   try { if (tecNombre) localStorage.setItem('bitacSelloPref_' + tecNombre, value); } catch (e) {}
 }
 
-// Convierte un archivo de imagen elegido por el usuario (input type=file)
-// a un data:URL base64 ya redimensionado, listo para guardar en Firestore
-// y para pasarle directo a doc.addImage() de jsPDF. Así cualquiera puede
-// subir su firma/sello desde el navegador, sin tocar código ni mandarme
-// el archivo.
-function _bitacFileToResizedB64(file, maxW) {
-  return new Promise((resolve, reject) => {
-    if (!file) { resolve(null); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, maxW / img.width);
-        const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve({ dataUrl: canvas.toDataURL('image/png'), width: w, height: h });
-      };
-      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
-      img.src = e.target.result;
-    };
-    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
-    reader.readAsDataURL(file);
-  });
-}
-
 // Actividades pregrabadas — frases reusables para llenar más rápido el
 // campo "Actividad realizada" de una fila manual. Se administran desde
 // Configuración de usuario y se comparten entre todos (Firestore).
@@ -6984,11 +7000,40 @@ function _renderTecnicosList() {
     </div>`).join('');
 }
 
+// Convierte un data:URL (ya en memoria — venga de un archivo, de la firma
+// dibujada, o del sello editado) a una versión redimensionada, lista para
+// guardar en Firestore y para pasarle directo a doc.addImage() de jsPDF.
+function _bitacDataUrlToResizedB64(dataUrl, maxW) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve({ dataUrl: canvas.toDataURL('image/png'), width: w, height: h });
+    };
+    img.onerror = () => reject(new Error('No se pudo procesar la imagen'));
+    img.src = dataUrl;
+  });
+}
+// Igual que la de arriba pero a partir de un input type=file (subida normal).
+function _bitacFileToResizedB64(file, maxW) {
+  return new Promise((resolve, reject) => {
+    if (!file) { resolve(null); return; }
+    const reader = new FileReader();
+    reader.onload = e => _bitacDataUrlToResizedB64(e.target.result, maxW).then(resolve, reject);
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
 function _tecPreviewImg(input, imgId) {
   const img = document.getElementById(imgId);
-  if (!input.files || !input.files[0]) { return; }
+  if (!input.files || !input.files[0]) return;
   const reader = new FileReader();
-  reader.onload = e => { img.src = e.target.result; img.style.display = 'inline-block'; };
+  reader.onload = e => { img.src = e.target.result; img.dataset.pending = e.target.result; img.style.display = 'inline-block'; };
   reader.readAsDataURL(input.files[0]);
 }
 
@@ -7002,15 +7047,15 @@ async function guardarTecnicoNuevo() {
     encargado: (document.getElementById('tecEncargadoInput').value || '').trim()
   };
   const editId = document.getElementById('tecFormEditId').value || null;
-  const firmaFile = document.getElementById('tecFirmaInput').files[0];
-  const selloFile = document.getElementById('tecSelloInput').files[0];
+  const firmaPending = document.getElementById('tecFirmaPreview').dataset.pending;
+  const selloPending = document.getElementById('tecSelloPreview').dataset.pending;
   try {
-    if (firmaFile) {
-      const r = await _bitacFileToResizedB64(firmaFile, 380);
+    if (firmaPending) {
+      const r = await _bitacDataUrlToResizedB64(firmaPending, 380);
       data.firmaB64 = r.dataUrl; data.firmaAspect = r.height / r.width;
     }
-    if (selloFile) {
-      const r = await _bitacFileToResizedB64(selloFile, 220);
+    if (selloPending) {
+      const r = await _bitacDataUrlToResizedB64(selloPending, 260);
       data.selloB64 = r.dataUrl;
     }
     await window.FirebaseDB.guardarTecnico(editId, data);
@@ -7029,8 +7074,8 @@ function _limpiarFormTecnico() {
   document.getElementById('tecEncargadoInput').value = '';
   document.getElementById('tecFirmaInput').value = '';
   document.getElementById('tecSelloInput').value = '';
-  document.getElementById('tecFirmaPreview').style.display = 'none';
-  document.getElementById('tecSelloPreview').style.display = 'none';
+  const fp = document.getElementById('tecFirmaPreview'); fp.style.display = 'none'; delete fp.dataset.pending; fp.src = '';
+  const sp = document.getElementById('tecSelloPreview'); sp.style.display = 'none'; delete sp.dataset.pending; sp.src = '';
   document.getElementById('tecFormTitle').textContent = 'Agregar técnico';
 }
 
@@ -7042,6 +7087,8 @@ function editarTecnico(id) {
   document.getElementById('tecNumeroInput').value = t.numero || '';
   document.getElementById('tecCorreoInput').value = t.correo || '';
   document.getElementById('tecEncargadoInput').value = t.encargado || '';
+  // OJO: no se marca como "pending" — si el usuario no toca firma/sello,
+  // se conserva lo que ya había guardado en Firestore.
   if (t.firma) { const p = document.getElementById('tecFirmaPreview'); p.src = t.firma; p.style.display = 'inline-block'; }
   if (t.sello) { const p = document.getElementById('tecSelloPreview'); p.src = t.sello; p.style.display = 'inline-block'; }
   document.getElementById('tecFormTitle').textContent = 'Editando: ' + t.nombre;
@@ -7054,6 +7101,125 @@ async function borrarTecnico(id) {
     await _bitacCargarTecnicos();
     _renderTecnicosList();
   } catch (e) { showToast('No se pudo eliminar', 'error'); }
+}
+
+// ── Dibujar firma con el dedo / mouse / lápiz óptico ──
+let _firmaPadCtx = null, _firmaPadDrawing = false, _firmaPadHasContent = false, _firmaPadRatio = 2;
+function abrirFirmaPad() {
+  document.getElementById('firmaPadModal').classList.add('open');
+  const canvas = document.getElementById('firmaPadCanvas');
+  requestAnimationFrame(() => {
+    const rect = canvas.getBoundingClientRect();
+    _firmaPadRatio = window.devicePixelRatio || 2;
+    canvas.width = Math.max(300, rect.width) * _firmaPadRatio;
+    canvas.height = rect.height * _firmaPadRatio;
+    _firmaPadCtx = canvas.getContext('2d');
+    _firmaPadCtx.scale(_firmaPadRatio, _firmaPadRatio);
+    _firmaPadCtx.lineWidth = 2.5;
+    _firmaPadCtx.lineCap = 'round';
+    _firmaPadCtx.lineJoin = 'round';
+    _firmaPadCtx.strokeStyle = '#16247d';
+    _firmaPadHasContent = false;
+    _bindFirmaPadEvents(canvas);
+  });
+}
+function _bindFirmaPadEvents(canvas) {
+  if (canvas._bound) return;
+  canvas._bound = true;
+  const pos = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    _firmaPadDrawing = true; _firmaPadHasContent = true;
+    const [x, y] = pos(e);
+    _firmaPadCtx.beginPath();
+    _firmaPadCtx.moveTo(x, y);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!_firmaPadDrawing) return;
+    e.preventDefault();
+    const [x, y] = pos(e);
+    _firmaPadCtx.lineTo(x, y);
+    _firmaPadCtx.stroke();
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => canvas.addEventListener(ev, () => { _firmaPadDrawing = false; }));
+}
+function _firmaPadLimpiar() {
+  const canvas = document.getElementById('firmaPadCanvas');
+  if (_firmaPadCtx) _firmaPadCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _firmaPadHasContent = false;
+}
+function _firmaPadUsar() {
+  if (!_firmaPadHasContent) { showToast('Dibujá tu firma antes de continuar', 'error'); return; }
+  const canvas = document.getElementById('firmaPadCanvas');
+  const dataUrl = canvas.toDataURL('image/png');
+  const img = document.getElementById('tecFirmaPreview');
+  img.src = dataUrl; img.dataset.pending = dataUrl; img.style.display = 'inline-block';
+  document.getElementById('firmaPadModal').classList.remove('open');
+  showToast('✓ Firma lista — se guarda al presionar "Guardar técnico"', 'success');
+}
+
+// ── Foto del sello (cámara trasera o archivo) + edición: brillo,
+// contraste y fondo transparente ──
+function _tecEditarSello(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => { _abrirSelloEditor(e.target.result); input.value = ''; };
+  reader.readAsDataURL(input.files[0]);
+}
+let _selloEditorImg = null;
+function _abrirSelloEditor(dataUrl) {
+  const img = new Image();
+  img.onload = () => {
+    _selloEditorImg = img;
+    const canvas = document.getElementById('selloEditorCanvas');
+    const maxW = 380;
+    const scale = Math.min(1, maxW / img.width);
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    document.getElementById('selloBrillo').value = 100;
+    document.getElementById('selloContraste').value = 130;
+    document.getElementById('selloTransparente').checked = true;
+    document.getElementById('selloUmbral').value = 200;
+    document.getElementById('selloEditorModal').classList.add('open');
+    _selloAplicarFiltros();
+  };
+  img.onerror = () => showToast('No se pudo abrir esa imagen', 'error');
+  img.src = dataUrl;
+}
+function _selloAplicarFiltros() {
+  if (!_selloEditorImg) return;
+  const canvas = document.getElementById('selloEditorCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const brillo = parseInt(document.getElementById('selloBrillo').value, 10);
+  const contraste = parseInt(document.getElementById('selloContraste').value, 10);
+  ctx.filter = `brightness(${brillo}%) contrast(${contraste}%)`;
+  ctx.drawImage(_selloEditorImg, 0, 0, canvas.width, canvas.height);
+  ctx.filter = 'none';
+
+  const transparente = document.getElementById('selloTransparente').checked;
+  document.getElementById('selloUmbralField').style.display = transparente ? '' : 'none';
+  if (transparente) {
+    const umbral = parseInt(document.getElementById('selloUmbral').value, 10);
+    const feather = 60;
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const brightness = (d[i] + d[i + 1] + d[i + 2]) / 3;
+      if (brightness >= umbral) d[i + 3] = 0;
+      else if (brightness > umbral - feather) d[i + 3] = Math.round(255 * (umbral - brightness) / feather);
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+}
+function _selloEditorUsar() {
+  const canvas = document.getElementById('selloEditorCanvas');
+  const dataUrl = canvas.toDataURL('image/png');
+  const img = document.getElementById('tecSelloPreview');
+  img.src = dataUrl; img.dataset.pending = dataUrl; img.style.display = 'inline-block';
+  document.getElementById('selloEditorModal').classList.remove('open');
+  showToast('✓ Sello listo — se guarda al presionar "Guardar técnico"', 'success');
 }
 
 // ══════════════════════════════════════════════════════════

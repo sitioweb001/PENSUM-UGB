@@ -1235,7 +1235,17 @@ header{flex-wrap:wrap;row-gap:6px;}
 <div class="modal-overlay" id="bitHistModal">
   <div class="modal" style="width:560px;max-width:94vw;max-height:88vh;overflow-y:auto;">
     <h3 style="text-align:center;margin-bottom:3px;">📚 Historial de bitácoras</h3>
-    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">Todo lo que se generó para este estudiante — mirá el detalle, volvé a descargarlo, o editalo dejando el motivo.</p>
+    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">Todo lo que se generó o se subió para este estudiante — mirá el detalle, volvé a descargarlo, o editalo dejando el motivo.</p>
+
+    <div style="border:1.5px solid var(--gl);border-radius:10px;padding:12px 14px;margin-bottom:14px;background:var(--bg);">
+      <div style="font-size:11px;font-weight:700;color:var(--gm);margin-bottom:8px;">📎 SUBIR UN ARCHIVO AL HISTORIAL</div>
+      <p style="font-size:10.5px;color:var(--gm);margin:0 0 8px;">Para guardar, por ejemplo, la bitácora ya firmada/sellada en papel y escaneada, o cualquier otro archivo relacionado.</p>
+      <div class="modal-field" style="margin-bottom:8px;"><label>Archivo (PDF o imagen)</label><input type="file" id="histArchivoInput" accept="application/pdf,image/*"></div>
+      <div class="modal-field" style="margin-bottom:8px;"><label>Fecha en que se descargó / imprimió / firmó</label><input type="date" id="histArchivoFecha"></div>
+      <div class="modal-field" style="margin-bottom:8px;"><label>Nota (opcional)</label><input type="text" id="histArchivoNota" placeholder="Ej: Copia firmada, entregada en sede"></div>
+      <button type="button" class="modal-btn primary" style="width:100%;padding:8px;font-size:12.5px;" onclick="subirArchivoHistorial()">📎 Subir al historial</button>
+    </div>
+
     <div id="bitHistList"></div>
     <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('bitHistModal').classList.remove('open')">Cerrar</button></div>
   </div>
@@ -6875,8 +6885,19 @@ async function openHistorialBitacoras() {
 
 function _renderHistorialBitacoras() {
   const cont = document.getElementById('bitHistList');
-  if (!_bitacHistCache.length) { cont.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gm);">Todavía no se ha generado ninguna bitácora para este estudiante.</div>'; return; }
+  if (!_bitacHistCache.length) { cont.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gm);">Todavía no se generó ni se subió nada para este estudiante.</div>'; return; }
   cont.innerHTML = _bitacHistCache.map(r => {
+    if (r.tipo === 'archivo') {
+      return `<div class="asist-hist-row" style="cursor:default;">
+        <span style="font-size:17px;">📎</span>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(r.archivoNombre || 'Archivo')}</div>
+          <div style="font-size:11px;color:var(--gm);">Descargado/firmado: ${escapeHtml(r.fechaDescarga || '—')}${r.nota ? (' · ' + escapeHtml(r.nota)) : ''}</div>
+        </div>
+        <button onclick="descargarBitacoraHist('${r.id}')" title="Descargar" style="background:transparent;border:none;color:var(--blue);cursor:pointer;font-size:14px;">⬇️</button>
+        <button onclick="eliminarArchivoHistorial('${r.id}')" title="Eliminar" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:14px;">🗑</button>
+      </div>`;
+    }
     const fecha = (r.generadoTs || '').slice(0, 10) || r.generadoFecha || '—';
     const nEdits = (r.ediciones || []).length;
     return `<div class="asist-hist-row" style="cursor:default;">
@@ -6892,11 +6913,111 @@ function _renderHistorialBitacoras() {
   }).join('');
 }
 
+// ── Subir un archivo real (PDF o foto) al historial, con la fecha en que
+// se descargó/imprimió/firmó. Se comprime si es imagen y se valida que
+// entre en un documento de Firestore antes de guardarlo — si no entra,
+// se avisa en vez de fallar en silencio. ──
+function _bitacArchivoLimiteBytes() { return 700 * 1024; }
+
+function _bitacFileToDataUrlPlano(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function _bitacComprimirImagenParaSubir(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxW = 1400;
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let quality = 0.78, dataUrl = canvas.toDataURL('image/jpeg', quality);
+        while (dataUrl.length > _bitacArchivoLimiteBytes() && quality > 0.3) { quality -= 0.1; dataUrl = canvas.toDataURL('image/jpeg', quality); }
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('No se pudo procesar la imagen'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function _bitacDescargarDataUrl(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl; a.download = filename || 'archivo';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+async function subirArchivoHistorial() {
+  if (!currentStudent) { showToast('Selecciona un estudiante primero', 'error'); return; }
+  const input = document.getElementById('histArchivoInput');
+  const file = input.files[0];
+  if (!file) { showToast('Elegí un archivo primero', 'error'); return; }
+  const fecha = document.getElementById('histArchivoFecha').value || getTodayKey();
+  const nota = (document.getElementById('histArchivoNota').value || '').trim();
+
+  let dataUrl, tipo = file.type || 'application/octet-stream';
+  try {
+    dataUrl = file.type.startsWith('image/') ? await _bitacComprimirImagenParaSubir(file) : await _bitacFileToDataUrlPlano(file);
+  } catch (e) { showToast('No se pudo leer el archivo', 'error'); return; }
+  if (file.type.startsWith('image/')) tipo = 'image/jpeg';
+
+  if (dataUrl.length > _bitacArchivoLimiteBytes()) {
+    showToast('El archivo es muy pesado para guardarlo (máx. ~500 KB). Si es una foto, probá con menos resolución; si es un PDF, comprimilo primero.', 'error');
+    return;
+  }
+
+  const registro = {
+    tipo: 'archivo',
+    generadoTs: new Date().toISOString(),
+    fechaDescarga: fecha,
+    archivoNombre: file.name,
+    archivoTipo: tipo,
+    archivoDataUrl: dataUrl,
+    nota,
+    ediciones: []
+  };
+  try {
+    await window.FirebaseDB.guardarRegistroBitacora(currentStudent, currentCareer, null, registro);
+    showToast('✓ Archivo guardado en el historial', 'success');
+    input.value = ''; document.getElementById('histArchivoNota').value = ''; document.getElementById('histArchivoFecha').value = '';
+    _bitacHistCache = await window.FirebaseDB.listarBitacoras(currentStudent, currentCareer);
+    _renderHistorialBitacoras();
+  } catch (e) { showToast('No se pudo guardar el archivo — puede que sea muy pesado para la base de datos', 'error'); }
+}
+
+async function eliminarArchivoHistorial(id) {
+  if (!confirm('¿Eliminar este archivo del historial?')) return;
+  try {
+    await window.FirebaseDB.eliminarRegistroBitacora(currentStudent, currentCareer, id);
+    _bitacHistCache = await window.FirebaseDB.listarBitacoras(currentStudent, currentCareer);
+    _renderHistorialBitacoras();
+    showToast('Archivo eliminado', 'success');
+  } catch (e) { showToast('No se pudo eliminar', 'error'); }
+}
+
 function _bitacHistBuscar(id) { return _bitacHistCache.find(r => r.id === id); }
 
 function verBitacoraHist(id) {
   const r = _bitacHistBuscar(id); if (!r) return;
   const row = (label, val) => `<div style="display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--gl);"><span style="color:var(--gm);font-size:11px;">${escapeHtml(label)}</span><span style="font-size:12px;font-weight:600;text-align:right;">${escapeHtml(val || '—')}</span></div>`;
+  if (r.tipo === 'archivo') {
+    let html = row('Archivo', r.archivoNombre) + row('Descargado/firmado', r.fechaDescarga) + row('Subido a la app', (r.generadoTs || '').slice(0, 16).replace('T', ' '));
+    if (r.nota) html += row('Nota', r.nota);
+    document.getElementById('bitHistDetalle').innerHTML = html;
+    document.getElementById('bitHistDetalleModal').classList.add('open');
+    return;
+  }
   let html = row('Generada', (r.generadoTs || '').replace('T', ' ').slice(0, 16)) +
     row('Técnico responsable', r.tecnicoResponsable) +
     row('Universidad', r.perfil && r.perfil.universidad) +
@@ -6916,6 +7037,7 @@ function verBitacoraHist(id) {
 
 function descargarBitacoraHist(id) {
   const r = _bitacHistBuscar(id); if (!r) return;
+  if (r.tipo === 'archivo') { _bitacDescargarDataUrl(r.archivoDataUrl, r.archivoNombre); return; }
   const tecRespObj = _bitacTecnicoPorNombre(r.tecnicoResponsable);
   const selloRespVal = r.selloResponsable || '';
   const selloRespImg = selloRespVal.startsWith('sello:') ? ((_bitacSelloPorId(selloRespVal.slice(6))||{}).img || null) : null;

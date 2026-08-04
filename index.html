@@ -915,7 +915,7 @@ header{flex-wrap:wrap;row-gap:6px;}
 <div class="modal-overlay" id="dondeEstoyModal">
   <div class="modal" style="width:96vw;max-width:1100px;height:90vh;max-height:92vh;padding:0;overflow:hidden;display:flex;flex-direction:column;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--gl);flex-shrink:0;">
-      <h3 style="margin:0;font-size:15px;">📍 ¿Dónde estoy?</h3>
+      <h3 style="margin:0;font-size:15px;display:flex;align-items:center;gap:8px;"><img src="DI.svg" alt="" style="height:22px;object-fit:contain;" onerror="this.style.display='none'">📍 ¿Dónde estoy?</h3>
       <div style="display:flex;gap:8px;">
         <button class="modal-btn secondary" id="dondeEstoyEditBtn" onclick="editarHorario()" style="display:none;padding:6px 12px;font-size:12px;">✏️ Editar horario</button>
         <button class="modal-btn secondary" onclick="closeDondeEstoy()" style="padding:6px 12px;font-size:12px;">Cerrar ✕</button>
@@ -927,7 +927,8 @@ header{flex-wrap:wrap;row-gap:6px;}
 
 <div class="modal-overlay" id="pasteModal">
   <div class="modal" style="width:580px;">
-    <h3>📋 Pegar tabla de notas</h3>
+    <img src="DI.svg" alt="Dirección de Integración" style="display:block;height:40px;object-fit:contain;margin:0 auto 6px;" onerror="this.style.display='none'">
+    <h3 style="text-align:center;">📋 Pegar tabla de notas</h3>
     <p>Copia del portal UGB o Excel y pega aquí.</p>
     <pre style="background:var(--comp-bg);padding:7px;font-size:10px;margin-bottom:9px;border-radius:7px;overflow-x:auto;color:var(--gm);">CÓDIGO - MATERIA   N1  N2  P  C1  N1  N2  P  C2  N1  N2  P  C3  REP  NF</pre>
     <div class="modal-field"><textarea id="pasteTextarea" placeholder="Pega aquí..."></textarea></div>
@@ -971,7 +972,8 @@ header{flex-wrap:wrap;row-gap:6px;}
 
 <div class="modal-overlay" id="calendarModal">
   <div class="modal" style="width:640px;">
-    <h3>📅 Calendario de Actividades</h3>
+    <img src="DI.svg" alt="Dirección de Integración" style="display:block;height:40px;object-fit:contain;margin:0 auto 6px;" onerror="this.style.display='none'">
+    <h3 style="text-align:center;">📅 Calendario de Actividades</h3>
     <p>Marca ✓ realizadas, anota nota obtenida. Filtra por período.</p>
     <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px;">
       <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="addEvent('Lab 1')">+ Lab 1</button>
@@ -1082,6 +1084,7 @@ header{flex-wrap:wrap;row-gap:6px;}
       <div style="width:1px;height:60px;background:var(--gl);"></div>
       <img src="DI.svg" alt="Dirección de Integración" style="height:68px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:11px;color:var(--gm);max-width:80px;text-align:center;\'>Dir. Integración UGB</span>'">
     </div>
+    <img src="DI.svg" alt="Dirección de Integración" style="display:block;height:40px;object-fit:contain;margin:0 auto 6px;" onerror="this.style.display='none'">
     <h3 style="text-align:center;margin-bottom:3px;">🏛 Asistencia Diaria</h3>
     <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
     <div class="asist-hoy-box" id="asistenciaHoy"></div>
@@ -1108,6 +1111,7 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="asist-logos" style="justify-content:center;">
       <img src="DI.svg" alt="Dirección de Integración" style="height:90px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:12px;color:var(--gm);font-weight:700;\'>Dirección de Integración UGB</span>'">
     </div>
+    <img src="DI.svg" alt="Dirección de Integración" style="display:block;height:40px;object-fit:contain;margin:0 auto 6px;" onerror="this.style.display='none'">
     <h3 style="text-align:center;margin-bottom:3px;">📝 Formulario de Asistencia DI</h3>
     <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
 
@@ -1184,6 +1188,7 @@ header{flex-wrap:wrap;row-gap:6px;}
      Asistencia diaria / Actividad DI ya guardadas para el estudiante. -->
 <div class="modal-overlay" id="bitacoraDIModal">
   <div class="modal" style="width:900px;max-width:96vw;max-height:92vh;overflow-y:auto;">
+    <img src="DI.svg" alt="Dirección de Integración" style="display:block;height:48px;object-fit:contain;margin:0 auto 8px;" onerror="this.style.display='none'">
     <h3 style="text-align:center;margin-bottom:3px;">📄 Bitácora DI</h3>
     <p style="text-align:center;margin-bottom:10px;color:var(--gm);font-size:12px;">Constancia de Actividades del becario — mismo diseño oficial en cada PDF generado.</p>
 
@@ -1341,8 +1346,21 @@ header{flex-wrap:wrap;row-gap:6px;}
     <h3 style="text-align:center;margin-bottom:3px;">⚙️ Configuración</h3>
     <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">Personalizá lo que se usa por defecto en este dispositivo.</p>
 
-    <div class="modal-field"><label>Técnico encargado por defecto (asistencias y bitácora)</label><select id="cfgTecnicoDefault"></select></div>
+    <div class="modal-field"><label>Técnico encargado por defecto (asistencias y bitácora)</label><select id="cfgTecnicoDefault" onchange="_cfgTecnicoDefaultChange()"></select></div>
     <div class="modal-field"><label>Sello por defecto</label><select id="cfgSelloDefault"></select></div>
+
+    <div class="modal-field" style="margin-top:2px;">
+      <label>Firma del técnico por defecto</label>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <img id="cfgFirmaPreview" style="display:none;max-height:44px;background:var(--bg);border:1px solid var(--gl);border-radius:6px;padding:4px;">
+        <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="document.getElementById('cfgFirmaInput').click()">📁 Subir foto de firma</button>
+        <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="abrirFirmaPad('cfgFirmaPreview')">✍️ Dibujar firma</button>
+        <button type="button" class="modal-btn primary" style="padding:5px 10px;font-size:11px;" onclick="guardarFirmaTecnicoDefault()">💾 Guardar firma</button>
+      </div>
+      <input type="file" accept="image/*" id="cfgFirmaInput" style="display:none;" onchange="_tecPreviewImg(this,'cfgFirmaPreview')">
+      <p style="font-size:10.5px;color:var(--gm);margin:6px 0 0;">Se guarda directo en el técnico elegido arriba — queda sincronizada con "🧑‍💼 Administrar técnicos" y con la Bitácora DI.</p>
+    </div>
+
     <div style="text-align:right;margin-bottom:16px;">
       <button type="button" class="modal-btn primary" onclick="guardarConfigUsuario()" style="padding:7px 12px;font-size:12px;">Guardar preferencias</button>
     </div>
@@ -1435,7 +1453,8 @@ header{flex-wrap:wrap;row-gap:6px;}
 
 <div class="modal-overlay" id="pdfModal">
   <div class="modal" style="width:560px;">
-    <h3>🖨️ Generar PDF</h3>
+    <img src="DI.svg" alt="Dirección de Integración" style="display:block;height:40px;object-fit:contain;margin:0 auto 6px;" onerror="this.style.display='none'">
+    <h3 style="text-align:center;">🖨️ Generar PDF</h3>
     <p style="margin-bottom:14px;">Elige qué incluir en el reporte. Si no marcas ninguna opción, se genera el reporte completo (pénsum + notas por materia de todos los ciclos).</p>
 
     <div class="pdf-opt-card">
@@ -7226,8 +7245,13 @@ async function borrarTecnico(id) {
 }
 
 // ── Dibujar firma con el dedo / mouse / lápiz óptico ──
+// targetImgId indica a qué <img> de vista previa va la firma dibujada —
+// por defecto la de "Administrar técnicos", pero también se usa desde
+// "⚙️ Configuración" (cfgFirmaPreview), así ambas quedan sincronizadas.
 let _firmaPadCtx = null, _firmaPadDrawing = false, _firmaPadHasContent = false, _firmaPadRatio = 2;
-function abrirFirmaPad() {
+let _firmaPadTargetImgId = 'tecFirmaPreview';
+function abrirFirmaPad(targetImgId) {
+  _firmaPadTargetImgId = targetImgId || 'tecFirmaPreview';
   document.getElementById('firmaPadModal').classList.add('open');
   const canvas = document.getElementById('firmaPadCanvas');
   requestAnimationFrame(() => {
@@ -7275,10 +7299,13 @@ function _firmaPadUsar() {
   if (!_firmaPadHasContent) { showToast('Dibujá tu firma antes de continuar', 'error'); return; }
   const canvas = document.getElementById('firmaPadCanvas');
   const dataUrl = canvas.toDataURL('image/png');
-  const img = document.getElementById('tecFirmaPreview');
+  const img = document.getElementById(_firmaPadTargetImgId);
   img.src = dataUrl; img.dataset.pending = dataUrl; img.style.display = 'inline-block';
   document.getElementById('firmaPadModal').classList.remove('open');
-  showToast('✓ Firma lista — se guarda al presionar "Guardar técnico"', 'success');
+  const msg = _firmaPadTargetImgId === 'cfgFirmaPreview'
+    ? '✓ Firma lista — presioná "Guardar firma" para dejarla puesta'
+    : '✓ Firma lista — se guarda al presionar "Guardar técnico"';
+  showToast(msg, 'success');
 }
 
 // ── Foto del sello (cámara trasera o archivo) + edición: brillo,
@@ -7353,6 +7380,7 @@ async function openConfigUsuario() {
   await _bitacCargarTecnicos();
   document.getElementById('cfgTecnicoDefault').innerHTML = _bitacTecnicoOptionsHTML(_userConfig.tecnicoDefault || '');
   document.getElementById('cfgSelloDefault').innerHTML = _bitacSelloOptionsHTML(_userConfig.selloDefault || '');
+  _cfgTecnicoDefaultChange();
   document.getElementById('cfgActividadesList').innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Cargando…</div>';
   await _bitacCargarActividadesPregrabadas();
   _renderActividadesPregrabadasList();
@@ -7363,6 +7391,37 @@ function guardarConfigUsuario() {
   _userConfig.selloDefault = document.getElementById('cfgSelloDefault').value || '';
   _guardarUserConfig();
   showToast('✓ Preferencias guardadas en este dispositivo', 'success');
+}
+
+// Al cambiar el técnico por defecto en Configuración, muestra la firma que
+// ya tiene guardada (si tiene) para que quede claro qué se va a usar antes
+// de dibujar/subir una nueva.
+function _cfgTecnicoDefaultChange() {
+  const nombre = document.getElementById('cfgTecnicoDefault').value;
+  const prev = document.getElementById('cfgFirmaPreview');
+  delete prev.dataset.pending;
+  const t = _bitacTecnicoPorNombre(nombre);
+  if (t && t.firma) { prev.src = t.firma; prev.style.display = 'inline-block'; }
+  else { prev.style.display = 'none'; prev.src = ''; }
+}
+
+// Guarda (dibujada o subida) la firma directo en el técnico elegido como
+// "por defecto" en Configuración — usa el mismo almacenamiento que
+// "🧑‍💼 Administrar técnicos", así queda sincronizado en toda la app.
+async function guardarFirmaTecnicoDefault() {
+  const nombre = document.getElementById('cfgTecnicoDefault').value;
+  if (!nombre) { showToast('Elegí un técnico por defecto primero', 'error'); return; }
+  const pending = document.getElementById('cfgFirmaPreview').dataset.pending;
+  if (!pending) { showToast('Dibujá o subí una firma antes de guardar', 'error'); return; }
+  const t = _bitacTecnicoPorNombre(nombre);
+  try {
+    const r = await _bitacDataUrlToResizedB64(pending, 380);
+    await window.FirebaseDB.guardarTecnico(t && t.id ? t.id : null, { nombre, firmaB64: r.dataUrl, firmaAspect: r.height / r.width });
+    delete document.getElementById('cfgFirmaPreview').dataset.pending;
+    showToast('✓ Firma guardada para ' + nombre, 'success');
+    await _bitacCargarTecnicos();
+    _bitacRefrescarSelectsTecnico();
+  } catch (e) { showToast('No se pudo guardar la firma', 'error'); }
 }
 
 function _renderActividadesPregrabadasList() {

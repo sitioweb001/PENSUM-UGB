@@ -180,6 +180,41 @@ export async function eliminarTecnico(id) {
 }
 
 // ============================================================
+// HUELLA DE CUENTA (WebAuthn) — login biométrico con el lector de huella,
+// Windows Hello, Face ID, etc. del dispositivo. Nunca se guarda ninguna
+// huella real ni imagen biométrica: el navegador/sistema operativo hacen
+// la verificación en el propio dispositivo y solo nos entregan un id de
+// credencial — eso es lo único que guardamos acá.
+//
+// 'huellasIndex/{userHandleHex}' → { studentId }  (índice global: de qué
+//   estudiante es esa huella, sin necesitar buscar entre todos)
+// 'estudiantes/{studentId}/huellas/{credentialId}' → { label, ... } (para
+//   que cada estudiante vea y borre sus propias huellas desde la app)
+// ============================================================
+
+export async function registrarHuellaIndice(userHandleHex, studentIdVal) {
+  await setDoc(doc(db, 'huellasIndex', userHandleHex), { studentId: studentIdVal, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+export async function resolverHuellaIndice(userHandleHex) {
+  const snap = await getDoc(doc(db, 'huellasIndex', userHandleHex));
+  return snap.exists() ? snap.data().studentId : null;
+}
+
+export async function listarHuellas(studentIdVal) {
+  const snap = await getDocs(collection(db, 'estudiantes', studentIdVal, 'huellas'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function agregarHuella(studentIdVal, credentialId, data) {
+  await setDoc(doc(db, 'estudiantes', studentIdVal, 'huellas', credentialId), { ...data, createdAt: serverTimestamp() });
+}
+
+export async function eliminarHuella(studentIdVal, credentialId) {
+  await deleteDoc(doc(db, 'estudiantes', studentIdVal, 'huellas', credentialId));
+}
+
+// ============================================================
 // ACTIVIDADES PREGRABADAS — frases de "actividad realizada" reusables
 // para llenar más rápido las filas de la Bitácora. Compartidas entre
 // todos, igual que los técnicos.

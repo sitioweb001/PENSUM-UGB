@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>UGB — PÉNSUM ING. SISTEMAS Y ING. CIVIL</title>
 <link rel="icon" type="image/png" href="Logotipo-horizontal-azul.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1e3a8a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pénsum UGB">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── TOKENS LIGHT ── */
@@ -753,6 +760,7 @@ header{flex-wrap:wrap;row-gap:6px;}
     </div>
   </div>
   <button class="login-btn" id="loginButton" onclick="doLogin()" style="margin-top:14px;">Ingresar →</button>
+  <button class="login-btn" id="loginHuellaBtn" onclick="loginConHuella()" style="display:none;margin-top:8px;background:transparent;color:var(--blue);border:1.5px solid var(--blue);">🫆 Ingresar con huella</button>
   <div style="display:flex;gap:8px;margin-top:14px;align-items:center;">
     <button onclick="recargarLista()" title="Recargar lista desde Firebase"
       style="padding:7px 12px;background:var(--bg);border:1.5px solid var(--gl);border-radius:8px;
@@ -829,10 +837,12 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="side-label">Preferencias</div>
     <div class="ham-item" onclick="abrirModoAvanzado();closeHam()"><span class="ham-ico">⚙️</span> Verificar base de datos</div>
     <div class="ham-item" onclick="toggleTheme();closeHam()"><span class="ham-ico">🌙</span> Cambiar tema</div>
+    <div class="ham-item" id="hamInstalarApp" onclick="instalarApp();closeHam()" style="display:none;"><span class="ham-ico">📲</span> Instalar app</div>
 
     <div class="ham-divider"></div>
     <div class="side-label">Cuenta</div>
     <div class="ham-item" onclick="openChangePass()" style="color:#1d4ed8;font-weight:700;"><span class="ham-ico">🔑</span> Cambiar contraseña</div>
+    <div class="ham-item" onclick="openHuellaModal()" style="color:#1d4ed8;font-weight:700;"><span class="ham-ico">🫆</span> Huella de cuenta</div>
     <div class="ham-item" onclick="openDeleteDataModal()" style="color:#dc2626;font-weight:700;"><span class="ham-ico">🗑️</span> Borrar datos</div>
     <div class="ham-item" onclick="resetearBaseDeDatosUI()" style="color:#fff;font-weight:800;background:#dc2626;border-radius:6px;margin:2px 10px;padding:11px 14px;"><span class="ham-ico">🧨</span> Resetear base de datos</div>
     <div class="ham-item" onclick="toggleAccountListVisibility()" style="color:#991b1b;font-weight:700;"><span class="ham-ico">👁️</span> Mostrar/ocultar lista de cuentas</div>
@@ -1312,7 +1322,26 @@ header{flex-wrap:wrap;row-gap:6px;}
   </div>
 </div>
 
+<!-- Huella de cuenta (WebAuthn) — agregar/quitar el desbloqueo por huella
+     de este dispositivo (lector de huella, Windows Hello, Face ID, etc.) -->
+<div class="modal-overlay" id="huellaModal">
+  <div class="modal" style="width:480px;max-width:94vw;max-height:88vh;overflow-y:auto;">
+    <h3 style="text-align:center;margin-bottom:3px;">🫆 Huella de cuenta</h3>
+    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">Iniciá sesión tocando el lector de huella, Windows Hello o Face ID de tu dispositivo, en vez de escribir la contraseña.</p>
+    <div id="huellaSinSoporte" style="display:none;background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.4);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#92400e;font-weight:600;text-align:center;"></div>
+    <div style="text-align:center;margin-bottom:10px;">
+      <button type="button" class="modal-btn primary" id="huellaAgregarBtn" onclick="agregarHuellaDispositivo()">+ Agregar huella en este dispositivo</button>
+    </div>
+    <p style="font-size:10.5px;color:var(--gm);margin:-2px 0 12px;text-align:center;">Cada dispositivo (esta PC, tu celular, etc.) se registra por separado. La huella nunca sale de tu dispositivo ni se guarda en la nube — solo guardamos un identificador para reconocerte, igual que hace tu banco.</p>
+    <div class="ham-divider" style="margin-bottom:12px;"></div>
+    <h4 style="margin-bottom:8px;">Huellas registradas</h4>
+    <div id="huellasList"></div>
+    <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('huellaModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
 <!-- Dibujar firma con dedo / mouse / lápiz óptico -->
+
 <div class="modal-overlay" id="firmaPadModal">
   <div class="modal" style="width:520px;max-width:94vw;">
     <h3 style="text-align:center;margin-bottom:4px;">✍️ Dibujar firma</h3>
@@ -2237,6 +2266,222 @@ async function _sha256(text) {
     .join('');
 }
 
+// ══════════════════════════════════════════════════════════
+// HUELLA DE CUENTA (WebAuthn) — iniciar sesión con el lector de huella,
+// Windows Hello, Face ID, etc. del dispositivo, en vez de la contraseña.
+//
+// Cómo funciona sin servidor propio (esta app solo tiene Firestore, no
+// un backend que verifique firmas criptográficas):
+//  - Al REGISTRAR una huella (navigator.credentials.create), el propio
+//    sistema operativo/navegador ya exige la verificación biométrica
+//    (userVerification:'required') antes de devolvernos nada. Nosotros
+//    solo guardamos el id de esa credencial — nunca la huella en sí,
+//    eso ni siquiera nos lo entrega el navegador.
+//  - Al INICIAR SESIÓN (navigator.credentials.get) pasa lo mismo: el
+//    navegador no devuelve una respuesta exitosa si la persona no pasó
+//    la verificación biométrica local. Nosotros solo confirmamos que el
+//    id de credencial que nos llega es uno que ya habíamos guardado
+//    para esa cuenta.
+//  - Esto es más liviano que una verificación FIDO2 completa (que
+//    necesitaría un servidor validando firmas), pero es apropiado para
+//    esta app: la huella nunca sale del dispositivo, y solo sirve para
+//    entrar más rápido — la contraseña sigue funcionando siempre como
+//    respaldo.
+//  - El "user.id" de WebAuthn (máx. 64 bytes) es el hash SHA-256 del
+//    studentId (nombre+carrera) — así identificamos a la persona sin
+//    guardar su nombre completo en la credencial, y un mismo hash sirve
+//    para reconocer todas sus huellas (una por dispositivo).
+// ══════════════════════════════════════════════════════════
+
+function _buf2b64url(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function _sha256Bytes(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return new Uint8Array(buf);
+}
+function _bytes2hex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// Requisitos mínimos del navegador: contexto seguro (https, o localhost)
+// y la API de WebAuthn disponible.
+function _huellaSoportada() {
+  return !!(window.isSecureContext && window.PublicKeyCredential && navigator.credentials);
+}
+// Además del soporte del navegador, ¿ESTE dispositivo tiene un lector de
+// huella / Windows Hello / Face ID configurado y listo para usar?
+async function _huellaDisponibleEnEsteDispositivo() {
+  if (!_huellaSoportada()) return false;
+  try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch (e) { return false; }
+}
+// Actualiza si se muestra el botón "🫆 Ingresar con huella" en el login,
+// según si este dispositivo/navegador puede usarlo.
+async function _actualizarBotonHuella() {
+  const btn = document.getElementById('loginHuellaBtn');
+  if (!btn) return;
+  btn.style.display = (await _huellaDisponibleEnEsteDispositivo()) ? 'block' : 'none';
+}
+// Etiqueta legible para distinguir huellas de distintos dispositivos en
+// la lista de "Huella de cuenta" (ej. "Windows · Chrome · 5 ago 2026").
+function _huellaEtiquetaDispositivo() {
+  const ua = navigator.userAgent || '';
+  let dispositivo = 'Dispositivo';
+  if (/Android/i.test(ua)) dispositivo = 'Android';
+  else if (/iPhone|iPad|iPod/i.test(ua)) dispositivo = 'iPhone/iPad';
+  else if (/Windows/i.test(ua)) dispositivo = 'Windows';
+  else if (/Macintosh/i.test(ua)) dispositivo = 'Mac';
+  else if (/Linux/i.test(ua)) dispositivo = 'Linux';
+  let navegador = 'navegador';
+  if (/Edg\//.test(ua)) navegador = 'Edge';
+  else if (/OPR\//.test(ua)) navegador = 'Opera';
+  else if (/Chrome\//.test(ua)) navegador = 'Chrome';
+  else if (/Firefox\//.test(ua)) navegador = 'Firefox';
+  else if (/Safari\//.test(ua)) navegador = 'Safari';
+  const fecha = new Date().toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' });
+  return `${dispositivo} · ${navegador} · ${fecha}`;
+}
+
+// ── Registrar una huella nueva para el estudiante que tiene la sesión
+// abierta, atada a ESTE dispositivo/navegador ──
+async function agregarHuellaDispositivo() {
+  if (!currentStudent) { showToast('Iniciá sesión primero', 'error'); return; }
+  if (!(await _huellaDisponibleEnEsteDispositivo())) {
+    showToast('Este dispositivo o navegador no tiene lector de huella disponible', 'error');
+    return;
+  }
+  const sid = window.FirebaseDB.studentId(currentStudent, currentCareer);
+  const userHandle = await _sha256Bytes(sid);
+  const userHandleHex = _bytes2hex(userHandle);
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  try {
+    _showLoading('Esperando tu huella...', 'Tocá el lector de huella, Windows Hello o Face ID');
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'Pénsum UGB', id: location.hostname },
+        user: { id: userHandle, name: sid, displayName: currentStudent },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'required', requireResidentKey: true, userVerification: 'required' },
+        timeout: 60000,
+        attestation: 'none'
+      }
+    });
+    _hideLoading();
+    if (!cred) throw new Error('No se recibió credencial');
+    const credId = _buf2b64url(cred.rawId);
+    await window.FirebaseDB.registrarHuellaIndice(userHandleHex, sid);
+    await window.FirebaseDB.agregarHuella(sid, credId, { label: _huellaEtiquetaDispositivo(), userHandleHex });
+    showToast('✓ Huella agregada en este dispositivo', 'success');
+    await _renderHuellasList();
+  } catch (e) {
+    _hideLoading();
+    console.error('[Huella] Error al registrar:', e);
+    if (e.name === 'NotAllowedError') showToast('Se canceló el registro de la huella', 'error');
+    else if (e.name === 'InvalidStateError') showToast('Esta huella ya está registrada en este dispositivo', 'error');
+    else showToast('No se pudo registrar la huella', 'error');
+  }
+}
+
+// ── Iniciar sesión con una huella ya registrada (pantalla de login) ──
+async function loginConHuella() {
+  if (!(await _huellaDisponibleEnEsteDispositivo())) {
+    showToast('Este dispositivo no tiene lector de huella disponible en este navegador', 'error');
+    return;
+  }
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  try {
+    _showLoading('Esperando tu huella...', 'Tocá el lector de huella, Windows Hello o Face ID');
+    const assertion = await navigator.credentials.get({
+      publicKey: { challenge, rpId: location.hostname, userVerification: 'required', timeout: 60000 }
+    });
+    if (!assertion || !assertion.response || !assertion.response.userHandle) {
+      _hideLoading(); showToast('No se pudo identificar la huella', 'error'); return;
+    }
+    const userHandleHex = _bytes2hex(new Uint8Array(assertion.response.userHandle));
+    _showLoading('Verificando huella...', 'Buscando tu cuenta');
+    const sid = await window.FirebaseDB.resolverHuellaIndice(userHandleHex);
+    if (!sid) { _hideLoading(); showToast('Esta huella no está registrada aquí — usá tu contraseña', 'error'); return; }
+    // El studentId es "nombre__carrera" — si la huella se registró en otra
+    // carrera, avisamos en vez de mezclar datos de una carrera con otra.
+    const idx = sid.lastIndexOf('__');
+    const nombre = idx >= 0 ? sid.slice(0, idx) : sid;
+    const carreraGuardada = idx >= 0 ? sid.slice(idx + 2) : '';
+    if (carreraGuardada && carreraGuardada !== currentCareer) {
+      _hideLoading();
+      showToast('Esta huella es de otra carrera — cambiá de carrera arriba primero', 'error');
+      return;
+    }
+    const credId = _buf2b64url(assertion.rawId);
+    const huellas = await window.FirebaseDB.listarHuellas(sid);
+    if (!huellas.some(h => h.id === credId)) {
+      _hideLoading();
+      showToast('Esta huella fue eliminada — iniciá sesión con tu contraseña', 'error');
+      return;
+    }
+    _hideLoading();
+    showToast('✓ Huella reconocida — bienvenido/a ' + nombre, 'success');
+    selectStudent(nombre);
+  } catch (e) {
+    _hideLoading();
+    console.error('[Huella] Error al iniciar sesión:', e);
+    if (e.name === 'NotAllowedError') showToast('Se canceló el inicio de sesión con huella', 'error');
+    else showToast('No se pudo iniciar sesión con huella', 'error');
+  }
+}
+
+// ── Modal "Huella de cuenta" — ver y quitar las huellas del estudiante
+// que tiene la sesión abierta ──
+async function openHuellaModal() {
+  document.getElementById('huellaModal').classList.add('open');
+  const aviso = document.getElementById('huellaSinSoporte');
+  const btn   = document.getElementById('huellaAgregarBtn');
+  if (!_huellaSoportada()) {
+    aviso.textContent = '⚠️ Tu navegador no soporta esta función (se necesita HTTPS y un navegador moderno).';
+    aviso.style.display = 'block'; btn.style.display = 'none';
+  } else if (!(await _huellaDisponibleEnEsteDispositivo())) {
+    aviso.textContent = '⚠️ Este dispositivo no tiene lector de huella, Windows Hello o Face ID disponible en este navegador.';
+    aviso.style.display = 'block'; btn.style.display = 'none';
+  } else {
+    aviso.style.display = 'none'; btn.style.display = 'inline-block';
+  }
+  document.getElementById('huellasList').innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Cargando…</div>';
+  await _renderHuellasList();
+}
+
+async function _renderHuellasList() {
+  const cont = document.getElementById('huellasList');
+  if (!currentStudent) { cont.innerHTML = ''; return; }
+  try {
+    const sid = window.FirebaseDB.studentId(currentStudent, currentCareer);
+    const huellas = await window.FirebaseDB.listarHuellas(sid);
+    if (!huellas.length) { cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Todavía no agregaste ninguna huella.</div>'; return; }
+    cont.innerHTML = huellas.map(h => `<div class="asist-hist-row">
+        <span style="font-size:17px;">🫆</span>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(h.label || 'Dispositivo')}</div>
+        </div>
+        <button onclick="eliminarHuellaUI('${h.id}')" title="Eliminar" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:14px;">🗑</button>
+      </div>`).join('');
+  } catch (e) {
+    console.error('[Huella] Error listando:', e);
+    cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">No se pudo cargar la lista.</div>';
+  }
+}
+
+async function eliminarHuellaUI(credId) {
+  if (!confirm('¿Eliminar esta huella? Ya no vas a poder iniciar sesión con ella desde ese dispositivo.')) return;
+  try {
+    const sid = window.FirebaseDB.studentId(currentStudent, currentCareer);
+    await window.FirebaseDB.eliminarHuella(sid, credId);
+    await _renderHuellasList();
+    showToast('✓ Huella eliminada', 'success');
+  } catch (e) { showToast('No se pudo eliminar', 'error'); }
+}
+
 // Mostrar/ocultar contraseña
 function togglePassVis() {
   const inp = document.getElementById('loginPass');
@@ -2430,6 +2675,7 @@ async function chooseCareer(career) {
   setLoginMode(loginMode);
   applyAccountListVisibility();
   renderStudentList();
+  _actualizarBotonHuella();
 }
 
 // Indica si la caja de login tiene overflow y muestra el indicador
@@ -7552,6 +7798,59 @@ async function eliminarActividadPregrabadaUI(id) {
 // ══════════════════════════════════════════════════════════
 function openAsistenciasHub() {
   document.getElementById('asistenciasHubModal').classList.add('open');
+}
+
+// ══════════════════════════════════════════════════════════
+// INSTALAR LA APP (PWA) — "Agregar a inicio" en el celular o "Instalar"
+// en la computadora, y un service worker que cachea el cascarón para que
+// la app abra aunque no haya internet en ese momento (los datos reales
+// siempre vienen de Firebase, eso nunca se cachea).
+// ══════════════════════════════════════════════════════════
+let _deferredInstallPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(e => console.warn('[SW] No se pudo registrar:', e));
+  });
+}
+
+function _esIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+function _appYaInstalada() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  const item = document.getElementById('hamInstalarApp');
+  if (item && !_appYaInstalada()) item.style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+  const item = document.getElementById('hamInstalarApp');
+  if (item) item.style.display = 'none';
+  showToast('✓ App instalada', 'success');
+});
+
+async function instalarApp() {
+  if (_deferredInstallPrompt) {
+    _deferredInstallPrompt.prompt();
+    const { outcome } = await _deferredInstallPrompt.userChoice;
+    _deferredInstallPrompt = null;
+    document.getElementById('hamInstalarApp').style.display = 'none';
+    if (outcome !== 'accepted') showToast('Podés instalarla después desde este mismo menú', 'success');
+    return;
+  }
+  if (_esIOS()) { showToast('En iPhone/iPad: tocá el botón Compartir 📤 y elegí "Agregar a inicio"', 'success'); return; }
+  showToast('Tu navegador todavía no ofrece instalar esta app — probá desde Chrome o Edge', 'error');
+}
+
+// iOS nunca dispara "beforeinstallprompt", así que ahí mostramos el
+// botón del menú desde el inicio (con instrucciones manuales al tocarlo).
+if (!_appYaInstalada() && _esIOS()) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const item = document.getElementById('hamInstalarApp');
+    if (item) item.style.display = 'flex';
+  });
 }
 
 init();

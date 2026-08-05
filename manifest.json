@@ -1,0 +1,32 @@
+{
+  "name": "Pénsum UGB",
+  "short_name": "Pénsum UGB",
+  "description": "Seguimiento de pénsum, notas, asistencias y bitácora DI — Universidad Gerardo Barrios",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1e3a8a",
+  "theme_color": "#1e3a8a",
+  "lang": "es-SV",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

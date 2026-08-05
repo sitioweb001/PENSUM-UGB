@@ -1285,7 +1285,7 @@ header{flex-wrap:wrap;row-gap:6px;}
           <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="abrirFirmaPad()">✍️ Dibujar firma</button>
           <button type="button" id="tecFirmaQuitarBtn" class="modal-btn secondary" style="display:none;padding:5px 10px;font-size:11px;color:var(--fail);" onclick="_tecQuitarImg('firma')">🗑 Quitar</button>
         </div>
-        <input type="file" accept="image/*" id="tecFirmaInput" style="display:none;" onchange="_tecPreviewImg(this,'tecFirmaPreview')">
+        <input type="file" accept="image/*" id="tecFirmaInput" style="display:none;" onchange="_tecEditarImg(this,'firma')">
         <img id="tecFirmaPreview" style="display:none;max-height:44px;margin-top:4px;background:var(--bg);border:1px solid var(--gl);border-radius:6px;padding:4px;">
       </div>
       <div class="modal-field">
@@ -1295,8 +1295,8 @@ header{flex-wrap:wrap;row-gap:6px;}
           <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="document.getElementById('tecSelloCam').click()">📷 Tomar foto</button>
           <button type="button" id="tecSelloQuitarBtn" class="modal-btn secondary" style="display:none;padding:5px 10px;font-size:11px;color:var(--fail);" onclick="_tecQuitarImg('sello')">🗑 Quitar</button>
         </div>
-        <input type="file" accept="image/*" id="tecSelloInput" style="display:none;" onchange="_tecEditarSello(this)">
-        <input type="file" accept="image/*" capture="environment" id="tecSelloCam" style="display:none;" onchange="_tecEditarSello(this)">
+        <input type="file" accept="image/*" id="tecSelloInput" style="display:none;" onchange="_tecEditarImg(this,'sello')">
+        <input type="file" accept="image/*" capture="environment" id="tecSelloCam" style="display:none;" onchange="_tecEditarImg(this,'sello')">
         <img id="tecSelloPreview" style="display:none;max-height:44px;margin-top:4px;background:var(--bg);border:1px solid var(--gl);border-radius:6px;padding:4px;">
       </div>
     </div>
@@ -1306,6 +1306,7 @@ header{flex-wrap:wrap;row-gap:6px;}
       <button type="button" class="modal-btn primary" onclick="guardarTecnicoNuevo()" style="padding:7px 12px;font-size:12px;">Guardar técnico</button>
     </div>
     <div class="ham-divider" style="margin-bottom:12px;"></div>
+    <div class="modal-field" style="margin-bottom:8px;"><input type="text" id="tecBuscarInput" placeholder="🔍 Buscar por nombre o sede…" oninput="_renderTecnicosList()"></div>
     <div id="tecnicosList"></div>
     <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('tecnicosModal').classList.remove('open')">Cerrar</button></div>
   </div>
@@ -1325,10 +1326,10 @@ header{flex-wrap:wrap;row-gap:6px;}
   </div>
 </div>
 
-<!-- Editar foto del sello: brillo/contraste + fondo transparente -->
+<!-- Editar foto de firma o sello: brillo/contraste + fondo transparente -->
 <div class="modal-overlay" id="selloEditorModal">
   <div class="modal" style="width:480px;max-width:94vw;max-height:92vh;overflow-y:auto;">
-    <h3 style="text-align:center;margin-bottom:10px;">🖼️ Editar sello</h3>
+    <h3 id="imgEditorTitulo" style="text-align:center;margin-bottom:10px;">🖼️ Editar sello</h3>
     <div style="background-image:repeating-conic-gradient(#e2e5ea 0% 25%, #fff 0% 50%);background-size:16px 16px;border-radius:8px;padding:10px;text-align:center;margin-bottom:14px;">
       <canvas id="selloEditorCanvas" style="max-width:100%;"></canvas>
     </div>
@@ -1336,11 +1337,11 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="modal-field"><label>Contraste</label><input type="range" id="selloContraste" min="50" max="300" value="130" oninput="_selloAplicarFiltros()" style="width:100%;"></div>
     <div class="modal-field"><label><input type="checkbox" id="selloTransparente" checked onchange="_selloAplicarFiltros()" style="width:auto;margin-right:6px;"> Hacer fondo transparente</label></div>
     <div class="modal-field" id="selloUmbralField"><label>Sensibilidad del fondo transparente</label><input type="range" id="selloUmbral" min="0" max="255" value="200" oninput="_selloAplicarFiltros()" style="width:100%;">
-      <p style="font-size:10px;color:var(--gm);margin:4px 0 0;">Subilo si todavía se ve fondo blanco; bajalo si está borrando parte del sello.</p>
+      <p id="imgEditorUmbralNota" style="font-size:10px;color:var(--gm);margin:4px 0 0;">Subilo si todavía se ve fondo blanco; bajalo si está borrando parte del sello.</p>
     </div>
     <div class="modal-btns" style="margin-top:10px;">
       <button class="modal-btn secondary" onclick="document.getElementById('selloEditorModal').classList.remove('open')">Cancelar</button>
-      <button class="modal-btn primary" onclick="_selloEditorUsar()">✓ Usar este sello</button>
+      <button class="modal-btn primary" id="imgEditorUsarBtn" onclick="_selloEditorUsar()">✓ Usar este sello</button>
     </div>
   </div>
 </div>
@@ -7151,15 +7152,31 @@ function editarBitacoraHist(id) {
 async function openTecnicosModal() {
   document.getElementById('tecnicosModal').classList.add('open');
   _limpiarFormTecnico();
+  const buscar = document.getElementById('tecBuscarInput'); if (buscar) buscar.value = '';
   document.getElementById('tecnicosList').innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Cargando…</div>';
   await _bitacCargarTecnicos();
   _renderTecnicosList();
 }
 
+// Filtra por nombre o por "encargado" (sede/universidad) — sin distinguir
+// mayúsculas/minúsculas ni acentos, para que "berlin" encuentre "Berlín".
+function _tecNormalizarTexto(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
 function _renderTecnicosList() {
   const cont = document.getElementById('tecnicosList');
-  const conocidos = TECNICOS_DI.filter(t => t.id);
-  if (!conocidos.length) { cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Todavía no hay técnicos registrados.</div>'; return; }
+  const qRaw = document.getElementById('tecBuscarInput') ? document.getElementById('tecBuscarInput').value : '';
+  const q = _tecNormalizarTexto(qRaw.trim());
+  let conocidos = TECNICOS_DI.filter(t => t.id);
+  if (q) {
+    conocidos = conocidos.filter(t =>
+      _tecNormalizarTexto(t.nombre).includes(q) || _tecNormalizarTexto(t.encargado).includes(q)
+    );
+  }
+  if (!conocidos.length) {
+    cont.innerHTML = `<div style="text-align:center;padding:14px;color:var(--gm);">${q ? 'Ningún técnico coincide con esa búsqueda.' : 'Todavía no hay técnicos registrados.'}</div>`;
+    return;
+  }
   cont.innerHTML = conocidos.map(t => `<div class="asist-hist-row">
       <span style="font-size:17px;">🧑‍💼</span>
       <div style="flex:1;">
@@ -7198,18 +7215,6 @@ function _bitacFileToResizedB64(file, maxW) {
     reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
     reader.readAsDataURL(file);
   });
-}
-
-function _tecPreviewImg(input, imgId) {
-  const img = document.getElementById(imgId);
-  if (!input.files || !input.files[0]) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    img.src = e.target.result; img.dataset.pending = e.target.result; img.style.display = 'inline-block';
-    delete img.dataset.removed;
-    _tecToggleQuitarBtn(imgId === 'tecFirmaPreview' ? 'firma' : 'sello', true);
-  };
-  reader.readAsDataURL(input.files[0]);
 }
 
 // Muestra u oculta el botón "🗑 Quitar" de firma/sello según si hay algo
@@ -7365,19 +7370,24 @@ function _firmaPadUsar() {
   showToast('✓ Firma lista — se guarda al presionar "Guardar técnico"', 'success');
 }
 
-// ── Foto del sello (cámara trasera o archivo) + edición: brillo,
-// contraste y fondo transparente ──
-function _tecEditarSello(input) {
+// ── Foto de la firma o el sello (archivo, cámara trasera, o la firma
+// "por defecto" en Configuración) + edición: brillo, contraste y fondo
+// transparente. El mismo editor sirve para los tres casos; `kind` decide
+// dónde termina la imagen al confirmar: 'firma' / 'sello' (form. de
+// Técnicos) o 'cfg' (firma por defecto en Configuración). ──
+function _tecEditarImg(input, kind) {
   if (!input.files || !input.files[0]) return;
   const reader = new FileReader();
-  reader.onload = e => { _abrirSelloEditor(e.target.result); input.value = ''; };
+  reader.onload = e => { _abrirImgEditor(e.target.result, kind); input.value = ''; };
   reader.readAsDataURL(input.files[0]);
 }
 let _selloEditorImg = null;
-function _abrirSelloEditor(dataUrl) {
+let _imgEditorKind = 'sello';
+function _abrirImgEditor(dataUrl, kind) {
   const img = new Image();
   img.onload = () => {
     _selloEditorImg = img;
+    _imgEditorKind = kind || 'sello';
     const canvas = document.getElementById('selloEditorCanvas');
     const maxW = 380;
     const scale = Math.min(1, maxW / img.width);
@@ -7387,11 +7397,22 @@ function _abrirSelloEditor(dataUrl) {
     document.getElementById('selloContraste').value = 130;
     document.getElementById('selloTransparente').checked = true;
     document.getElementById('selloUmbral').value = 200;
+    _imgEditorAplicarTextos(_imgEditorKind);
     document.getElementById('selloEditorModal').classList.add('open');
     _selloAplicarFiltros();
   };
   img.onerror = () => showToast('No se pudo abrir esa imagen', 'error');
   img.src = dataUrl;
+}
+// Ajusta título, botón y nota del editor según sea firma o sello (el
+// mismo modal/canvas se reusa para los dos, solo cambian las palabras).
+function _imgEditorAplicarTextos(kind) {
+  const esFirma = kind === 'firma' || kind === 'cfg';
+  document.getElementById('imgEditorTitulo').textContent = esFirma ? '🖼️ Editar firma' : '🖼️ Editar sello';
+  document.getElementById('imgEditorUmbralNota').textContent = esFirma
+    ? 'Subilo si todavía se ve fondo blanco; bajalo si está borrando parte de la firma.'
+    : 'Subilo si todavía se ve fondo blanco; bajalo si está borrando parte del sello.';
+  document.getElementById('imgEditorUsarBtn').textContent = esFirma ? '✓ Usar esta firma' : '✓ Usar este sello';
 }
 function _selloAplicarFiltros() {
   if (!_selloEditorImg) return;
@@ -7422,10 +7443,13 @@ function _selloAplicarFiltros() {
 function _selloEditorUsar() {
   const canvas = document.getElementById('selloEditorCanvas');
   const dataUrl = canvas.toDataURL('image/png');
-  const img = document.getElementById('tecSelloPreview');
-  img.src = dataUrl; img.dataset.pending = dataUrl; img.style.display = 'inline-block';
   document.getElementById('selloEditorModal').classList.remove('open');
-  showToast('✓ Sello listo — se guarda al presionar "Guardar técnico"', 'success');
+  if (_imgEditorKind === 'cfg') { _cfgGuardarFirma(dataUrl); return; }
+  const kind = _imgEditorKind === 'firma' ? 'firma' : 'sello';
+  const img = document.getElementById(kind === 'firma' ? 'tecFirmaPreview' : 'tecSelloPreview');
+  img.src = dataUrl; img.dataset.pending = dataUrl; img.style.display = 'inline-block'; delete img.dataset.removed;
+  _tecToggleQuitarBtn(kind, true);
+  showToast(kind === 'firma' ? '✓ Firma lista — se guarda al presionar "Guardar técnico"' : '✓ Sello listo — se guarda al presionar "Guardar técnico"', 'success');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -7457,7 +7481,7 @@ function _cfgTecnicoDefaultChange() {
 function _cfgFirmaArchivo(input) {
   if (!input.files || !input.files[0]) return;
   const reader = new FileReader();
-  reader.onload = e => { _cfgGuardarFirma(e.target.result); input.value = ''; };
+  reader.onload = e => { _abrirImgEditor(e.target.result, 'cfg'); input.value = ''; };
   reader.readAsDataURL(input.files[0]);
 }
 

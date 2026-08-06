@@ -2514,6 +2514,13 @@ async function abrirHuellasGenerales() {
   cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Cargando…</div>';
   try {
     await window.__firebaseReady;
+    if (typeof window.FirebaseDB.listarTodasLasHuellas !== 'function') {
+      // Esto pasa cuando el navegador todavía tiene en caché la versión
+      // vieja de firebase-db.js (la que no tenía esta función). No es un
+      // error de permisos ni de datos — hay que resubir/recargar el archivo.
+      cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Tu navegador está usando una versión vieja de <code>firebase-db.js</code> (sin esta función todavía).<br>Subí el archivo nuevo y recargá con Ctrl+Shift+R (o borrá caché) y volvé a intentar.</div>';
+      return;
+    }
     const huellas = await window.FirebaseDB.listarTodasLasHuellas();
     if (!huellas.length) { cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Todavía no hay huellas registradas en ninguna cuenta.</div>'; return; }
     // "nombre__carrera" -> "nombre (carrera)", igual criterio que loginConHuella
@@ -2530,7 +2537,10 @@ async function abrirHuellasGenerales() {
       </div>`).join('');
   } catch (e) {
     console.error('[Huella] Error listando huellas generales:', e);
-    cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">No se pudo cargar el listado.</div>';
+    // Mostramos el error real (código/mensaje) en vez de un texto genérico,
+    // para poder diagnosticar sin tener que abrir la consola del navegador.
+    const detalle = (e && (e.code || e.message)) ? `<div style="font-size:10.5px;color:var(--gm);margin-top:4px;">(${escapeHtml(e.code || '')} ${escapeHtml(e.message || '')})</div>` : '';
+    cont.innerHTML = `<div style="text-align:center;padding:14px;color:var(--gm);">No se pudo cargar el listado.${detalle}</div>`;
   }
 }
 

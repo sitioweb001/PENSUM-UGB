@@ -214,6 +214,23 @@ export async function eliminarHuella(studentIdVal, credentialId) {
   await deleteDoc(doc(db, 'estudiantes', studentIdVal, 'huellas', credentialId));
 }
 
+// ── Listado GLOBAL de huellas (TODAS las cuentas) — solo para el panel de
+// administrador "🔓 Huellas generales" del modal "Huella de cuenta".
+// 'huellasIndex' tiene un doc por cada cuenta que registró al menos una
+// huella (ver registrarHuellaIndice), así que lo recorremos para saber de
+// qué cuentas hay que traer el detalle (label, fecha) desde su subcolección.
+export async function listarTodasLasHuellas() {
+  const indiceSnap = await getDocs(collection(db, 'huellasIndex'));
+  const resultados = [];
+  for (const d of indiceSnap.docs) {
+    const studentIdVal = d.data() && d.data().studentId;
+    if (!studentIdVal) continue;
+    const huellas = await listarHuellas(studentIdVal);
+    huellas.forEach(h => resultados.push({ ...h, studentId: studentIdVal }));
+  }
+  return resultados;
+}
+
 // ============================================================
 // ACTIVIDADES PREGRABADAS — frases de "actividad realizada" reusables
 // para llenar más rápido las filas de la Bitácora. Compartidas entre

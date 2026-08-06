@@ -1336,6 +1336,17 @@ header{flex-wrap:wrap;row-gap:6px;}
     <div class="ham-divider" style="margin-bottom:12px;"></div>
     <h4 style="margin-bottom:8px;">Huellas registradas</h4>
     <div id="huellasList"></div>
+
+    <div class="ham-divider" style="margin:16px 0 12px;"></div>
+    <div style="text-align:center;">
+      <button type="button" class="modal-btn" style="background:transparent;border:1.5px solid var(--gl);color:var(--text);" onclick="abrirHuellasGenerales()">🔓 Huellas generales</button>
+    </div>
+    <p style="font-size:10.5px;color:var(--gm);margin:6px 0 0;text-align:center;">Solo para administradores — pide contraseña y muestra las huellas de TODAS las cuentas.</p>
+    <div id="huellasGeneralesBox" style="display:none;margin-top:12px;">
+      <h4 style="margin-bottom:8px;">Todas las huellas registradas</h4>
+      <div id="huellasGeneralesList"></div>
+    </div>
+
     <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('huellaModal').classList.remove('open')">Cerrar</button></div>
   </div>
 </div>
@@ -2436,7 +2447,12 @@ async function loginConHuella() {
 // ── Modal "Huella de cuenta" — ver y quitar las huellas del estudiante
 // que tiene la sesión abierta ──
 async function openHuellaModal() {
+  closeHam();
   document.getElementById('huellaModal').classList.add('open');
+  // Cada vez que se abre el modal partimos del panel de admin cerrado —
+  // así no queda expuesto el listado completo de una apertura anterior.
+  document.getElementById('huellasGeneralesBox').style.display = 'none';
+  document.getElementById('huellasGeneralesList').innerHTML = '';
   const aviso = document.getElementById('huellaSinSoporte');
   const btn   = document.getElementById('huellaAgregarBtn');
   if (!_huellaSoportada()) {
@@ -2480,6 +2496,42 @@ async function eliminarHuellaUI(credId) {
     await _renderHuellasList();
     showToast('✓ Huella eliminada', 'success');
   } catch (e) { showToast('No se pudo eliminar', 'error'); }
+}
+
+// ── "🔓 Huellas generales" — panel de administrador dentro del modal
+// "Huella de cuenta": pide la contraseña de administrador y, si es
+// correcta, trae y muestra TODAS las huellas registradas (de cualquier
+// cuenta), indicando a qué cuenta corresponde cada una.
+async function abrirHuellasGenerales() {
+  const pw = prompt('Contraseña de administrador para ver las huellas generales:');
+  if (pw !== '747') {
+    if (pw !== null) showToast('Contraseña incorrecta', 'error');
+    return;
+  }
+  const box  = document.getElementById('huellasGeneralesBox');
+  const cont = document.getElementById('huellasGeneralesList');
+  box.style.display = 'block';
+  cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Cargando…</div>';
+  try {
+    await window.__firebaseReady;
+    const huellas = await window.FirebaseDB.listarTodasLasHuellas();
+    if (!huellas.length) { cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Todavía no hay huellas registradas en ninguna cuenta.</div>'; return; }
+    // "nombre__carrera" -> "nombre (carrera)", igual criterio que loginConHuella
+    const etiquetaCuenta = (sid) => {
+      const idx = sid.lastIndexOf('__');
+      return idx >= 0 ? `${sid.slice(0, idx)} (${sid.slice(idx + 2)})` : sid;
+    };
+    cont.innerHTML = huellas.map(h => `<div class="asist-hist-row">
+        <span style="font-size:17px;">🫆</span>
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(h.label || 'Dispositivo')}</div>
+          <div style="font-size:11px;color:var(--gm);">${escapeHtml(etiquetaCuenta(h.studentId))}</div>
+        </div>
+      </div>`).join('');
+  } catch (e) {
+    console.error('[Huella] Error listando huellas generales:', e);
+    cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">No se pudo cargar el listado.</div>';
+  }
 }
 
 // Mostrar/ocultar contraseña

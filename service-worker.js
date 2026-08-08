@@ -5,10 +5,13 @@
 // siempre de Firebase — este service worker NUNCA cachea eso, así que
 // nunca vas a ver datos viejos por culpa de la caché.
 
-const CACHE_NAME = 'pensum-ugb-v1';
+const CACHE_NAME = 'pensum-ugb-v2'; // v2: index.html ahora se divide en html + styles.css + app.js
 const SHELL_FILES = [
   './',
   './index.html',
+  './styles.css',
+  './app.js',
+  './firebase-bootstrap.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'

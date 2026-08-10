@@ -1,0 +1,89 @@
+<svg viewBox='0 0 1212 800' xmlns='http://www.w3.org/2000/svg'>
+<rect width='1212' height='800' fill='#f3f4f6'/>
+<text x='40' y='42' font-family='Inter,Arial,sans-serif' font-size='24' font-weight='800' fill='#1e3a8a'>Mapa de funcionalidades — Pénsum UGB</text>
+<text x='40' y='64' font-family='Inter,Arial,sans-serif' font-size='12.5' fill='#6b7280'>13 módulos · app.js (~314 funciones) + firebase-db.js (45 funciones)</text>
+<rect x='40' y='90' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='40' y='90' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='62' y='132' font-size='28'>🔐</text>
+<text x='62' y='168' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Cuentas y acceso</text>
+<text x='62' y='188' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Login, huella/Face ID</text>
+<text x='62' y='203.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>(WebAuthn), cambiar</text>
+<text x='62' y='219.0' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>contraseña, borrar datos</text>
+<rect x='328' y='90' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='328' y='90' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='350' y='132' font-size='28'>🎓</text>
+<text x='350' y='168' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Pénsum</text>
+<text x='350' y='188' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Ciclos, materias, notas,</text>
+<text x='350' y='203.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>deshacer/rehacer, historial de</text>
+<text x='350' y='219.0' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>cambios</text>
+<rect x='616' y='90' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='616' y='90' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='638' y='132' font-size='28'>📋</text>
+<text x='638' y='168' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Notas del portal</text>
+<text x='638' y='188' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Pegar notas desde el portal</text>
+<text x='638' y='203.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>UGB, copiar notas al</text>
+<text x='638' y='219.0' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>portapapeles</text>
+<rect x='904' y='90' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='904' y='90' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='926' y='132' font-size='28'>📅</text>
+<text x='926' y='168' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Calendario</text>
+<text x='926' y='188' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Eventos por materia, filtros,</text>
+<text x='926' y='203.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>vínculo con notas del pénsum</text>
+<rect x='40' y='260' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='40' y='260' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='62' y='302' font-size='28'>🔔</text>
+<text x='62' y='338' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Notificaciones</text>
+<text x='62' y='358' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Avisos de vencimientos,</text>
+<text x='62' y='373.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>configuración de anticipación</text>
+<rect x='328' y='260' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='328' y='260' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='350' y='302' font-size='28'>🏛</text>
+<text x='350' y='338' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Asistencia diaria</text>
+<text x='350' y='358' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Marcar con huella, filtros por</text>
+<text x='350' y='373.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>fecha, exportar PDF/Excel</text>
+<rect x='616' y='260' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='616' y='260' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='638' y='302' font-size='28'>📝</text>
+<text x='638' y='338' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Asistencia de actividad</text>
+<text x='638' y='358' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Registro manual de</text>
+<text x='638' y='373.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>actividades, detalle y</text>
+<text x='638' y='389.0' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>exportación</text>
+<rect x='904' y='260' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='904' y='260' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='926' y='302' font-size='28'>📄</text>
+<text x='926' y='338' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Bitácora DI</text>
+<text x='926' y='358' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Formulario de bitácora, PDF</text>
+<text x='926' y='373.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>con sello y firma, borradores</text>
+<rect x='40' y='430' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='40' y='430' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='62' y='472' font-size='28'>🧑‍💼</text>
+<text x='62' y='508' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Técnicos</text>
+<text x='62' y='528' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Alta/baja de técnicos, firma</text>
+<text x='62' y='543.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>digital, sello personalizado</text>
+<rect x='328' y='430' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='328' y='430' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='350' y='472' font-size='28'>⚙️</text>
+<text x='350' y='508' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Configuración</text>
+<text x='350' y='528' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Técnico y firma por defecto</text>
+<text x='350' y='543.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>del usuario actual</text>
+<rect x='616' y='430' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='616' y='430' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='638' y='472' font-size='28'>🖨️</text>
+<text x='638' y='508' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Exportación</text>
+<text x='638' y='528' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>PDF (pénsum, asistencia,</text>
+<text x='638' y='543.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>bitácora), Excel, CSV, JSON</text>
+<rect x='904' y='430' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='904' y='430' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='926' y='472' font-size='28'>☁️</text>
+<text x='926' y='508' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>Sincronización</text>
+<text x='926' y='528' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Tiempo real con Firestore</text>
+<text x='926' y='543.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>(onSnapshot) + sync manual</text>
+<rect x='40' y='600' width='268' height='150' rx='16' fill='#ffffff' stroke='#e5e7eb' stroke-width='1.5'/>
+<rect x='40' y='600' width='6' height='150' rx='3' fill='#1e40af'/>
+<text x='62' y='642' font-size='28'>📲</text>
+<text x='62' y='678' font-family='Inter,Arial,sans-serif' font-size='15' font-weight='800' fill='#111827'>App / PWA</text>
+<text x='62' y='698' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>Instalar app, caché offline</text>
+<text x='62' y='713.5' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>del cascarón, tema</text>
+<text x='62' y='729.0' font-family='Inter,Arial,sans-serif' font-size='11' fill='#6b7280'>claro/oscuro</text>
+<text x='40' y='786' font-family='Inter,Arial,sans-serif' font-size='10.5' fill='#9ca3af'>Ver README.md para el detalle función por función de cada módulo.</text>
+</svg>

@@ -1425,6 +1425,7 @@ async function selectStudent(name) {
       // se descargaban porque nunca se habían subido a Firestore.
       if (perfil && perfil.pensumCycles) local.cycles = perfil.pensumCycles;
       if (perfil && perfil.bitacoraPerfil) local.bitacoraPerfil = perfil.bitacoraPerfil;
+      if (perfil && perfil.bitacoraBorradores) local.bitacoraBorradores = perfil.bitacoraBorradores;
       if (pensumHistorial) local.undoStack = pensumHistorial;
       _downloadOk = true;
       _showLoading('¡Todo al día!', 'Abriendo pénsum...');
@@ -4659,6 +4660,7 @@ async function fetchFromFirebase(silent=false){
     if(asistenciasActividad) appData[currentStudent].asistenciasActividad=Object.assign(appData[currentStudent].asistenciasActividad||{},asistenciasActividad);
     if(perfil && perfil.pensumCycles){ appData[currentStudent].cycles=perfil.pensumCycles; CYCLES=JSON.parse(JSON.stringify(perfil.pensumCycles)); }
     if(perfil && perfil.bitacoraPerfil) appData[currentStudent].bitacoraPerfil=perfil.bitacoraPerfil;
+    if(perfil && perfil.bitacoraBorradores) appData[currentStudent].bitacoraBorradores=perfil.bitacoraBorradores;
     if(pensumHistorial){ appData[currentStudent].undoStack=pensumHistorial; undoStack=pensumHistorial; redoStack=[]; updateUndoRedoBtns(); }
     renderPensum();
     if(!silent) showToast('✓ Datos actualizados desde Firebase','success');
@@ -5115,8 +5117,16 @@ function _bitacAplicarFormulario(datos) {
 
 function bitacGuardarBorrador() {
   if (!currentStudent) return;
-  const sugerido = _bitacBorradorActual || '';
-  const nombre = (prompt('Nombre para este borrador (ej: "Ciclo II - avance julio"):', sugerido) || '').trim();
+  const borradoresActuales = _bitacGetBorradores();
+  let sugerido = _bitacBorradorActual || '';
+  if (!sugerido) {
+    // Sugiere "Borrador 1", "Borrador 2"... el primer número libre —
+    // así alcanza con tocar OK sin tener que pensar un nombre.
+    let n = 1;
+    while (borradoresActuales['Borrador ' + n]) n++;
+    sugerido = 'Borrador ' + n;
+  }
+  const nombre = (prompt('Nombre para este borrador (podés dejar el sugerido o escribir el que quieras):', sugerido) || '').trim();
   if (!nombre) return;
   const borradores = _bitacGetBorradores();
   const previo = borradores[nombre];

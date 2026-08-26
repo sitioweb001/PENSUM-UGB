@@ -4974,7 +4974,7 @@ async function _bitacCargarTecnicos() {
       }
       remotos = await window.FirebaseDB.listarTecnicos();
     }
-    TECNICOS_DI = remotos.map(t => ({
+    TECNICOS_DI = remotos.filter(t => !t.oculto).map(t => ({
       id: t.id, nombre: t.nombre, numero: t.numero || '', correo: t.correo || '', encargado: t.encargado || '',
       firma: t.firmaB64 || null,
       sello: t.selloB64 || null,
@@ -5050,6 +5050,7 @@ function _bitacRenderBorradorEstado() {
 function _bitacRecolectarFormulario() {
   return {
     perfil: {
+      nombreEstudiante: document.getElementById('bitNombreEstudiante').value || '',
       telefonoCorreo: document.getElementById('bitTelCorreo').value || '',
       universidad:    document.getElementById('bitUniversidad').value || '',
       regional:       document.getElementById('bitRegional').value || '',
@@ -5060,7 +5061,7 @@ function _bitacRecolectarFormulario() {
     selloResponsable: document.getElementById('bitSelloResp').value || '',
     filas: {
       o: [1,2,3].map(n => _bitacLeerFilaCruda('o', n)),
-      e: [1,2,3].map(n => _bitacLeerFilaCruda('e', n))
+      e: Array.from({length: _bitacExtraCount}, (_, idx) => _bitacLeerFilaCruda('e', idx + 1))
     }
   };
 }
@@ -5086,6 +5087,7 @@ function _bitacLeerFilaCruda(group, n) {
 function _bitacAplicarFormulario(datos) {
   if (!datos) return;
   const p = datos.perfil || {};
+  document.getElementById('bitNombreEstudiante').value = p.nombreEstudiante || currentStudent || '';
   document.getElementById('bitTelCorreo').value = p.telefonoCorreo || '';
   document.getElementById('bitUniversidad').value = p.universidad || '';
   document.getElementById('bitRegional').value = p.regional || '';
@@ -5093,6 +5095,10 @@ function _bitacAplicarFormulario(datos) {
   document.getElementById('bitCiclo').value = p.ciclo || '';
   document.getElementById('bitTecResp').value = datos.tecnicoResponsable || '';
   document.getElementById('bitSelloResp').innerHTML = _bitacSelloOptionsHTML(datos.selloResponsable || '');
+  // Si el borrador tiene más de 3 filas extra guardadas, hay que crear
+  // esas filas de más ANTES de intentar llenarlas.
+  const filasExtra = (datos.filas && datos.filas.e) || [];
+  if (filasExtra.length > _bitacExtraCount) { _bitacExtraCount = Math.min(9, filasExtra.length); _bitacRenderRows('e'); }
   ['o','e'].forEach(group => {
     const filas = (datos.filas && datos.filas[group]) || [];
     filas.forEach((f, idx) => {
@@ -5186,6 +5192,7 @@ function openBitacoraDI() {
   if (!currentStudent) { showToast('Selecciona un estudiante primero', 'error'); return; }
   const bp = (appData[currentStudent] && appData[currentStudent].bitacoraPerfil) || {};
   const tecRespDefault = bp.tecnicoResponsable || _userConfig.tecnicoDefault || '';
+  document.getElementById('bitNombreEstudiante').value = bp.nombreEstudiante || currentStudent || '';
   document.getElementById('bitTelCorreo').value    = bp.telefonoCorreo || '';
   document.getElementById('bitUniversidad').value  = bp.universidad || '';
   document.getElementById('bitRegional').value     = bp.regional || '';
@@ -5195,6 +5202,7 @@ function openBitacoraDI() {
   document.getElementById('bitSelloResp').innerHTML = _bitacSelloOptionsHTML(bp.selloResponsable || _userConfig.selloDefault || _bitacSelloPrefGet(tecRespDefault) || '');
   _bitacEditingRecordId = null;
   _bitacBorradorActual = null;
+  _bitacExtraCount = 3;
   const editBanner = document.getElementById('bitEditingBanner'); if (editBanner) editBanner.style.display = 'none';
   _bitacRenderRows('o');
   _bitacRenderRows('e');
@@ -5223,12 +5231,19 @@ function _bitacTecRespChange() {
   selloSel.innerHTML = _bitacSelloOptionsHTML(pref || '');
 }
 
+let _bitacExtraCount = 3; // cuántas filas "extra" hay ahora mismo — arranca en 3 (página 2) y se puede
+                          // ampliar hasta 9 (llena también los anexos, página 3 — 12 filas en total con las 3 obligatorias)
+
 function _bitacRenderRows(group) {
   const wrap = document.getElementById(group === 'o' ? 'bitObligatoriasRows' : 'bitExtraRows');
+  const total = group === 'o' ? 3 : _bitacExtraCount;
   let html = '';
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= total; i++) {
     html += `<div style="border:1.5px solid var(--gl);border-radius:9px;padding:10px 12px;margin-bottom:9px;">
-      <div style="font-weight:700;font-size:12px;margin-bottom:6px;color:var(--gm);">Fila ${i}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-weight:700;font-size:12px;color:var(--gm);">Fila ${i}</span>
+        <button type="button" onclick="_bitacLimpiarFila('${group}',${i})" title="Vaciar los datos de esta fila" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:11px;font-weight:600;">🗑️ Vaciar fila</button>
+      </div>
       <div class="modal-field" style="margin-bottom:8px;">
         <label>Fuente de esta fila</label>
         <select id="bitSrc_${group}_${i}" onchange="_bitacSourceChange('${group}',${i})">
@@ -5241,7 +5256,47 @@ function _bitacRenderRows(group) {
     </div>`;
   }
   wrap.innerHTML = html;
-  for (let i = 1; i <= 3; i++) _bitacSourceChange(group, i);
+  for (let i = 1; i <= total; i++) _bitacSourceChange(group, i);
+  if (group === 'e') _bitacRenderExtraControls();
+}
+
+// Botón para agregar más filas extra (hasta 9, que junto a las 3
+// obligatorias completa las 12 líneas que trae la plantilla oficial:
+// 3 obligatorias + 3 extra en la página 2 + 6 anexos en la página 3).
+function _bitacRenderExtraControls() {
+  let el = document.getElementById('bitExtraControls');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'bitExtraControls';
+    const wrap = document.getElementById('bitExtraRows');
+    wrap.parentNode.insertBefore(el, wrap.nextSibling);
+  }
+  el.innerHTML = _bitacExtraCount < 9
+    ? `<button type="button" class="modal-btn secondary" style="width:100%;margin-top:2px;" onclick="_bitacAgregarFilaExtra()">+ Agregar otra actividad realizada (fila ${_bitacExtraCount + 1} de 12)</button>`
+    : `<p style="font-size:11px;color:var(--gm);margin-top:4px;text-align:center;">Llegaste a las 12 filas que trae la plantilla oficial (3 obligatorias + 9 extra/anexos). Si necesitás anotar más, generá otra bitácora aparte para el resto.</p>`;
+}
+
+function _bitacAgregarFilaExtra() {
+  if (_bitacExtraCount >= 9) return;
+  _bitacExtraCount++;
+  _bitacRenderRows('e');
+}
+
+// Vacía únicamente los datos de una fila (sin eliminar la fila en sí,
+// salvo que sea una de las extra agregadas de más — ahí simplemente se
+// deja en blanco igual, ya que el PDF necesita que las filas de abajo no
+// "salten" de posición).
+function _bitacLimpiarFila(group, n) {
+  const srcSel = document.getElementById(`bitSrc_${group}_${n}`);
+  if (srcSel) srcSel.value = 'manual';
+  _bitacSourceChange(group, n);
+  const a = document.getElementById(`bitAct_${group}_${n}`); if (a) a.value = '';
+  const fe = document.getElementById(`bitFecha_${group}_${n}`); if (fe) fe.value = '';
+  const t = document.getElementById(`bitTec_${group}_${n}`); if (t) t.value = '';
+  _bitacTecOtroToggle(group, n);
+  const to = document.getElementById(`bitTecOtro_${group}_${n}`); if (to) to.value = '';
+  const s = document.getElementById(`bitSello_${group}_${n}`); if (s) s.value = '';
+  showToast('Fila vaciada', 'success');
 }
 
 function _bitacTecFieldHTML(group, n) {
@@ -5575,7 +5630,7 @@ function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, ext
   doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
   let ly = 50;
   doc.splitTextToSize(introTxt, 700).forEach(l => { doc.text(l, 396, ly, { align: 'center' }); ly += 17.5; });
-  _bitacDrawTable(doc, 120, extra, 71.3, ['ACTIVIDAD REALIZADA', '(OBLIGATORIA / EXTRA)'], 4);
+  _bitacDrawTable(doc, 120, extra.slice(0, 3), 71.3, ['ACTIVIDAD REALIZADA', '(OBLIGATORIA / EXTRA)'], 4);
   doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.75);
   doc.rect(27, 400, 745, 48);
   const usoTxt = 'USO EXCLUSIVO COORDINACIÓN CONTINUIDAD ACADÉMICA Y TÉCNICA Y UNIDAD DE BECADOS (FIRMA DEL TÉCNICO A CARGO CUANDO FINALICEN LAS 3 ACTIVIDADES ESTABLECIDAS). | ANEXADO A LAS ACTIVIDADES EXTRA QUE EL BECADO HAGA PUEDE SER ACTIVIDADES OBLIGATORIAS EXTRA A LAS 3 QUE EL REALICE.';
@@ -5585,13 +5640,15 @@ function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, ext
   _bitacDrawFirmaBlock(doc, 555, tecRespNombre, tecRespObj, selloRespImg);
   _bitacDrawFooter(doc, 2);
 
-  // ---- PÁGINA 3: anexos (N° 7-12, en blanco para uso posterior a mano) ----
+  // ---- PÁGINA 3: anexos (N° 7-12 — usa las filas extra 4 a 9 si existen; si no, queda en blanco para uso posterior a mano) ----
   doc.addPage();
   _bitacDrawWatermark(doc, { x: 71.5, y: 442, w: 649, h: 140 });
   doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(0, 0, 0);
   doc.text('ANEXOS', 36, 58);
   doc.setLineWidth(0.9); doc.line(36, 63, 94, 63);
-  _bitacDrawTable(doc, 72, [null, null, null, null, null, null], 56, ['ACTIVIDAD REALIZADA', '(OBLIGATORIA / EXTRA)'], 7);
+  const anexos = extra.slice(3, 9);
+  while (anexos.length < 6) anexos.push(null);
+  _bitacDrawTable(doc, 72, anexos, 56, ['ACTIVIDAD REALIZADA', '(OBLIGATORIA / EXTRA)'], 7);
   _bitacDrawFirmaBlock(doc, 550, tecRespNombre, tecRespObj, selloRespImg);
   _bitacDrawFooter(doc, 3);
 
@@ -5606,7 +5663,7 @@ function generarBitacoraDIPDF() {
   if (!(window.jspdf && window.jspdf.jsPDF)) { showToast('El generador de PDF no cargó. Recargá la página e intentá de nuevo.', 'error'); return; }
 
   const perfil = {
-    nombreVoluntario: currentStudent,
+    nombreVoluntario: (document.getElementById('bitNombreEstudiante').value || '').trim() || currentStudent,
     telefonoCorreo: (document.getElementById('bitTelCorreo').value || '').trim(),
     universidad:    (document.getElementById('bitUniversidad').value || '').trim(),
     regional:       (document.getElementById('bitRegional').value || '').trim(),
@@ -5620,7 +5677,7 @@ function generarBitacoraDIPDF() {
   _bitacSelloPrefSet(tecRespNombre, selloRespVal);
 
   const obligatorias = [1, 2, 3].map(n => _bitacLeerFila('o', n));
-  const extra = [1, 2, 3].map(n => _bitacLeerFila('e', n));
+  const extra = Array.from({length: _bitacExtraCount}, (_, idx) => _bitacLeerFila('e', idx + 1));
 
   if (!obligatorias.some(r => r.actividad)) {
     showToast('Llená al menos una de las 3 actividades obligatorias', 'error'); return;
@@ -5731,6 +5788,7 @@ function _renderHistorialBitacoras() {
       <button onclick="verBitacoraHist('${r.id}')" title="Ver detalle" style="background:transparent;border:none;color:var(--blue);cursor:pointer;font-size:14px;">👁</button>
       <button onclick="descargarBitacoraHist('${r.id}')" title="Volver a descargar" style="background:transparent;border:none;color:var(--blue);cursor:pointer;font-size:14px;">⬇️</button>
       <button onclick="editarBitacoraHist('${r.id}')" title="Editar (pide motivo)" style="background:transparent;border:none;color:var(--pend);cursor:pointer;font-size:14px;">✏️</button>
+      <button onclick="eliminarArchivoHistorial('${r.id}')" title="Eliminar del historial" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:14px;">🗑</button>
     </div>`;
   }).join('');
 }
@@ -5819,12 +5877,12 @@ async function subirArchivoHistorial() {
 }
 
 async function eliminarArchivoHistorial(id) {
-  if (!confirm('¿Eliminar este archivo del historial?')) return;
+  if (!confirm('¿Eliminar este registro del historial? Esta acción no se puede deshacer.')) return;
   try {
     await window.FirebaseDB.eliminarRegistroBitacora(currentStudent, currentCareer, id);
     _bitacHistCache = await window.FirebaseDB.listarBitacoras(currentStudent, currentCareer);
     _renderHistorialBitacoras();
-    showToast('Archivo eliminado', 'success');
+    showToast('Eliminado del historial', 'success');
   } catch (e) { showToast('No se pudo eliminar', 'error'); }
 }
 
@@ -5892,6 +5950,7 @@ function editarBitacoraHist(id) {
   document.getElementById('bitHistModal').classList.remove('open');
   openBitacoraDI();
   setTimeout(() => {
+    document.getElementById('bitNombreEstudiante').value = (r.perfil && r.perfil.nombreEstudiante) || currentStudent || '';
     document.getElementById('bitTelCorreo').value = (r.perfil && r.perfil.telefonoCorreo) || '';
     document.getElementById('bitUniversidad').value = (r.perfil && r.perfil.universidad) || '';
     document.getElementById('bitRegional').value = (r.perfil && r.perfil.regional) || '';
@@ -5899,6 +5958,7 @@ function editarBitacoraHist(id) {
     document.getElementById('bitCiclo').value = (r.perfil && r.perfil.ciclo) || '';
     document.getElementById('bitTecResp').value = r.tecnicoResponsable || '';
     document.getElementById('bitSelloResp').innerHTML = _bitacSelloOptionsHTML(r.selloResponsable || '');
+    if ((r.extra || []).length > _bitacExtraCount) { _bitacExtraCount = Math.min(9, r.extra.length); _bitacRenderRows('e'); }
     ['o', 'e'].forEach(group => {
       const arr = group === 'o' ? (r.obligatorias || []) : (r.extra || []);
       arr.forEach((f, idx) => {
@@ -6077,9 +6137,21 @@ function editarTecnico(id) {
 async function borrarTecnico(id) {
   if (!confirm('¿Eliminar este técnico de la lista?')) return;
   try {
-    await window.FirebaseDB.eliminarTecnico(id);
+    const t = TECNICOS_DI.find(x => x.id === id);
+    const esSemilla = t && TECNICOS_DI_SEED.some(s => s.nombre.toLowerCase() === t.nombre.toLowerCase());
+    if (esSemilla) {
+      // Este técnico viene incluido en la app (Héctor/Eddie) — no se puede
+      // hacer desaparecer el código, así que en vez de borrar la ficha se
+      // marca oculta. Si se borrara de verdad, la próxima vez que se
+      // cargara la lista de técnicos se volvería a crear sola (por la
+      // migración automática) y parecería que "no se dejó eliminar".
+      await window.FirebaseDB.guardarTecnico(id, { oculto: true });
+    } else {
+      await window.FirebaseDB.eliminarTecnico(id);
+    }
     await _bitacCargarTecnicos();
     _renderTecnicosList();
+    showToast('Técnico eliminado', 'success');
   } catch (e) { showToast('No se pudo eliminar', 'error'); }
 }
 

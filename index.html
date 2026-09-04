@@ -235,6 +235,7 @@
     <div class="cycle-top-bar">
       <button class="back-btn" onclick="showPensum()">← Volver al Pénsum</button>
       <button class="cycle-done-btn" id="cycleDoneBtn" onclick="toggleCycleDone()"><span id="cycleDoneIcon">☐</span> <span id="cycleDoneText">Marcar finalizado</span></button>
+      <button class="cycle-done-btn" id="cycleProcesoBtn" onclick="toggleCycleEnProceso()" style="background:rgba(139,92,246,.12);border-color:#8b5cf6;color:#8b5cf6;"><span id="cycleProcesoIcon">⏳</span> <span id="cycleProcesoText">En Proceso</span></button>
       <button class="clear-cycle-btn" onclick="clearCurrentCycle()">🗑 Limpiar ciclo</button>
     </div>
     <div class="cycle-detail-header">
@@ -345,8 +346,33 @@
       <button class="filter-tab" onclick="setCalFilter('month',this)">Este mes</button>
       <button class="filter-tab" onclick="setCalFilter('year',this)">Este año</button>
     </div>
+    <div style="display:flex;gap:7px;margin-bottom:11px;">
+      <button class="modal-btn secondary" id="calCycleFilterBtn" style="flex:1;padding:6px 10px;font-size:12px;" onclick="openCicloFilterModal()">🔽 Filtrar por Ciclo</button>
+      <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="openCicloDateRangesModal()" title="Configura las fechas de cada ciclo para detectar automáticamente a qué ciclo corresponde cada actividad">📅 Fechas de ciclos</button>
+    </div>
     <div id="eventsList" style="max-height:360px;overflow-y:auto;margin-bottom:13px;"></div>
     <div class="modal-btns"><button class="modal-btn primary" onclick="closeCalendarModal()">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cicloFilterModal" style="z-index:9999;">
+  <div class="modal" style="width:420px;">
+    <h3>🔽 Filtrar actividades por ciclo</h3>
+    <p>Elige un ciclo para ver solo las actividades que le corresponden.</p>
+    <div id="cicloFilterList" style="max-height:340px;overflow-y:auto;"></div>
+    <div class="modal-btns"><button class="modal-btn secondary" onclick="closeCicloFilterModal()">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cicloDateRangesModal" style="z-index:9999;">
+  <div class="modal" style="width:480px;">
+    <h3>📅 Fechas de cada ciclo</h3>
+    <p>Configura cuándo empieza y termina cada ciclo. Con esto, el sistema detecta automáticamente a qué ciclo corresponde cada actividad del calendario (incluidas las Actividades DI) según su fecha, y abre ese ciclo al guardarla.</p>
+    <div id="cicloDateRangesRows" style="max-height:360px;overflow-y:auto;margin-bottom:10px;"></div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="document.getElementById('cicloDateRangesModal').classList.remove('open')">Cancelar</button>
+      <button class="modal-btn primary" onclick="guardarCicloDateRanges()">Guardar fechas</button>
+    </div>
   </div>
 </div>
 
@@ -445,7 +471,8 @@
     <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
     <div class="asist-hoy-box" id="asistenciaHoy"></div>
     <div id="diaConfirmBanner" style="display:none;background:rgba(16,185,129,.12);border:1.5px solid var(--pass);color:var(--pass);font-weight:700;font-size:12.5px;text-align:center;border-radius:9px;padding:9px 12px;margin-bottom:12px;">✅ Asistencia verificada. Cerrá el modal o revisá su historial abajo.</div>
-    <div style="text-align:center;margin-bottom:16px;"><button class="asist-mark-btn" id="asistenciaBtn" onclick="marcarAsistencia()">✅ Marcar Asistencia de Hoy</button></div>
+    <div style="text-align:center;margin-bottom:10px;"><button class="asist-mark-btn" id="asistenciaBtn" onclick="marcarAsistencia()">✅ Marcar Asistencia de Hoy</button></div>
+    <div style="text-align:center;margin-bottom:16px;"><button class="modal-btn secondary" style="padding:7px 12px;font-size:12.5px;" onclick="openAsistenciaManual()" title="¿Olvidaste marcar un día? Regístralo aquí con justificación">📝 Registrar día atrasado</button></div>
     <div class="filter-tabs" id="asistFilterTabs">
       <button class="filter-tab active" onclick="setAsistFilter('today',this)">Hoy</button>
       <button class="filter-tab" onclick="setAsistFilter('week',this)">Semana</button>
@@ -459,6 +486,29 @@
       <button class="modal-btn secondary" onclick="abrirExportAsistencia('excel')" title="Exporta la asistencia a Excel">📊 Excel</button>
     </div>
     <div class="modal-btns" style="margin-top:8px;"><button class="modal-btn primary" onclick="document.getElementById('asistenciaModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="asistenciaManualModal" style="z-index:9999;">
+  <div class="modal" style="width:460px;">
+    <h3>📝 Registrar día atrasado</h3>
+    <p>Usa esto si olvidaste marcar tu asistencia un día que ya pasó. Se guardará con la justificación que indiques.</p>
+    <div class="modal-field"><label>Fecha del día que olvidaste marcar</label>
+      <input type="date" id="asistManualFecha" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+    <div style="display:flex;gap:10px;">
+      <div class="modal-field" style="flex:1;"><label>Hora de entrada</label>
+        <input type="time" id="asistManualEntrada" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+      <div class="modal-field" style="flex:1;"><label>Hora de salida</label>
+        <input type="time" id="asistManualSalida" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+    </div>
+    <div class="modal-field"><label>Motivo por el que no marcaste ese día</label>
+      <select id="asistManualMotivo" onchange="onAsistManualMotivoChange()" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></select></div>
+    <div class="modal-field" id="asistManualOtroField" style="display:none;"><label>Describe el motivo</label>
+      <input type="text" id="asistManualOtro" placeholder="Ej. Cita médica" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="closeAsistenciaManual()">Cancelar</button>
+      <button class="modal-btn primary" onclick="guardarAsistenciaManual()">Guardar registro</button>
+    </div>
   </div>
 </div>
 
@@ -541,6 +591,15 @@
      diseño fijo de la plantilla oficial (ver funciones _bitacDraw* al
      final del script). Las filas se llenan a mano o se traen de
      Asistencia diaria / Actividad DI ya guardadas para el estudiante. -->
+<div class="modal-overlay" id="bitacoraDestinoModal" style="z-index:9999;">
+  <div class="modal" style="width:420px;">
+    <h3>📄 ¿En qué bitácora guardar esta actividad?</h3>
+    <p>Marcaste una Actividad DI como completada. Elige una bitácora (o crea una nueva) y se rellenará automáticamente con la fecha y descripción de la actividad.</p>
+    <div id="bitacoraDestinoList" style="max-height:320px;overflow-y:auto;"></div>
+    <div class="modal-btns"><button class="modal-btn secondary" onclick="closeBitacoraDestinoModal()">No registrar ahora</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="bitacoraDIModal">
   <div class="modal" style="width:900px;max-width:96vw;max-height:92vh;overflow-y:auto;">
     <div class="asist-logos" style="justify-content:center;">

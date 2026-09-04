@@ -173,6 +173,7 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 .cycle-header-box{background:var(--blue);color:#fff;text-align:center;font-size:12px;font-weight:700;letter-spacing:1.5px;padding:9px 4px;border-radius:10px;cursor:pointer;transition:background .2s;user-select:none;text-transform:uppercase;white-space:nowrap;}
 .cycle-header-box:hover{background:var(--blue-dk);}
 .cycle-header-box.done-cycle{background:#047857;}
+.cycle-header-box.proceso-cycle{background:#8b5cf6;}
 
 /* Cards */
 .subject-card{background:var(--card);border:1px solid var(--gl);border-radius:8px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:114px;}
@@ -213,6 +214,8 @@ header{background:var(--hdr);color:#fff;padding:12px 20px;display:flex;align-ite
 .cycle-done-btn:hover{background:var(--pass);color:#fff;}
 .cycle-done-btn.done{background:var(--pass);color:#fff;}
 .cycle-done-btn.done:hover{background:#dc2626;border-color:#dc2626;color:#fff;}
+#cycleProcesoBtn.done{background:#8b5cf6;border-color:#8b5cf6;color:#fff;}
+#cycleProcesoBtn.done:hover{background:#dc2626;border-color:#dc2626;color:#fff;}
 .cycle-done-btn.done{background:var(--pass);color:#fff;}
 .cycle-done-btn:hover{opacity:.82;}
 .clear-cycle-btn{margin-left:auto;padding:7px 14px;background:var(--fail);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:12px;transition:all .15s;}

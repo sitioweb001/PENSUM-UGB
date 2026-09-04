@@ -91,6 +91,21 @@ export async function guardarCiclosDone(nombre, carrera, cyclesDone) {
   await updateDoc(ref, { cyclesDone, updatedAt: serverTimestamp() });
 }
 
+// "En Proceso" — igual patrón que cyclesDone, pero para el estado
+// intermedio "cursando actualmente" (distinto de "Finalizado").
+export async function guardarCiclosEnProceso(nombre, carrera, cyclesInProgress) {
+  const ref = doc(db, 'estudiantes', studentId(nombre, carrera));
+  await updateDoc(ref, { cyclesInProgress: cyclesInProgress || {}, updatedAt: serverTimestamp() });
+}
+
+// Rangos de fecha (inicio/fin) configurados por el estudiante para cada
+// ciclo — permiten detectar automáticamente a qué ciclo corresponde una
+// actividad del calendario según su fecha (ver getCycleForDate en app.js).
+export async function guardarCycleDateRanges(nombre, carrera, cycleDateRanges) {
+  const ref = doc(db, 'estudiantes', studentId(nombre, carrera));
+  await updateDoc(ref, { cycleDateRanges: cycleDateRanges || {}, updatedAt: serverTimestamp() });
+}
+
 export async function guardarEspeciales(nombre, carrera, specialCards) {
   const ref = doc(db, 'estudiantes', studentId(nombre, carrera));
   await updateDoc(ref, { specialCards, updatedAt: serverTimestamp() });

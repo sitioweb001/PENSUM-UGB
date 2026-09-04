@@ -620,6 +620,10 @@ let currentZoom=85, currentCycleId=null;
 let autoSyncTimer=null;
 let editModeActive=false;
 let calFilter='all', asistFilter='today', histFilter='all';
+let calCycleFilter='all'; // filtro de ciclo del modal de Calendario ('all' o el id numérico del ciclo)
+
+// ── Motivos predefinidos para "Registrar día atrasado" en Asistencia Diaria ──
+const MOTIVOS_ASISTENCIA_MANUAL = ['OLVIDO DE MARCACIÓN', 'SIN WIFI', 'Otro'];
 
 // ═══════════════════════════════════════════════════════════
 // INIT
@@ -1159,7 +1163,7 @@ async function chooseCareer(career) {
         await window.__firebaseReady;
         const nombres = await window.FirebaseDB.listarEstudiantes(career);
         nombres.forEach(name => {
-          if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, specialCards:{}, undoStack:[] };
+          if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, cyclesInProgress:{}, cycleDateRanges:{}, specialCards:{}, undoStack:[] };
         });
         loaded = true;
         const n = nombres.length;
@@ -1279,7 +1283,7 @@ async function recargarLista() {
     const nombres = await window.FirebaseDB.listarEstudiantes(currentCareer);
     appData = {};
     nombres.forEach(name => {
-      appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, specialCards:{}, undoStack:[] };
+      appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, cyclesInProgress:{}, cycleDateRanges:{}, specialCards:{}, undoStack:[] };
     });
     accountListVisible = await window.FirebaseDB.getShowAccountList();
     applyAccountListVisibility();
@@ -1386,11 +1390,13 @@ async function selectStudent(name) {
   // Si la descarga trae datos, los sobreescribe aquí mismo; si falla,
   // esta estructura vacía queda como estado inicial limpio (no se sube nada
   // todavía porque la cola de subida solo se activa con cambios reales del usuario).
-  if (!appData[name]) appData[name] = {notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, specialCards:{}, undoStack:[]};
+  if (!appData[name]) appData[name] = {notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, cyclesInProgress:{}, cycleDateRanges:{}, specialCards:{}, undoStack:[]};
   if (!appData[name].cyclesDone)   appData[name].cyclesDone   = {};
   if (!appData[name].specialCards) appData[name].specialCards = {};
   if (!appData[name].asistencias)  appData[name].asistencias  = {};
   if (!appData[name].asistenciasActividad) appData[name].asistenciasActividad = {};
+  if (!appData[name].cyclesInProgress) appData[name].cyclesInProgress = {};
+  if (!appData[name].cycleDateRanges) appData[name].cycleDateRanges = {};
 
   // ── PANTALLA DE CARGA ──
   _showLoading('Cargando datos de ' + name + '...', 'Descargando desde Firebase');
@@ -1629,7 +1635,7 @@ Esta acción NO se puede deshacer.`)) return;
   _showLoading('Borrando datos...', 'Conectando con el servidor');
 
   for (const name of selected) {
-    if (!appData[name]) appData[name] = {notas:{},events:[],cyclesDone:{},asistencias:{}, asistenciasActividad:{},specialCards:{},undoStack:[]};
+    if (!appData[name]) appData[name] = {notas:{},events:[],cyclesDone:{},asistencias:{}, asistenciasActividad:{}, cyclesInProgress:{}, cycleDateRanges:{},specialCards:{},undoStack:[]};
     const sd = appData[name];
 
     if (delAll) {
@@ -1644,7 +1650,7 @@ Esta acción NO se puede deshacer.`)) return;
       // Borrar solo lo seleccionado localmente
       if (delNotas)   { sd.notas = {}; sd.undoStack = []; }
       if (delCal)     { sd.events = []; }
-      if (delCiclos)  { sd.cyclesDone = {}; }
+      if (delCiclos)  { sd.cyclesDone = {}; sd.cyclesInProgress = {}; }
       if (delAsist)   { sd.asistencias = {}; }
       if (delSpecial) { sd.specialCards = {}; }
       // Subir cambios al servidor
@@ -1947,7 +1953,7 @@ function startAutoSyncInterval() {
   // guardaron. autoFetchInterval ahora guarda la función para CERRAR ese
   // listener (ya no es un setInterval).
   autoFetchInterval = window.FirebaseDB.escucharEstudiante(currentStudent, currentCareer, {
-    onPerfil: (perfil) => _applyRemoteUpdate({ cyclesDone: perfil.cyclesDone, specialCards: perfil.specialCards, horario: perfil.horario, pensumCycles: perfil.pensumCycles }),
+    onPerfil: (perfil) => _applyRemoteUpdate({ cyclesDone: perfil.cyclesDone, cyclesInProgress: perfil.cyclesInProgress, cycleDateRanges: perfil.cycleDateRanges, specialCards: perfil.specialCards, horario: perfil.horario, pensumCycles: perfil.pensumCycles }),
     onNotas: (notasArray) => _applyRemoteUpdate({ notas: notasArray }),
     onEventos: (eventosArray) => { if (!_calendarModalOpen) { _applyRemoteUpdate({ events: eventosArray }); checkAndShowNotifToasts(); } },
     onAsistencias: (asistObj) => _applyRemoteUpdate({ asistencias: asistObj }),
@@ -2007,6 +2013,18 @@ function _applyRemoteUpdate(d) {
     const remCD = JSON.stringify(d.cyclesDone || {});
     const locCD = JSON.stringify(local.cyclesDone || {});
     if (remCD !== locCD) { local.cyclesDone = d.cyclesDone || {}; changed = true; }
+  }
+
+  if (d.cyclesInProgress !== undefined) {
+    const remCP = JSON.stringify(d.cyclesInProgress || {});
+    const locCP = JSON.stringify(local.cyclesInProgress || {});
+    if (remCP !== locCP) { local.cyclesInProgress = d.cyclesInProgress || {}; changed = true; }
+  }
+
+  if (d.cycleDateRanges !== undefined) {
+    const remCR = JSON.stringify(d.cycleDateRanges || {});
+    const locCR = JSON.stringify(local.cycleDateRanges || {});
+    if (remCR !== locCR) { local.cycleDateRanges = d.cycleDateRanges || {}; changed = true; }
   }
 
   if (d.specialCards !== undefined) {
@@ -2160,9 +2178,10 @@ function renderPensum(){
     col.dataset.cycleId=cycle.id;
 
     const isDone=!!(sd.cyclesDone&&sd.cyclesDone[cycle.id]);
+    const enProceso=!!(sd.cyclesInProgress&&sd.cyclesInProgress[cycle.id]);
     const lbl=document.createElement('div');
-    lbl.className='cycle-header-box'+(isDone?' done-cycle':'');
-    lbl.innerHTML=(isDone?'✅ ':'')+cycle.name.toUpperCase();
+    lbl.className='cycle-header-box'+(isDone?' done-cycle':'')+(enProceso&&!isDone?' proceso-cycle':'');
+    lbl.innerHTML=(isDone?'✅ ':(enProceso?'🔄 ':''))+cycle.name.toUpperCase();
     lbl.onclick=()=>openCycle(cycle.id);
     col.appendChild(lbl);
 
@@ -2472,6 +2491,107 @@ function updateCycleDoneBtn(){
   document.getElementById('cycleDoneIcon').textContent=done?'✅':'☐';
   document.getElementById('cycleDoneText').textContent=done?'✓ Finalizado — clic para deshacer':'Marcar finalizado';
   if(btn) btn.title=done?'Clic para desmarcar este ciclo':'Marcar este ciclo como finalizado';
+  updateCycleProcesoBtn();
+}
+
+// ═══════════════════════════════════════════════════════════
+// CICLO "EN PROCESO" — botón hermano de "Finalizar Ciclo". Al presionarlo
+// se detecta automáticamente el ciclo (currentCycleId, el que está abierto
+// en pantalla) y se marca/desmarca como "en proceso" — útil para el ciclo
+// que el estudiante está cursando actualmente, distinto de "Finalizado".
+// ═══════════════════════════════════════════════════════════
+function getCyclesInProgress(){
+  const sd=getStudentData();
+  if(!sd.cyclesInProgress) sd.cyclesInProgress={};
+  return sd.cyclesInProgress;
+}
+function toggleCycleEnProceso(){
+  if(!currentCycleId||!currentStudent) return;
+  const enProceso=getCyclesInProgress();
+  const wasOn=!!enProceso[currentCycleId];
+  if(wasOn){
+    delete enProceso[currentCycleId];
+    saveLocal(); updateCycleProcesoBtn(); renderPensum();
+    showToast('↩ Ciclo desmarcado como "En Proceso"','success');
+  } else {
+    enProceso[currentCycleId]=true;
+    saveLocal(); updateCycleProcesoBtn(); renderPensum();
+    const cycle=CYCLES.find(c=>c.id===currentCycleId);
+    showToast('🔄 '+(cycle?cycle.name:'Ciclo')+' detectado y marcado como "En Proceso"','success');
+  }
+}
+function updateCycleProcesoBtn(){
+  const btn=document.getElementById('cycleProcesoBtn');
+  if(!btn) return;
+  const on=!!getCyclesInProgress()[currentCycleId];
+  btn.classList.toggle('done',on);
+  document.getElementById('cycleProcesoIcon').textContent=on?'🔄':'⏳';
+  document.getElementById('cycleProcesoText').textContent=on?'✓ En Proceso — clic para desmarcar':'En Proceso';
+  btn.title=on?'Clic para desmarcar este ciclo como "en proceso"':'Marca automáticamente este ciclo como "en proceso" (cursando actualmente)';
+}
+
+// ═══════════════════════════════════════════════════════════
+// FECHAS DE CICLO + DETECCIÓN AUTOMÁTICA POR FECHA
+// El estudiante puede configurar, una sola vez, el rango de fechas
+// (inicio-fin) de cada ciclo. Con eso, cualquier actividad del calendario
+// (incluidas las Actividades DI, que no tienen materia/ciclo asociado)
+// puede detectarse automáticamente a qué ciclo corresponde según su fecha.
+// ═══════════════════════════════════════════════════════════
+function getCycleDateRanges(){
+  const sd=getStudentData();
+  if(!sd.cycleDateRanges) sd.cycleDateRanges={};
+  return sd.cycleDateRanges;
+}
+// Devuelve el ciclo (objeto de CYCLES) cuyo rango de fechas configurado
+// contiene `dateStr` ('YYYY-MM-DD'), o null si no hay ninguno configurado
+// que lo cubra.
+function getCycleForDate(dateStr){
+  if(!dateStr) return null;
+  const ranges=getCycleDateRanges();
+  for(const c of CYCLES){
+    const r=ranges[c.id];
+    if(r && r.start && r.end && dateStr>=r.start && dateStr<=r.end) return c;
+  }
+  return null;
+}
+// Ciclo "de" un evento del calendario: si tiene materia (Lab1/Lab2/Parcial/
+// Otra con materia elegida), se deriva de esa materia; si no (Actividad DI,
+// u "Otra" sin materia), se detecta por fecha usando cycleDateRanges.
+function getCycleOfEvent(ev){
+  if(!ev) return null;
+  if(ev.subject){
+    const c=CYCLES.find(cy=>cy.subjects.some(s=>s.num===ev.subject));
+    if(c) return c;
+  }
+  return getCycleForDate(ev.date);
+}
+function openCicloDateRangesModal(){
+  const wrap=document.getElementById('cicloDateRangesRows');
+  const ranges=getCycleDateRanges();
+  wrap.innerHTML=CYCLES.map(c=>{
+    const r=ranges[c.id]||{start:'',end:''};
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <span style="flex:1;font-size:12.5px;font-weight:600;">${escapeHtml(c.name)}</span>
+      <input type="date" id="cdrStart_${c.id}" value="${r.start||''}" style="flex:1;padding:6px 8px;border:1.5px solid var(--inp-b);border-radius:7px;background:var(--inp-bg);color:var(--text);font-size:12.5px;">
+      <span style="color:var(--gm);font-size:11px;">a</span>
+      <input type="date" id="cdrEnd_${c.id}" value="${r.end||''}" style="flex:1;padding:6px 8px;border:1.5px solid var(--inp-b);border-radius:7px;background:var(--inp-bg);color:var(--text);font-size:12.5px;">
+    </div>`;
+  }).join('');
+  document.getElementById('cicloDateRangesModal').classList.add('open');
+}
+function guardarCicloDateRanges(){
+  const ranges={};
+  CYCLES.forEach(c=>{
+    const s=document.getElementById('cdrStart_'+c.id).value;
+    const e=document.getElementById('cdrEnd_'+c.id).value;
+    if(s && e) ranges[c.id]={start:s,end:e};
+  });
+  const sd=getStudentData();
+  sd.cycleDateRanges=ranges;
+  saveLocal();
+  document.getElementById('cicloDateRangesModal').classList.remove('open');
+  showToast('✅ Fechas de ciclos guardadas — ahora las actividades se detectan automáticamente por fecha','success');
+  renderEvents();
 }
 
 function openCycle(id,highlightNum=null){
@@ -2481,10 +2601,12 @@ function openCycle(id,highlightNum=null){
   const isDone=!!(sd.cyclesDone&&sd.cyclesDone[id]);
   const allPass=cycle.subjects.every(s=>getEffectiveStatus(getSubjectData(s.num))==='pass');
   const started=cycle.subjects.some(s=>getEffectiveStatus(getSubjectData(s.num))!=='pending');
+  const enProceso=!!(getCyclesInProgress()[id]);
   let badge='';
   if(isDone) badge=`<span style="background:var(--pass);color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">✅ Finalizado</span>`;
   else if(allPass) badge=`<span style="background:var(--pass);color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">100%</span>`;
   else if(started) badge=`<span style="background:var(--pend);color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">Cursando</span>`;
+  if(enProceso && !isDone) badge+=`<span style="background:#8b5cf6;color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:6px;vertical-align:middle;">🔄 En Proceso</span>`;
   document.getElementById('cycleTitle').innerHTML=`${cycle.name} — ${cycle.year} ${badge}`;
   document.getElementById('cycleSubtitle').textContent=cycle.subjects.length+' asignaturas · 3 cómputos';
   document.getElementById('pensumView').classList.remove('active');
@@ -2665,6 +2787,38 @@ function setCalFilter(f,btn){
   renderEvents();
 }
 
+// ═══════════════════════════════════════════════════════════
+// FILTRO DE ACTIVIDADES POR CICLO — modal que lista todos los ciclos del
+// pénsum para filtrar la lista de actividades del calendario a solo las
+// que correspondan a un ciclo en particular (ver getCycleOfEvent()).
+// ═══════════════════════════════════════════════════════════
+function openCicloFilterModal(){
+  const wrap=document.getElementById('cicloFilterList');
+  const sd=getStudentData();
+  let html=`<button class="modal-btn ${calCycleFilter==='all'?'primary':'secondary'}" style="width:100%;margin-bottom:6px;" onclick="setCicloFilter('all')">Todos los ciclos</button>`;
+  html+=CYCLES.map(c=>{
+    const isDone=!!(sd.cyclesDone&&sd.cyclesDone[c.id]);
+    const enProceso=!!(sd.cyclesInProgress&&sd.cyclesInProgress[c.id]);
+    const tag=isDone?' ✅':(enProceso?' 🔄':'');
+    return `<button class="modal-btn ${calCycleFilter==c.id?'primary':'secondary'}" style="width:100%;margin-bottom:6px;text-align:left;" onclick="setCicloFilter(${c.id})">${escapeHtml(c.name)}${tag}</button>`;
+  }).join('');
+  wrap.innerHTML=html;
+  document.getElementById('cicloFilterModal').classList.add('open');
+}
+function closeCicloFilterModal(){
+  document.getElementById('cicloFilterModal').classList.remove('open');
+}
+function setCicloFilter(idOrAll){
+  calCycleFilter=idOrAll;
+  closeCicloFilterModal();
+  renderEvents();
+  const btn=document.getElementById('calCycleFilterBtn');
+  if(btn){
+    if(idOrAll==='all') btn.textContent='🔽 Filtrar por Ciclo';
+    else{ const c=CYCLES.find(cy=>cy.id===idOrAll); btn.textContent='🔽 '+(c?c.name:'Ciclo'); }
+  }
+}
+
 let currentEventType='';
 function addEvent(type){
   currentEventType=type;
@@ -2716,11 +2870,23 @@ function saveEvent(){
   const needsComputo=eventTypeNeedsComputo(currentEventType);
   const computo=needsComputo?parseInt(document.getElementById('eventComputo').value,10):null;
   const subject=isDI?null:document.getElementById('eventSubject').value;
-  appData[currentStudent].events.push({id:Date.now(),type:currentEventType,subject,date,comment,done:false,nota:undefined,computo});
+  const newEvent={id:Date.now(),type:currentEventType,subject,date,comment,done:false,nota:undefined,computo};
+  appData[currentStudent].events.push(newEvent);
   saveLocal();
   document.getElementById('addEventModal').classList.remove('open');
   renderEvents();showToast('Actividad guardada','success');
   refreshNotifBadge();
+  // Por fecha, detectar automáticamente a qué ciclo corresponde esta
+  // actividad (usando la materia si la tiene, o el rango de fechas
+  // configurado por el estudiante para las Actividades DI) y abrir ese
+  // ciclo directamente, para que quede claro de qué ciclo se trata.
+  const cycleOf=getCycleOfEvent(newEvent);
+  if(cycleOf){
+    closeCalendarModal();
+    showPensum();
+    openCycle(cycleOf.id);
+    showToast('📌 Esta actividad corresponde a: '+cycleOf.name+' — abriendo automáticamente','success');
+  }
 }
 function deleteEvent(id){
   appData[currentStudent].events=(appData[currentStudent].events||[]).filter(e=>e.id!==id);
@@ -2740,6 +2906,16 @@ function askDeleteEvent(id){
 function toggleEventDone(id,checked){
   const ev=(appData[currentStudent].events||[]).find(e=>e.id===id);
   if(!ev) return; ev.done=checked; saveLocal();renderEvents();refreshNotifBadge();
+  // Al marcar una Actividad DI del calendario como completada, se ofrece
+  // registrarla automáticamente en una bitácora (ver sección "ACTIVIDAD DI
+  // → BITÁCORA" más abajo).
+  if(checked && ev.type==='Actividad DI') openBitacoraDestinoModal(ev.id);
+}
+// Todas las Actividades DI anotadas en el calendario (para el selector
+// "Desde Actividad DI (calendario)" de la Bitácora y para el registro
+// automático al completar una).
+function getEventosDI(){
+  return (appData[currentStudent] && appData[currentStudent].events || []).filter(e=>e.type==='Actividad DI');
 }
 function setEventNota(id,val){
   const ev=(appData[currentStudent].events||[]).find(e=>e.id===id);
@@ -2774,14 +2950,16 @@ function renderEvents(){
   const list=document.getElementById('eventsList');
   const evs=appData[currentStudent].events||[];
   const sorted=[...evs].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const filtered=filterByPeriod(sorted,'date',calFilter);
-  if(!filtered.length){list.innerHTML='<div style="color:var(--gm);text-align:center;padding:20px;">No hay actividades '+(calFilter!=='all'?'en este período.':'anotadas.')+' </div>';return;}
+  let filtered=filterByPeriod(sorted,'date',calFilter);
+  if(calCycleFilter!=='all') filtered=filtered.filter(ev=>{ const c=getCycleOfEvent(ev); return c && c.id===calCycleFilter; });
+  if(!filtered.length){list.innerHTML='<div style="color:var(--gm);text-align:center;padding:20px;">No hay actividades '+(calFilter!=='all'||calCycleFilter!=='all'?'en este filtro.':'anotadas.')+' </div>';return;}
   const today=new Date().toISOString().slice(0,10);
   const accent={'Lab 1':'var(--blue)','Lab 2':'var(--blue)','Parcial':'var(--pend)','Actividad DI':'#8b5cf6','Otra':'var(--gl)'};
   list.innerHTML=filtered.map(ev=>{
     let sname='';CYCLES.forEach(c=>c.subjects.forEach(s=>{if(s.num===ev.subject)sname=s.name;}));
     const past=ev.date<today&&!ev.done;
     const isDI=ev.type==='Actividad DI';
+    const cycleOf=getCycleOfEvent(ev);
     return `<div class="cal-event-row${ev.done?' ev-done':''}" style="border-left:4px solid ${accent[ev.type]||'var(--gl)'};">
       <div class="ev-top">
         <input type="checkbox" class="ev-check" ${ev.done?'checked':''} onchange="toggleEventDone(${ev.id},this.checked)">
@@ -2792,6 +2970,7 @@ function renderEvents(){
         <button class="ev-del-btn" style="${isDI?'margin-left:auto;':''}" onclick="askDeleteEvent(${ev.id})">🗑</button>
       </div>
       ${sname?`<div class="ev-sub">${sname}</div>`:''}
+      ${cycleOf?`<div class="ev-sub" style="color:#8b5cf6;">📚 ${escapeHtml(cycleOf.name)}</div>`:''}
       ${ev.comment?`<div class="ev-sub" style="font-style:italic;">"${ev.comment}"</div>`:''}
     </div>`;
   }).join('');
@@ -3179,11 +3358,13 @@ function renderAsistencia(){
   if(!filtered.length){hist.innerHTML='<div style="color:var(--gm);text-align:center;padding:12px;">Sin registros en este período.</div>';return;}
   hist.innerHTML=filtered.map(a=>{
     const isToday=a.fecha===key;
+    const icon=a.manual?'📝':(isToday?'✅':'📌');
     return `<div class="asist-hist-row${isToday?' today-row':''}">
-      <span style="font-size:17px;">${isToday?'✅':'📌'}</span>
+      <span style="font-size:17px;">${icon}</span>
       <div style="flex:1;">
-        <div style="font-weight:700;font-size:13px;color:${isToday?'var(--pass)':'var(--text)'};">${a.fecha}${isToday?' <span style="font-size:9px;background:var(--pass);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">HOY</span>':''}</div>
-        <div style="font-size:11px;color:var(--gm);">🕐 ${a.hora}</div>
+        <div style="font-weight:700;font-size:13px;color:${isToday?'var(--pass)':'var(--text)'};">${a.fecha}${isToday?' <span style="font-size:9px;background:var(--pass);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">HOY</span>':''}${a.manual?' <span style="font-size:9px;background:var(--pend);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">REGISTRO MANUAL</span>':''}</div>
+        <div style="font-size:11px;color:var(--gm);">🕐 Entrada: ${a.hora}${a.horaSalida?' · Salida: '+a.horaSalida:''}</div>
+        ${a.manual?`<div style="font-size:11px;color:var(--pend);margin-top:2px;">📋 Motivo: ${escapeHtml(a.motivo||'')}</div>`:''}
       </div>
       <button onclick="borrarAsistencia('${a.fecha}')" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:13px;">🗑</button>
     </div>`;
@@ -3192,6 +3373,56 @@ function renderAsistencia(){
 function borrarAsistencia(fecha){
   if(!confirm('¿Eliminar este registro?')) return;
   delete getAsistencias()[fecha];saveLocal();renderAsistencia();
+}
+
+// ═══════════════════════════════════════════════════════════
+// ASISTENCIA MANUAL ATRASADA — para cuando el estudiante olvidó marcar
+// un día en específico y ya pasó ese día. Pide justificación (con motivos
+// predefinidos: "OLVIDO DE MARCACIÓN" / "SIN WIFI" / otro a escribir) y la
+// hora de entrada y salida de ese día.
+// ═══════════════════════════════════════════════════════════
+function openAsistenciaManual(){
+  const y=new Date(); y.setDate(y.getDate()-1);
+  const ayer=y.toISOString().slice(0,10);
+  const fechaInp=document.getElementById('asistManualFecha');
+  fechaInp.value='';
+  fechaInp.max=ayer;
+  document.getElementById('asistManualEntrada').value='';
+  document.getElementById('asistManualSalida').value='';
+  document.getElementById('asistManualMotivo').innerHTML=MOTIVOS_ASISTENCIA_MANUAL.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('asistManualMotivo').value='OLVIDO DE MARCACIÓN';
+  document.getElementById('asistManualOtroField').style.display='none';
+  document.getElementById('asistManualOtro').value='';
+  document.getElementById('asistenciaManualModal').classList.add('open');
+}
+function closeAsistenciaManual(){
+  document.getElementById('asistenciaManualModal').classList.remove('open');
+}
+function onAsistManualMotivoChange(){
+  const esOtro=document.getElementById('asistManualMotivo').value==='Otro';
+  document.getElementById('asistManualOtroField').style.display=esOtro?'':'none';
+}
+function guardarAsistenciaManual(){
+  const fecha=document.getElementById('asistManualFecha').value;
+  const entrada=document.getElementById('asistManualEntrada').value;
+  const salida=document.getElementById('asistManualSalida').value;
+  const motivoSel=document.getElementById('asistManualMotivo').value;
+  const motivoOtro=document.getElementById('asistManualOtro').value.trim();
+  const hoyKey=getTodayKey();
+  if(!fecha){showToast('Selecciona la fecha del día que olvidaste marcar','error');return;}
+  if(fecha>=hoyKey){showToast('Esta opción es solo para días anteriores a hoy — usa "Marcar Asistencia de Hoy" para el día actual','error');return;}
+  if(!entrada){showToast('Ingresa la hora de entrada de ese día','error');return;}
+  if(!salida){showToast('Ingresa la hora de salida de ese día','error');return;}
+  if(motivoSel==='Otro'&&!motivoOtro){showToast('Describe el motivo por el que no marcaste asistencia ese día','error');return;}
+  const lista=getAsistencias();
+  if(lista[fecha]){showToast('Ya existe un registro de asistencia para esa fecha','error');return;}
+  const motivoFinal=motivoSel==='Otro'?motivoOtro:motivoSel;
+  lista[fecha]={fecha,hora:entrada,horaSalida:salida,ts:new Date(fecha+'T'+entrada).toISOString(),manual:true,motivo:motivoFinal};
+  saveLocal();
+  renderAsistencia();
+  closeAsistenciaManual();
+  showToast('✅ Asistencia atrasada registrada con justificación','success');
+  _showAsistConfirm('diaConfirmBanner');
 }
 
 // Devuelve los registros de asistencia ya filtrados por el período activo
@@ -3361,22 +3592,26 @@ function generateAsistenciaPDF(){
   const drawTableHead=()=>{
     doc.setFillColor(...ASIST_PDF_LIGHT);
     doc.rect(14,y,pageW-28,8,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...ASIST_PDF_BLUE_DK);
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...ASIST_PDF_BLUE_DK);
     doc.text('#',18,y+5.5);
-    doc.text('Fecha',34,y+5.5);
-    doc.text('Hora',95,y+5.5);
+    doc.text('Fecha',30,y+5.5);
+    doc.text('Entrada',70,y+5.5);
+    doc.text('Salida',100,y+5.5);
+    doc.text('Motivo (registro atrasado)',130,y+5.5);
     doc.setTextColor(0,0,0);
     y+=12;
   };
   drawTableHead();
 
-  doc.setFont('helvetica','normal');doc.setFontSize(10);
+  doc.setFont('helvetica','normal');doc.setFontSize(9.5);
   filtered.forEach((a,i)=>{
-    if(y>262){ doc.addPage(); y=20; drawTableHead(); doc.setFont('helvetica','normal');doc.setFontSize(10); }
+    if(y>262){ doc.addPage(); y=20; drawTableHead(); doc.setFont('helvetica','normal');doc.setFontSize(9.5); }
     if(i%2===0){ doc.setFillColor(248,250,252); doc.rect(14,y-5.5,pageW-28,8,'F'); }
     doc.text(String(i+1),18,y);
-    doc.text(a.fecha,34,y);
-    doc.text(_horaCorta(a.ts),95,y);
+    doc.text(a.fecha,30,y);
+    doc.text(a.manual?(a.hora||'—'):_horaCorta(a.ts),70,y);
+    doc.text(a.horaSalida||'—',100,y);
+    doc.text(a.manual?_asistPdfTrunc(a.motivo,42):'—',130,y);
     y+=8;
   });
 
@@ -3402,11 +3637,11 @@ function exportAsistenciaExcel(){
   const careerLabel=(CAREERS[currentCareer]&&CAREERS[currentCareer].label)||'';
   const thStyle='style="background:#1d40af;color:#fff;font-weight:bold;"';
   let html='<table border="1"><thead>'
-    +'<tr><th colspan="2" '+thStyle+'>🏛 Asistencia Diaria — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
-    +'<tr><th colspan="2" '+thStyle+'>Período: '+escapeHtml(_asistFilterLabel())+'</th></tr>'
-    +'<tr><th '+thStyle+'>Fecha</th><th '+thStyle+'>Hora</th></tr></thead><tbody>';
-  filtered.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora)+'</td></tr>'; });
-  html+='<tr><td><b>Total</b></td><td><b>'+filtered.length+'</b></td></tr></tbody></table>';
+    +'<tr><th colspan="5" '+thStyle+'>🏛 Asistencia Diaria — '+escapeHtml(currentStudent)+(careerLabel?' · '+escapeHtml(careerLabel):'')+'</th></tr>'
+    +'<tr><th colspan="5" '+thStyle+'>Período: '+escapeHtml(_asistFilterLabel())+'</th></tr>'
+    +'<tr><th '+thStyle+'>Fecha</th><th '+thStyle+'>Entrada</th><th '+thStyle+'>Salida</th><th '+thStyle+'>Registro</th><th '+thStyle+'>Motivo (si es atrasado)</th></tr></thead><tbody>';
+  filtered.forEach(a=>{ html+='<tr><td>'+escapeHtml(a.fecha)+'</td><td>'+escapeHtml(a.hora||'')+'</td><td>'+escapeHtml(a.horaSalida||'')+'</td><td>'+(a.manual?'Manual (atrasado)':'Automático')+'</td><td>'+escapeHtml(a.manual?(a.motivo||''):'')+'</td></tr>'; });
+  html+='<tr><td><b>Total</b></td><td colspan="4"><b>'+filtered.length+'</b></td></tr></tbody></table>';
   const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -4626,6 +4861,8 @@ async function syncToFirebase(isAuto=false){
       window.FirebaseDB.guardarNotas(currentStudent, currentCareer, notasArray),
       window.FirebaseDB.guardarEventos(currentStudent, currentCareer, sd.events||[]),
       window.FirebaseDB.guardarCiclosDone(currentStudent, currentCareer, sd.cyclesDone||{}),
+      window.FirebaseDB.guardarCiclosEnProceso(currentStudent, currentCareer, sd.cyclesInProgress||{}),
+      window.FirebaseDB.guardarCycleDateRanges(currentStudent, currentCareer, sd.cycleDateRanges||{}),
       window.FirebaseDB.guardarEspeciales(currentStudent, currentCareer, sd.specialCards||{}),
       window.FirebaseDB.guardarAsistencias(currentStudent, currentCareer, sd.asistencias||{}),
       window.FirebaseDB.guardarAsistenciasActividad(currentStudent, currentCareer, sd.asistenciasActividad||{}),
@@ -4650,12 +4887,14 @@ async function fetchFromFirebase(silent=false){
   try{
     await window.__firebaseReady;
     const { perfil, notas, eventos, asistencias, asistenciasActividad, pensumHistorial } = await window.FirebaseDB.cargarEstudianteUnaVez(currentStudent, currentCareer);
-    if(!appData[currentStudent]) appData[currentStudent]={notas:{},events:[],cyclesDone:{},asistencias:{}, asistenciasActividad:{},specialCards:{},undoStack:[]};
+    if(!appData[currentStudent]) appData[currentStudent]={notas:{},events:[],cyclesDone:{},asistencias:{}, asistenciasActividad:{}, cyclesInProgress:{}, cycleDateRanges:{},specialCards:{},undoStack:[]};
     // Reemplazar completamente con datos de Firestore (Firestore = fuente de verdad)
     appData[currentStudent].notas={};
     notas.forEach(row=>{appData[currentStudent].notas[row.num]={status:row.status,finalGrade:(row.finalGrade===''||row.finalGrade===undefined)?null:parseFloat(row.finalGrade),computos:[{lab1:row.lab1_c1,lab2:row.lab2_c1,parcial:row.parcial_c1},{lab1:row.lab1_c2,lab2:row.lab2_c2,parcial:row.parcial_c2},{lab1:row.lab1_c3,lab2:row.lab2_c3,parcial:row.parcial_c3}]};});
     if(eventos && eventos.length) appData[currentStudent].events=eventos;
     if(perfil && perfil.cyclesDone) appData[currentStudent].cyclesDone=Object.assign(appData[currentStudent].cyclesDone||{},perfil.cyclesDone);
+    if(perfil && perfil.cyclesInProgress) appData[currentStudent].cyclesInProgress=Object.assign(appData[currentStudent].cyclesInProgress||{},perfil.cyclesInProgress);
+    if(perfil && perfil.cycleDateRanges) appData[currentStudent].cycleDateRanges=Object.assign(appData[currentStudent].cycleDateRanges||{},perfil.cycleDateRanges);
     if(asistencias) appData[currentStudent].asistencias=Object.assign(appData[currentStudent].asistencias||{},asistencias);
     if(asistenciasActividad) appData[currentStudent].asistenciasActividad=Object.assign(appData[currentStudent].asistenciasActividad||{},asistenciasActividad);
     if(perfil && perfil.pensumCycles){ appData[currentStudent].cycles=perfil.pensumCycles; CYCLES=JSON.parse(JSON.stringify(perfil.pensumCycles)); }
@@ -5188,6 +5427,106 @@ function bitacFinalizarBorrador() {
 
 // ── Modal: abrir con todos los campos en blanco (salvo lo que el propio
 // usuario haya guardado antes para este estudiante) ──
+// ═══════════════════════════════════════════════════════════
+// ACTIVIDAD DI (calendario) → BITÁCORA — al marcar una Actividad DI como
+// completada en el calendario, se pregunta en qué bitácora guardarla y se
+// rellena automáticamente una fila (fecha + descripción de la actividad)
+// en esa bitácora, sin necesidad de abrir todo el formulario a mano.
+// ═══════════════════════════════════════════════════════════
+let _bitacoraDestinoEventId=null;
+function openBitacoraDestinoModal(eventId){
+  _bitacoraDestinoEventId=eventId;
+  const wrap=document.getElementById('bitacoraDestinoList');
+  const borradores=_bitacGetBorradores();
+  const nombres=Object.keys(borradores).sort();
+  let html='<button class="modal-btn primary" style="width:100%;margin-bottom:8px;" onclick="registrarActividadEnBitacoraNueva()">+ Nueva bitácora</button>';
+  if(nombres.length){
+    html+=nombres.map(n=>{
+      const b=borradores[n];
+      const estado=b.finalizado?' ✅ (finalizada)':' ✏️ (en progreso)';
+      return `<button class="modal-btn secondary" style="width:100%;margin-bottom:6px;text-align:left;" onclick="registrarActividadEnBitacoraExistente(${JSON.stringify(n)})">${escapeHtml(n)}${estado}</button>`;
+    }).join('');
+  } else {
+    html+='<p style="font-size:12px;color:var(--gm);text-align:center;">Todavía no tenés bitácoras guardadas — creá una nueva.</p>';
+  }
+  wrap.innerHTML=html;
+  document.getElementById('bitacoraDestinoModal').classList.add('open');
+}
+function closeBitacoraDestinoModal(){
+  document.getElementById('bitacoraDestinoModal').classList.remove('open');
+  _bitacoraDestinoEventId=null;
+}
+function registrarActividadEnBitacoraExistente(nombre){
+  const borradores=_bitacGetBorradores();
+  const b=borradores[nombre];
+  if(!b){showToast('No se encontró esa bitácora','error');return;}
+  _bitacGuardarActividadEnBorrador(nombre,b);
+}
+function registrarActividadEnBitacoraNueva(){
+  const borradoresActuales=_bitacGetBorradores();
+  let n=1; while(borradoresActuales['Borrador '+n]) n++;
+  const sugerido='Borrador '+n;
+  const nombre=(prompt('Nombre para la nueva bitácora (podés dejar el sugerido o escribir el que quieras):',sugerido)||'').trim();
+  if(!nombre) return;
+  _bitacGuardarActividadEnBorrador(nombre,_bitacDefaultBorrador());
+}
+// Borrador en blanco con los mismos valores por defecto que usa
+// openBitacoraDI() (perfil/técnico/sello guardados previamente, si hay).
+function _bitacDefaultBorrador(){
+  const bp=(appData[currentStudent]&&appData[currentStudent].bitacoraPerfil)||{};
+  return {
+    perfil:{
+      nombreEstudiante: bp.nombreEstudiante||currentStudent||'',
+      telefonoCorreo: bp.telefonoCorreo||'',
+      universidad: bp.universidad||'',
+      regional: bp.regional||'',
+      carrera: bp.carrera||'',
+      ciclo: bp.ciclo||''
+    },
+    tecnicoResponsable: bp.tecnicoResponsable||_userConfig.tecnicoDefault||'',
+    selloResponsable: bp.selloResponsable||_userConfig.selloDefault||'',
+    filas: { o:[], e:[] },
+    finalizado:false
+  };
+}
+// true si esta fila del borrador está sin usar (para encontrar dónde meter
+// la nueva fila "calendario" sin pisar datos que el estudiante ya llenó).
+function _bitacFilaVacia(f){
+  if(!f) return true;
+  if(!f.src || f.src==='manual') return !(f.actividad&&f.actividad.trim()) && !(f.fecha&&f.fecha.trim());
+  return !f.rec;
+}
+// Inserta una fila "calendario" (referenciando el evento) en la primera
+// fila libre del borrador: primero entre las 3 obligatorias, luego entre
+// las extra (hasta completar las 12 que trae la plantilla). Devuelve false
+// si las 12 ya están todas ocupadas.
+function _bitacInsertarFilaCalendario(borrador, eventId){
+  if(!borrador.filas) borrador.filas={o:[],e:[]};
+  if(!borrador.filas.o) borrador.filas.o=[];
+  if(!borrador.filas.e) borrador.filas.e=[];
+  const nuevaFila={src:'calendario', rec:String(eventId), tec:'', tecOtro:'', sello:''};
+  for(let i=0;i<3;i++){
+    if(_bitacFilaVacia(borrador.filas.o[i])){ borrador.filas.o[i]=nuevaFila; return true; }
+  }
+  for(let i=0;i<9;i++){
+    if(_bitacFilaVacia(borrador.filas.e[i])){ borrador.filas.e[i]=nuevaFila; return true; }
+  }
+  return false;
+}
+function _bitacGuardarActividadEnBorrador(nombre,borradorObj){
+  const eventId=_bitacoraDestinoEventId;
+  if(eventId==null){closeBitacoraDestinoModal();return;}
+  const ok=_bitacInsertarFilaCalendario(borradorObj,eventId);
+  if(!ok){showToast('Esa bitácora ya tiene las 12 filas llenas — elegí otra o creá una nueva','error');return;}
+  borradorObj.actualizado=new Date().toISOString();
+  const borradores=_bitacGetBorradores();
+  borradores[nombre]=borradorObj;
+  try{saveLocal();}catch(e){}
+  window.FirebaseDB.guardarBitacoraBorradores(currentStudent, currentCareer, borradores).catch(()=>{});
+  closeBitacoraDestinoModal();
+  showToast('✅ Actividad registrada en la bitácora "'+nombre+'"','success');
+}
+
 function openBitacoraDI() {
   if (!currentStudent) { showToast('Selecciona un estudiante primero', 'error'); return; }
   const bp = (appData[currentStudent] && appData[currentStudent].bitacoraPerfil) || {};
@@ -5250,6 +5589,7 @@ function _bitacRenderRows(group) {
           <option value="manual">Escribir manualmente</option>
           <option value="diaria">Desde Asistencia diaria</option>
           <option value="actividad">Desde Actividad DI</option>
+          <option value="calendario">Desde Actividad DI (calendario)</option>
         </select>
       </div>
       <div id="bitFields_${group}_${i}" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;"></div>
@@ -5370,6 +5710,12 @@ function _bitacSourceChange(group, n) {
     cont.innerHTML = `
       <div class="modal-field" style="margin-bottom:0;"><label>Registro de Actividad DI</label><select id="bitRec_${group}_${n}">${opts || '<option value="">Sin registros</option>'}</select></div>
       ${_bitacTecFieldHTML(group, n)}`;
+  } else if (src === 'calendario') {
+    const entries = getEventosDI().sort((a, b) => String(b.date||'').localeCompare(a.date||''));
+    const opts = entries.map(a => `<option value="${a.id}">${a.date} — ${_asistPdfTrunc(a.comment,40)}</option>`).join('');
+    cont.innerHTML = `
+      <div class="modal-field" style="margin-bottom:0;"><label>Actividad DI del calendario</label><select id="bitRec_${group}_${n}">${opts || '<option value="">Sin Actividades DI en el calendario</option>'}</select></div>
+      ${_bitacTecFieldHTML(group, n)}`;
   }
 }
 
@@ -5396,6 +5742,10 @@ function _bitacLeerFila(group, n) {
       fecha = rec.fecha;
       if (rec.tecnico) tecNombre = rec.tecnico;
     }
+  } else if (src === 'calendario') {
+    const recSel = document.getElementById(`bitRec_${group}_${n}`);
+    const rec = recSel && recSel.value ? getEventosDI().find(e => String(e.id) === String(recSel.value)) : null;
+    if (rec) { actividad = rec.comment || 'Actividad DI'; fecha = rec.date; }
   }
 
   const tecSel  = document.getElementById(`bitTec_${group}_${n}`);

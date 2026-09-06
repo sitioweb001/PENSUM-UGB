@@ -174,6 +174,54 @@ export async function eliminarRegistroBitacora(nombre, carrera, registroId) {
 }
 
 // ============================================================
+// RESPALDO AUTOMÁTICO DEL ESTUDIANTE — copia de seguridad silenciosa que
+// se guarda sola cada vez que pasa algo importante (se genera una Bitácora
+// o se marca una asistencia), para tener de dónde recuperar si alguien
+// borra algo por error. Se guardan como máximo las últimas
+// RESPALDO_MAX_VERSIONES por estudiante — al llegar al límite se borra la
+// más vieja automáticamente. Esto es ADEMÁS del respaldo manual de
+// ☰ → Exportar JSON, no en vez de él.
+// ============================================================
+const RESPALDO_MAX_VERSIONES = 10;
+
+export async function guardarRespaldoEstudiante(nombre, carrera, datosJSON, motivo) {
+  const id  = studentId(nombre, carrera);
+  const col = collection(db, 'estudiantes', id, 'respaldos');
+  const ref = doc(col);
+  const tsLocal = new Date().toISOString();
+  await setDoc(ref, { motivo: motivo || '', tsLocal, ts: serverTimestamp(), datos: datosJSON });
+
+  // Retención: si ya hay más de RESPALDO_MAX_VERSIONES, borra las más viejas.
+  try {
+    const snap = await getDocs(col);
+    const docs = snap.docs.sort((a, b) => String(b.data().tsLocal || '').localeCompare(String(a.data().tsLocal || '')));
+    if (docs.length > RESPALDO_MAX_VERSIONES) {
+      for (const d of docs.slice(RESPALDO_MAX_VERSIONES)) { await deleteDoc(d.ref); }
+    }
+  } catch (e) { console.error('No se pudo limpiar respaldos viejos', e); }
+  return ref.id;
+}
+
+export async function listarRespaldosEstudiante(nombre, carrera) {
+  const id = studentId(nombre, carrera);
+  const snap = await getDocs(collection(db, 'estudiantes', id, 'respaldos'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => String(b.tsLocal || '').localeCompare(String(a.tsLocal || '')));
+}
+
+export async function obtenerRespaldoEstudiante(nombre, carrera, respaldoId) {
+  const id = studentId(nombre, carrera);
+  const snap = await getDoc(doc(db, 'estudiantes', id, 'respaldos', respaldoId));
+  if (!snap.exists()) throw new Error('Ese respaldo ya no existe');
+  return snap.data();
+}
+
+export async function eliminarRespaldoEstudiante(nombre, carrera, respaldoId) {
+  const id = studentId(nombre, carrera);
+  await deleteDoc(doc(db, 'estudiantes', id, 'respaldos', respaldoId));
+}
+
+// ============================================================
 // TÉCNICOS DI — lista compartida entre todos los estudiantes (no es un
 // dato por-estudiante, así que vive en su propia colección al nivel raíz).
 // ============================================================
@@ -192,6 +240,36 @@ export async function guardarTecnico(id, data) {
 
 export async function eliminarTecnico(id) {
   await deleteDoc(doc(db, 'tecnicos', id));
+}
+
+// ── Historial de firmas/sellos por técnico — cada vez que se reemplaza la
+// firma o el sello, la versión anterior queda guardada acá en vez de
+// perderse. Se conservan las últimas HISTORIAL_IMAGEN_MAX_VERSIONES de
+// cada tipo (firma / sello) por técnico. ──
+const HISTORIAL_IMAGEN_MAX_VERSIONES = 5;
+
+export async function guardarHistorialImagenTecnico(tecnicoId, tipo, dataUrl) {
+  if (!tecnicoId || !dataUrl) return;
+  const col = collection(db, 'tecnicos', tecnicoId, 'historialImagenes');
+  const ref = doc(col);
+  const tsLocal = new Date().toISOString();
+  await setDoc(ref, { tipo, dataUrl, tsLocal, ts: serverTimestamp() });
+  try {
+    const snap = await getDocs(col);
+    const delMismoTipo = snap.docs.filter(d => d.data().tipo === tipo)
+      .sort((a, b) => String(b.data().tsLocal || '').localeCompare(String(a.data().tsLocal || '')));
+    if (delMismoTipo.length > HISTORIAL_IMAGEN_MAX_VERSIONES) {
+      for (const d of delMismoTipo.slice(HISTORIAL_IMAGEN_MAX_VERSIONES)) { await deleteDoc(d.ref); }
+    }
+  } catch (e) { console.error('No se pudo limpiar historial de imágenes viejo', e); }
+}
+
+export async function listarHistorialImagenesTecnico(tecnicoId, tipo) {
+  if (!tecnicoId) return [];
+  const snap = await getDocs(collection(db, 'tecnicos', tecnicoId, 'historialImagenes'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(x => !tipo || x.tipo === tipo)
+    .sort((a, b) => String(b.tsLocal || '').localeCompare(String(a.tsLocal || '')));
 }
 
 // ============================================================

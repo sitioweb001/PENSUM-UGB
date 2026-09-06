@@ -939,18 +939,27 @@ async function _intentarAutoInicioHuella() {
 const SESION_PERSISTENTE_MS = 24 * 60 * 60 * 1000; // 1 día completo
 function _leerSesionPersistente() {
   try {
-    if (localStorage.getItem('ugb_mantener_sesion') !== '1') return null;
+    if (localStorage.getItem('ugb_mantener_sesion') !== '1') {
+      console.log('[Sesión] No hay "mantener sesión iniciada" activa en este dispositivo (flag apagado).');
+      return null;
+    }
     const estudiante = localStorage.getItem('ugb_ses_estudiante');
     const carrera    = localStorage.getItem('ugb_ses_carrera');
     const ts = parseInt(localStorage.getItem('ugb_ses_actividad') || '0', 10);
-    if (!estudiante || !carrera || !ts) return null;
-    if (Date.now() - ts > SESION_PERSISTENTE_MS) {
-      // Pasó más de un día completo sin ingresar — la sesión expira sola.
-      _borrarSesionPersistente();
+    if (!estudiante || !carrera || !ts) {
+      console.log('[Sesión] Flag activo pero faltan datos guardados (estudiante/carrera/fecha) — se ignora.', {estudiante, carrera, ts});
       return null;
     }
+    const horasInactivo = ((Date.now() - ts) / 3600000).toFixed(1);
+    if (Date.now() - ts > SESION_PERSISTENTE_MS) {
+      // Pasó más de un día completo sin ingresar — la sesión expira sola.
+      console.log('[Sesión] Expirada por inactividad ('+horasInactivo+'h sin abrir la app) — se borra.');
+      _borrarSesionPersistente('expiró por inactividad ('+horasInactivo+'h)');
+      return null;
+    }
+    console.log('[Sesión] Sesión persistente válida encontrada:', estudiante, '/', carrera, '— última actividad hace', horasInactivo, 'h');
     return { estudiante, carrera };
-  } catch (e) { return null; }
+  } catch (e) { console.error('[Sesión] Error leyendo sesión persistente (¿localStorage bloqueado?):', e); return null; }
 }
 function _guardarSesionPersistente(estudiante, carrera) {
   try {
@@ -958,31 +967,35 @@ function _guardarSesionPersistente(estudiante, carrera) {
     localStorage.setItem('ugb_ses_estudiante', estudiante);
     localStorage.setItem('ugb_ses_carrera', carrera);
     localStorage.setItem('ugb_ses_actividad', String(Date.now()));
-  } catch (e) {}
+    console.log('[Sesión] ✓ Guardada como persistente en este dispositivo:', estudiante, '/', carrera);
+  } catch (e) { console.error('[Sesión] No se pudo guardar la sesión persistente (¿localStorage bloqueado/modo privado?):', e); }
 }
 // Refresca el "último uso" — se llama cada vez que se entra a la app
-// (login normal, con huella, o restauración automática), así el día
-// completo de inactividad se cuenta desde la última vez que se usó de
-// verdad, no desde el momento en que se activó la opción.
+// (login normal, con huella, o restauración automática) y cada vez que se
+// guarda algo, así el día completo de inactividad se cuenta desde la
+// última vez que se usó de verdad, no desde que se activó la opción.
 function _marcarActividadSesion() {
   try { if (localStorage.getItem('ugb_mantener_sesion') === '1') localStorage.setItem('ugb_ses_actividad', String(Date.now())); }
   catch (e) {}
 }
-function _borrarSesionPersistente() {
+function _borrarSesionPersistente(motivo) {
+  const habiaActiva = (function(){ try { return localStorage.getItem('ugb_mantener_sesion')==='1'; } catch(e){ return false; } })();
   try {
     localStorage.removeItem('ugb_mantener_sesion');
     localStorage.removeItem('ugb_ses_estudiante');
     localStorage.removeItem('ugb_ses_carrera');
     localStorage.removeItem('ugb_ses_actividad');
   } catch (e) {}
+  if (habiaActiva) console.log('[Sesión] Sesión persistente borrada' + (motivo ? (' — motivo: ' + motivo) : ''));
 }
 // Se llama justo después de un login EXITOSO (contraseña o huella, nunca
 // durante la restauración automática) para activar/desactivar la opción
 // según el estado del checkbox del login.
 function _aplicarPreferenciaSesionActual(nombre) {
   const chk = document.getElementById('mantenerSesionChk');
+  console.log('[Sesión] Checkbox "mantener sesión" al iniciar sesión:', chk ? (chk.checked ? 'MARCADO' : 'desmarcado') : 'NO ENCONTRADO EN EL DOM (¿versión vieja de index.html?)');
   if (chk && chk.checked) _guardarSesionPersistente(nombre, currentCareer);
-  else _borrarSesionPersistente();
+  else _borrarSesionPersistente(chk ? 'checkbox desmarcado al iniciar sesión' : 'checkbox no existe en este index.html');
 }
 // true si HAY una sesión persistente activa ahora mismo en este
 // dispositivo (para reflejar el estado en el checkbox del login y en el
@@ -1004,7 +1017,7 @@ function abrirSesionPersistenteModal() {
 }
 function toggleSesionPersistenteDesdeApp(checked) {
   if (checked) _guardarSesionPersistente(currentStudent, currentCareer);
-  else _borrarSesionPersistente();
+  else _borrarSesionPersistente('desactivada desde el menú Cuenta');
   const estado = document.getElementById('sesionPersistenteEstado');
   if (estado) estado.textContent = checked
     ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — no se pedirá iniciar sesión de nuevo aquí hasta que cierres sesión o pase un día completo sin usar la app.'
@@ -1247,15 +1260,39 @@ async function init() {
   // Si en este dispositivo se activó esa opción y no pasó un día completo
   // sin usar la app, se entra directo con ese estudiante — sin pasar por
   // selección de carrera, ni login, ni huella.
+  //
+  // IMPORTANTE: una vez que selectStudent() arranca, cualquier error NO
+  // crítico que ocurra más adelante (por ejemplo al revisar notificaciones
+  // o sincronizar) NUNCA debe hacer que la pantalla "retroceda" a login —
+  // eso es exactamente lo mismo que le pasa a un login normal con
+  // contraseña, que tampoco deshace la app si algo falla después. Por eso
+  // acá solo se protege con try/catch la parte síncrona previa (elegir
+  // carrera y pintar el encabezado); selectStudent() se deja correr sola,
+  // y si falla, solo se registra en consola sin tocar la pantalla si la
+  // app ya se alcanzó a mostrar.
   const sesion = _leerSesionPersistente();
+  console.log('[Sesión] Resultado de _leerSesionPersistente():', sesion);
   if (sesion && CAREERS[sesion.carrera]) {
     try {
       currentCareer = sesion.carrera;
       localStorage.setItem('ugb_career', sesion.carrera);
       CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles));
       _aplicarCareerHeaderUI(currentCareer);
+      // Ocultar YA MISMO ambas pantallas (selección de carrera y login) —
+      // así, pase lo que pase mientras selectStudent() descarga los datos,
+      // no queda nada clickeable de la pantalla de login/carrera de fondo.
+      document.getElementById('careerSelectView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'none';
       _showLoading('Bienvenido/a de nuevo, ' + sesion.estudiante + '...', 'Restaurando tu sesión');
-      await selectStudent(sesion.estudiante);
+      selectStudent(sesion.estudiante).catch(e => {
+        console.error('[Sesión] selectStudent falló durante la restauración automática:', e);
+        // Si a pesar del error ya se alcanzó a mostrar la app, la dejamos
+        // como está — no tiene sentido tirar abajo una sesión que sí cargó.
+        if (document.getElementById('appView').style.display !== 'block') {
+          _hideLoading();
+          document.getElementById('careerSelectView').style.display = 'flex';
+        }
+      });
       return;
     } catch (e) {
       console.error('[Sesión] No se pudo restaurar la sesión automáticamente:', e);
@@ -1414,8 +1451,7 @@ function limpiarCache() {
   // Borrar solo datos locales (no config ni tema)
   localStorage.removeItem('ugb_pensum_appdata');
   localStorage.removeItem('ugb_last_student');
-  _borrarSesionPersistente();
-  showToast('🧹 Caché limpiado — recargando...', 'success');
+  _borrarSesionPersistente('se limpió la caché local');
   setTimeout(() => location.reload(), 800);
 }
 
@@ -1851,8 +1887,7 @@ async function resetearBaseDeDatosUI() {
     document.getElementById('bottomBar').style.display = 'none';
     document.getElementById('loginView').style.display = 'flex';
     localStorage.removeItem('ugb_last_student');
-    _borrarSesionPersistente();
-    renderStudentList();
+    _borrarSesionPersistente('se reseteó la base de datos local');
 
     _hideLoading();
     showToast(`✅ Base de datos reiniciada (${res.cuentasBorradas} cuenta(s) borradas)`, 'success');
@@ -1865,11 +1900,7 @@ async function resetearBaseDeDatosUI() {
 function changeStudent() {
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
-  _borrarSesionPersistente();
-  document.getElementById('loginView').style.display='flex';
-  document.getElementById('appView').style.display='none';
-  document.getElementById('bottomBar').style.display='none';
-  document.getElementById('loginName').value='';
+  _borrarSesionPersistente('se presionó "Cambiar estudiante"');
   const _pEl=document.getElementById('loginPass'); if(_pEl)_pEl.value='';
   const _chk=document.getElementById('mantenerSesionChk'); if(_chk)_chk.checked=false;
   stopAutoSyncInterval();
@@ -1939,15 +1970,7 @@ function cerrarSesion(){
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
   localStorage.removeItem('ugb_career');
-  _borrarSesionPersistente();
-  stopAutoSyncInterval();
-  stopNotifWatcher();
-  closeDondeEstoy();
-  document.getElementById('dondeEstoyFab').style.display='none';
-  document.getElementById('appView').style.display='none';
-  document.getElementById('bottomBar').style.display='none';
-  document.getElementById('loginView').style.display='none';
-  document.getElementById('careerSelectView').style.display='flex';
+  _borrarSesionPersistente('se presionó "Cerrar sesión"');
   showToast('✓ Sesión cerrada','success');
 }
 
@@ -1969,7 +1992,7 @@ async function deleteStudent(name) {
   // Si ese estudiante tenía "mantener sesión iniciada" activa en este
   // dispositivo, se limpia para no intentar restaurar una cuenta borrada.
   try {
-    if (localStorage.getItem('ugb_ses_estudiante') === name) _borrarSesionPersistente();
+    if (localStorage.getItem('ugb_ses_estudiante') === name) _borrarSesionPersistente('se eliminó la cuenta "'+name+'"');
   } catch(e) {}
   showToast('✓ ' + name + ' eliminado', 'success');
 }
@@ -3487,6 +3510,7 @@ function marcarAsistencia(){
   const now=new Date();
   lista[key]={fecha:key,hora:now.toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),ts:now.toISOString()};
   saveLocal();renderAsistencia();
+  _respaldarEstudianteAuto('Asistencia diaria marcada — ' + key);
   showToast('✅ Asistencia verificada','success');
   _showAsistConfirm('diaConfirmBanner');
 }
@@ -3537,7 +3561,84 @@ function borrarAsistencia(fecha){
 }
 
 // ═══════════════════════════════════════════════════════════
-// ASISTENCIA MANUAL — para cuando el estudiante olvidó marcar un día
+// RESPALDO AUTOMÁTICO — se dispara solo, nunca hay que tocar nada, cada
+// vez que pasa algo importante (se genera una Bitácora o se marca/edita
+// una asistencia). Guarda una copia completa de los datos del estudiante
+// en Firestore, con las últimas 10 versiones disponibles para recuperar
+// desde ☰ → Respaldos automáticos. Es ADEMÁS del respaldo manual
+// (☰ → Exportar JSON), no en vez de él — y si falla, nunca debe romper la
+// acción principal que lo disparó (por eso nunca lleva "await" ni bloquea).
+// ═══════════════════════════════════════════════════════════
+function _respaldarEstudianteAuto(motivo){
+  if(!currentStudent || !appData[currentStudent]) return;
+  let snapshot;
+  try { snapshot = JSON.parse(JSON.stringify(appData[currentStudent])); }
+  catch(e){ console.error('No se pudo preparar el respaldo automático', e); return; }
+  window.FirebaseDB.guardarRespaldoEstudiante(currentStudent, currentCareer, snapshot, motivo || '')
+    .catch(e => console.error('No se pudo guardar el respaldo automático', e));
+}
+
+let _respaldosCache = [];
+async function openRespaldosModal(){
+  if(!currentStudent){showToast('Selecciona un estudiante primero','error');return;}
+  document.getElementById('respaldosEstudianteNombre').textContent = currentStudent;
+  document.getElementById('respaldosModal').classList.add('open');
+  const cont = document.getElementById('respaldosList');
+  cont.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gm);">Cargando…</div>';
+  try {
+    _respaldosCache = await window.FirebaseDB.listarRespaldosEstudiante(currentStudent, currentCareer);
+    _renderRespaldosList();
+  } catch(e){
+    cont.innerHTML = '<div style="text-align:center;padding:16px;color:var(--fail);">No se pudieron cargar los respaldos.</div>';
+  }
+}
+
+function _renderRespaldosList(){
+  const cont = document.getElementById('respaldosList');
+  if(!_respaldosCache.length){ cont.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gm);">Todavía no hay respaldos automáticos para este estudiante — se van a ir creando solos a medida que se genere una Bitácora o se marque asistencia.</div>'; return; }
+  cont.innerHTML = _respaldosCache.map(r => {
+    const cuando = (r.tsLocal || '').slice(0,16).replace('T',' ') || '—';
+    return `<div class="asist-hist-row" style="cursor:default;">
+      <span style="font-size:17px;">🛟</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(cuando)}</div>
+        <div style="font-size:11px;color:var(--gm);">${escapeHtml(r.motivo || 'Respaldo automático')}</div>
+      </div>
+      <button onclick="descargarRespaldo('${r.id}')" title="Descargar este respaldo como JSON" style="background:transparent;border:none;color:var(--blue);cursor:pointer;font-size:14px;">⬇️</button>
+      <button onclick="restaurarRespaldo('${r.id}')" title="Restaurar este respaldo (reemplaza los datos actuales del estudiante)" style="background:transparent;border:none;color:var(--pend);cursor:pointer;font-size:14px;">♻️</button>
+    </div>`;
+  }).join('');
+}
+
+function descargarRespaldo(id){
+  const r = _respaldosCache.find(x => x.id === id);
+  if(!r) return;
+  const payload = { version:2, student:currentStudent, career:currentCareer, data:r.datos||{}, respaldoDe:r.tsLocal, motivo:r.motivo||'' };
+  const a=document.createElement('a');
+  a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(payload));
+  a.download='respaldo_'+currentStudent.replace(/\s+/g,'_')+'_'+(r.tsLocal||'').slice(0,10)+'.json';
+  a.click();
+  showToast('✓ Respaldo descargado','success');
+}
+
+// Restaurar SIEMPRE es una decisión manual del usuario — nunca se aplica
+// solo. Reemplaza los datos actuales del estudiante por los de ese
+// respaldo (igual que "Importar JSON"), y deja pedido un nuevo respaldo
+// del estado justo antes de restaurar, por si hiciera falta deshacerlo.
+function restaurarRespaldo(id){
+  const r = _respaldosCache.find(x => x.id === id);
+  if(!r) return;
+  const cuando = (r.tsLocal || '').slice(0,16).replace('T',' ');
+  if(!confirm('¿Restaurar el respaldo del ' + cuando + '?\n\nEsto reemplaza los datos actuales de ' + currentStudent + ' (asistencias, bitácoras, notas, etc.) por los de ese momento. Se guardará antes un respaldo del estado actual por si hace falta deshacerlo.')) return;
+  _respaldarEstudianteAuto('Estado justo antes de restaurar el respaldo del ' + cuando);
+  appData[currentStudent] = JSON.parse(JSON.stringify(r.datos || {}));
+  saveLocal();
+  renderPensum();
+  renderAsistencia();
+  refreshNotifBadge();
+  document.getElementById('respaldosModal').classList.remove('open');
+  showToast('♻️ Respaldo del ' + cuando + ' restaurado', 'success');
+}
 // (pasado o el de hoy) y también para EDITAR un registro que ya existe.
 // Pide justificación en los registros nuevos (motivos predefinidos:
 // "OLVIDO DE MARCACIÓN" / "SIN WIFI" / otro a escribir); al editar uno
@@ -3634,6 +3735,7 @@ function guardarAsistenciaManual(){
     reg.ediciones=(reg.ediciones||[]).concat([{motivo:motivoEdicion,ts:new Date().toISOString()}]);
     saveLocal();
     renderAsistencia();
+    _respaldarEstudianteAuto('Asistencia diaria editada — ' + fecha);
     closeAsistenciaManual();
     showToast('✏️ Registro corregido','success');
     return;
@@ -3648,6 +3750,7 @@ function guardarAsistenciaManual(){
   lista[fecha]={fecha,hora:entrada,horaSalida:salida,ts:new Date(fecha+'T'+entrada).toISOString(),manual:true,motivo:motivoFinal};
   saveLocal();
   renderAsistencia();
+  _respaldarEstudianteAuto('Asistencia diaria manual registrada — ' + fecha);
   closeAsistenciaManual();
   showToast('✅ Asistencia manual registrada con justificación','success');
   _showAsistConfirm('diaConfirmBanner');
@@ -3979,6 +4082,7 @@ function validarAsistenciaActividad(){
     document.getElementById('actFormTitulo').textContent='📝 Formulario de Asistencia DI';
     document.getElementById('actValidarBtn').textContent='✅ Validar Asistencia';
     renderAsistenciaActividad();
+    _respaldarEstudianteAuto('Asistencia DI editada — ' + fecha);
     showToast('✏️ Registro corregido','success');
     return;
   }
@@ -3994,6 +4098,7 @@ function validarAsistenciaActividad(){
   nieEl.value='';
   document.getElementById('actNombre').value='';
   renderAsistenciaActividad();
+  _respaldarEstudianteAuto('Asistencia DI registrada — ' + fecha);
   showToast('✅ Asistencia verificada','success');
   _showAsistConfirm('actConfirmBanner');
   // Ojo: antes acá se hacía nieEl.focus() para dejar el campo listo para la
@@ -6557,6 +6662,7 @@ function bitacConfirmarDescargaPDF() {
   _bitacDetenerAutoguardado();
   const _borradoresLimpios = _bitacGetBorradores();
   if (_borradoresLimpios[BITAC_AUTOSAVE_KEY]) { delete _borradoresLimpios[BITAC_AUTOSAVE_KEY]; window.FirebaseDB.guardarBitacoraBorradores(currentStudent, currentCareer, _borradoresLimpios).catch(()=>{}); }
+  _respaldarEstudianteAuto('Bitácora DI generada' + (editingId ? ' (edición)' : ''));
   showToast('✓ Bitácora DI generada', 'success');
   document.getElementById('bitacoraDIModal').classList.remove('open');
 }
@@ -6909,21 +7015,28 @@ async function guardarTecnicoNuevo() {
     encargado: (document.getElementById('tecEncargadoInput').value || '').trim()
   };
   const editId = document.getElementById('tecFormEditId').value || null;
+  // Técnico tal como estaba ANTES de este guardado — se usa para no perder
+  // la firma/sello anterior si se está reemplazando (queda en el historial).
+  const tecnicoAnterior = editId ? TECNICOS_DI.find(x => x.id === editId) : null;
   const firmaImg = document.getElementById('tecFirmaPreview');
   const selloImg = document.getElementById('tecSelloPreview');
   const firmaPending = firmaImg.dataset.pending;
   const selloPending = selloImg.dataset.pending;
   try {
     if (firmaPending) {
+      if (tecnicoAnterior && tecnicoAnterior.firma) window.FirebaseDB.guardarHistorialImagenTecnico(editId, 'firma', tecnicoAnterior.firma).catch(()=>{});
       const r = await _bitacDataUrlToResizedB64(firmaPending, 380);
       data.firmaB64 = r.dataUrl; data.firmaAspect = r.height / r.width;
     } else if (firmaImg.dataset.removed) {
+      if (tecnicoAnterior && tecnicoAnterior.firma) window.FirebaseDB.guardarHistorialImagenTecnico(editId, 'firma', tecnicoAnterior.firma).catch(()=>{});
       data.firmaB64 = null; data.firmaAspect = null;
     }
     if (selloPending) {
+      if (tecnicoAnterior && tecnicoAnterior.sello) window.FirebaseDB.guardarHistorialImagenTecnico(editId, 'sello', tecnicoAnterior.sello).catch(()=>{});
       const r = await _bitacDataUrlToResizedB64(selloPending, 260);
       data.selloB64 = r.dataUrl;
     } else if (selloImg.dataset.removed) {
+      if (tecnicoAnterior && tecnicoAnterior.sello) window.FirebaseDB.guardarHistorialImagenTecnico(editId, 'sello', tecnicoAnterior.sello).catch(()=>{});
       data.selloB64 = null;
     }
     await window.FirebaseDB.guardarTecnico(editId, data);
@@ -6962,6 +7075,50 @@ function editarTecnico(id) {
   if (t.firma) { const p = document.getElementById('tecFirmaPreview'); p.src = t.firma; p.style.display = 'inline-block'; _tecToggleQuitarBtn('firma', true); }
   if (t.sello) { const p = document.getElementById('tecSelloPreview'); p.src = t.sello; p.style.display = 'inline-block'; _tecToggleQuitarBtn('sello', true); }
   document.getElementById('tecFormTitle').textContent = 'Editando: ' + t.nombre;
+}
+
+// ── Historial de firmas/sellos por técnico — cada versión anterior queda
+// disponible acá en vez de perderse al reemplazar la firma o el sello
+// (se guarda desde guardarTecnicoNuevo, antes de sobrescribir). Restaurar
+// solo deja la imagen lista en el formulario — hay que tocar "Guardar
+// técnico" para que quede aplicada de verdad; nada se sobreescribe solo. ──
+let _historialImagenTipoActual = 'firma';
+async function abrirHistorialImagenTecnico(tipo) {
+  const editId = document.getElementById('tecFormEditId').value || null;
+  if (!editId) { showToast('Guardá el técnico primero — el historial se arma a partir de la próxima vez que reemplaces la ' + (tipo === 'firma' ? 'firma' : 'sello'), 'error'); return; }
+  _historialImagenTipoActual = tipo;
+  const t = TECNICOS_DI.find(x => x.id === editId);
+  document.getElementById('historialImagenTitulo').textContent = tipo === 'firma' ? '🕓 Historial de firmas' : '🕓 Historial de sellos';
+  document.getElementById('historialImagenTecnicoNombre').textContent = (t && t.nombre) || '';
+  const cont = document.getElementById('historialImagenList');
+  cont.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gm);">Cargando…</div>';
+  document.getElementById('historialImagenTecnicoModal').classList.add('open');
+  try {
+    const lista = await window.FirebaseDB.listarHistorialImagenesTecnico(editId, tipo);
+    if (!lista.length) { cont.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gm);">Todavía no hay versiones anteriores guardadas — van a ir apareciendo acá cada vez que reemplaces la ' + (tipo === 'firma' ? 'firma' : 'sello') + ' de este técnico.</div>'; return; }
+    cont.innerHTML = lista.map((v, idx) => {
+      const cuando = (v.tsLocal || '').slice(0, 16).replace('T', ' ');
+      return `<div class="asist-hist-row">
+        <img src="${v.dataUrl}" style="max-height:40px;max-width:90px;object-fit:contain;background:var(--bg);border:1px solid var(--gl);border-radius:6px;padding:3px;">
+        <div style="flex:1;font-size:11px;color:var(--gm);">${escapeHtml(cuando)}</div>
+        <button onclick="restaurarImagenTecnicoDesdeHistorial(${idx})" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;">↩️ Restaurar</button>
+      </div>`;
+    }).join('');
+    _historialImagenListaActual = lista;
+  } catch (e) {
+    cont.innerHTML = '<div style="text-align:center;padding:16px;color:var(--fail);">No se pudo cargar el historial.</div>';
+  }
+}
+let _historialImagenListaActual = [];
+function restaurarImagenTecnicoDesdeHistorial(idx) {
+  const v = _historialImagenListaActual[idx];
+  if (!v) return;
+  const kind = _historialImagenTipoActual;
+  const img = document.getElementById(kind === 'firma' ? 'tecFirmaPreview' : 'tecSelloPreview');
+  img.src = v.dataUrl; img.dataset.pending = v.dataUrl; img.style.display = 'inline-block'; delete img.dataset.removed;
+  _tecToggleQuitarBtn(kind, true);
+  document.getElementById('historialImagenTecnicoModal').classList.remove('open');
+  showToast('↩️ Versión anterior lista — tocá "Guardar técnico" para aplicarla', 'success');
 }
 
 async function borrarTecnico(id) {

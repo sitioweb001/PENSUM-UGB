@@ -179,6 +179,7 @@
     <div class="ham-item" onclick="importCSV();closeHam()"><span class="ham-ico">📁</span> Importar CSV</div>
     <div class="ham-item" onclick="exportJSON();closeHam()"><span class="ham-ico">💾</span> Exportar JSON</div>
     <div class="ham-item" onclick="importJSON();closeHam()"><span class="ham-ico">📂</span> Importar JSON</div>
+    <div class="ham-item" onclick="openRespaldosModal();closeHam()"><span class="ham-ico">🛟</span> Respaldos automáticos</div>
     <div class="ham-item" onclick="openPdfModal();closeHam()"><span class="ham-ico">🖨️</span> Imprimir / PDF</div>
 
     <div class="ham-divider"></div>
@@ -718,6 +719,19 @@
   </div>
 </div>
 
+<!-- Respaldos automáticos — copia de seguridad silenciosa del estudiante
+     actual, que se guarda sola cada vez que se genera una Bitácora o se
+     marca/edita una asistencia. Es ADEMÁS del respaldo manual (Exportar
+     JSON), no en vez de él. Restaurar es siempre una decisión manual. -->
+<div class="modal-overlay" id="respaldosModal">
+  <div class="modal" style="width:520px;max-width:94vw;max-height:88vh;overflow-y:auto;">
+    <h3 style="text-align:center;margin-bottom:3px;">🛟 Respaldos automáticos</h3>
+    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">Se guardan solos cada vez que se genera una Bitácora o se marca/edita una asistencia de <b id="respaldosEstudianteNombre"></b> — se conservan las últimas 10 versiones. Esto es ADEMÁS de "Exportar JSON", no lo reemplaza.</p>
+    <div id="respaldosList" style="max-height:55vh;overflow-y:auto;"></div>
+    <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('respaldosModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
 <!-- Técnicos DI — lista compartida usada por Bitácora DI -->
 <div class="modal-overlay" id="tecnicosModal">
   <div class="modal" style="width:560px;max-width:94vw;max-height:88vh;overflow-y:auto;">
@@ -736,6 +750,7 @@
           <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="document.getElementById('tecFirmaInput').click()">📁 Elegir archivo</button>
           <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="abrirFirmaPad()">✍️ Dibujar firma</button>
           <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="window.open('https://www.remove.bg/es','_blank')" title="Quitar el fondo de la foto antes de subirla">✂️ remove.bg</button>
+          <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="abrirHistorialImagenTecnico('firma')" title="Ver y recuperar firmas anteriores de este técnico">🕓 Historial</button>
           <button type="button" id="tecFirmaQuitarBtn" class="modal-btn secondary" style="display:none;padding:5px 10px;font-size:11px;color:var(--fail);" onclick="_tecQuitarImg('firma')">🗑 Quitar</button>
         </div>
         <input type="file" accept="image/*" id="tecFirmaInput" style="display:none;" onchange="_tecEditarImg(this,'firma')">
@@ -747,6 +762,7 @@
           <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="document.getElementById('tecSelloInput').click()">📁 Elegir archivo</button>
           <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="document.getElementById('tecSelloCam').click()">📷 Tomar foto</button>
           <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="window.open('https://www.remove.bg/es','_blank')" title="Quitar el fondo de la foto antes de subirla">✂️ remove.bg</button>
+          <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="abrirHistorialImagenTecnico('sello')" title="Ver y recuperar sellos anteriores de este técnico">🕓 Historial</button>
           <button type="button" id="tecSelloQuitarBtn" class="modal-btn secondary" style="display:none;padding:5px 10px;font-size:11px;color:var(--fail);" onclick="_tecQuitarImg('sello')">🗑 Quitar</button>
         </div>
         <input type="file" accept="image/*" id="tecSelloInput" style="display:none;" onchange="_tecEditarImg(this,'sello')">
@@ -763,6 +779,18 @@
     <div class="modal-field" style="margin-bottom:8px;"><input type="text" id="tecBuscarInput" placeholder="🔍 Buscar por nombre o sede…" oninput="_renderTecnicosList()"></div>
     <div id="tecnicosList"></div>
     <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('tecnicosModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Historial de firmas/sellos de un técnico — cada vez que se reemplaza
+     una firma o sello, la versión anterior queda acá en vez de perderse
+     (últimas 5 por tipo). Restaurar es siempre una decisión manual. -->
+<div class="modal-overlay" id="historialImagenTecnicoModal" style="z-index:10000;">
+  <div class="modal" style="width:460px;max-width:94vw;max-height:85vh;overflow-y:auto;">
+    <h3 style="text-align:center;margin-bottom:3px;" id="historialImagenTitulo">🕓 Historial</h3>
+    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">Versiones anteriores de <b id="historialImagenTecnicoNombre"></b> — se guardan las últimas 5. Restaurar la deja lista en el formulario; hay que tocar "Guardar técnico" para que quede aplicada.</p>
+    <div id="historialImagenList"></div>
+    <div class="modal-btns" style="margin-top:14px;"><button class="modal-btn primary" onclick="document.getElementById('historialImagenTecnicoModal').classList.remove('open')">Cerrar</button></div>
   </div>
 </div>
 

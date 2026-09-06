@@ -5,7 +5,7 @@
 // siempre de Firebase — este service worker NUNCA cachea eso, así que
 // nunca vas a ver datos viejos por culpa de la caché.
 
-const CACHE_NAME = 'pensum-ugb-v4'; // v4: asistencia atrasada, actividad DI -> bitácora, filtro/fechas de ciclos, botón "En Proceso", mantener sesión iniciada (24h)
+const CACHE_NAME = 'pensum-ugb-v5'; // v5: corrige "mantener sesión iniciada" (ya no vuelve al login si algo falla después de cargar)
 const SHELL_FILES = [
   './',
   './index.html',

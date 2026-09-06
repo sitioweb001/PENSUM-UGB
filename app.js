@@ -1220,6 +1220,15 @@ async function init() {
   // Si en este dispositivo se activó esa opción y no pasó un día completo
   // sin usar la app, se entra directo con ese estudiante — sin pasar por
   // selección de carrera, ni login, ni huella.
+  //
+  // IMPORTANTE: una vez que selectStudent() arranca, cualquier error NO
+  // crítico que ocurra más adelante (por ejemplo al revisar notificaciones
+  // o sincronizar) NUNCA debe hacer que la pantalla "retroceda" a login —
+  // eso es exactamente lo mismo que le pasa a un login normal con
+  // contraseña, que tampoco deshace la app si algo falla después. Por eso
+  // acá solo se protege con try/catch la parte síncrona previa (elegir
+  // carrera y pintar el encabezado); selectStudent() se deja correr sola,
+  // y si falla, solo se registra en consola sin tocar la pantalla.
   const sesion = _leerSesionPersistente();
   if (sesion && CAREERS[sesion.carrera]) {
     try {
@@ -1228,7 +1237,15 @@ async function init() {
       CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles));
       _aplicarCareerHeaderUI(currentCareer);
       _showLoading('Bienvenido/a de nuevo, ' + sesion.estudiante + '...', 'Restaurando tu sesión');
-      await selectStudent(sesion.estudiante);
+      selectStudent(sesion.estudiante).catch(e => {
+        console.error('[Sesión] selectStudent falló durante la restauración automática:', e);
+        // Si a pesar del error ya se alcanzó a mostrar la app, la dejamos
+        // como está — no tiene sentido tirar abajo una sesión que sí cargó.
+        if (document.getElementById('appView').style.display !== 'block') {
+          _hideLoading();
+          document.getElementById('careerSelectView').style.display = 'flex';
+        }
+      });
       return;
     } catch (e) {
       console.error('[Sesión] No se pudo restaurar la sesión automáticamente:', e);

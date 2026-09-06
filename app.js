@@ -867,6 +867,7 @@ async function loginConHuella(opts) {
     }
     _hideLoading();
     showToast('✓ Huella reconocida — bienvenido/a ' + nombre, 'success');
+    if (!silencioso) _aplicarPreferenciaSesionActual(nombre);
     selectStudent(nombre);
   } catch (e) {
     _hideLoading();
@@ -895,6 +896,93 @@ async function _intentarAutoInicioHuella() {
   if (!(await _huellaDisponibleEnEsteDispositivo())) return;
   try { await loginConHuella({ silencioso: true }); }
   catch (e) { console.warn('[Huella] Auto-inicio no se pudo completar:', e); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MANTENER SESIÓN INICIADA — a diferencia de la huella (que sigue pidiendo
+// tocar el lector cada vez, aunque sea "en silencio"), esta opción evita
+// TODA pantalla de login en este dispositivo: mientras esté activada, al
+// abrir la app se entra directo con el último estudiante que la activó,
+// hasta que:
+//   (a) esa persona cierre sesión explícitamente ("Cerrar sesión" o
+//       "Cambiar estudiante"), o
+//   (b) pase un día completo (24h) sin abrir la app en este dispositivo.
+// Guardado 100% local (localStorage, por dispositivo) — nunca en Firebase.
+// ═══════════════════════════════════════════════════════════
+const SESION_PERSISTENTE_MS = 24 * 60 * 60 * 1000; // 1 día completo
+function _leerSesionPersistente() {
+  try {
+    if (localStorage.getItem('ugb_mantener_sesion') !== '1') return null;
+    const estudiante = localStorage.getItem('ugb_ses_estudiante');
+    const carrera    = localStorage.getItem('ugb_ses_carrera');
+    const ts = parseInt(localStorage.getItem('ugb_ses_actividad') || '0', 10);
+    if (!estudiante || !carrera || !ts) return null;
+    if (Date.now() - ts > SESION_PERSISTENTE_MS) {
+      // Pasó más de un día completo sin ingresar — la sesión expira sola.
+      _borrarSesionPersistente();
+      return null;
+    }
+    return { estudiante, carrera };
+  } catch (e) { return null; }
+}
+function _guardarSesionPersistente(estudiante, carrera) {
+  try {
+    localStorage.setItem('ugb_mantener_sesion', '1');
+    localStorage.setItem('ugb_ses_estudiante', estudiante);
+    localStorage.setItem('ugb_ses_carrera', carrera);
+    localStorage.setItem('ugb_ses_actividad', String(Date.now()));
+  } catch (e) {}
+}
+// Refresca el "último uso" — se llama cada vez que se entra a la app
+// (login normal, con huella, o restauración automática), así el día
+// completo de inactividad se cuenta desde la última vez que se usó de
+// verdad, no desde el momento en que se activó la opción.
+function _marcarActividadSesion() {
+  try { if (localStorage.getItem('ugb_mantener_sesion') === '1') localStorage.setItem('ugb_ses_actividad', String(Date.now())); }
+  catch (e) {}
+}
+function _borrarSesionPersistente() {
+  try {
+    localStorage.removeItem('ugb_mantener_sesion');
+    localStorage.removeItem('ugb_ses_estudiante');
+    localStorage.removeItem('ugb_ses_carrera');
+    localStorage.removeItem('ugb_ses_actividad');
+  } catch (e) {}
+}
+// Se llama justo después de un login EXITOSO (contraseña o huella, nunca
+// durante la restauración automática) para activar/desactivar la opción
+// según el estado del checkbox del login.
+function _aplicarPreferenciaSesionActual(nombre) {
+  const chk = document.getElementById('mantenerSesionChk');
+  if (chk && chk.checked) _guardarSesionPersistente(nombre, currentCareer);
+  else _borrarSesionPersistente();
+}
+// true si HAY una sesión persistente activa ahora mismo en este
+// dispositivo (para reflejar el estado en el checkbox del login y en el
+// modal de cuenta).
+function _sesionPersistenteActiva() {
+  return !!_leerSesionPersistente();
+}
+// Botón/checkbox dentro de la app (menú ☰ → Cuenta) para ver el estado y
+// apagar la sesión persistente sin tener que cerrar sesión del todo.
+function abrirSesionPersistenteModal() {
+  const activa = _sesionPersistenteActiva();
+  const estado = document.getElementById('sesionPersistenteEstado');
+  const chk = document.getElementById('sesionPersistenteChk');
+  if (estado) estado.textContent = activa
+    ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — no se pedirá iniciar sesión de nuevo aquí hasta que cierres sesión o pase un día completo sin usar la app.'
+    : '🔒 Desactivada — este dispositivo pedirá iniciar sesión cada vez.';
+  if (chk) chk.checked = activa;
+  document.getElementById('sesionPersistenteModal').classList.add('open');
+}
+function toggleSesionPersistenteDesdeApp(checked) {
+  if (checked) _guardarSesionPersistente(currentStudent, currentCareer);
+  else _borrarSesionPersistente();
+  const estado = document.getElementById('sesionPersistenteEstado');
+  if (estado) estado.textContent = checked
+    ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — no se pedirá iniciar sesión de nuevo aquí hasta que cierres sesión o pase un día completo sin usar la app.'
+    : '🔒 Desactivada — este dispositivo pedirá iniciar sesión cada vez.';
+  showToast(checked ? '✓ Sesión se mantendrá iniciada en este dispositivo' : '✓ Sesión persistente desactivada', 'success');
 }
 
 // ── Modal "Huella de cuenta" — ver y quitar las huellas del estudiante
@@ -1128,9 +1216,44 @@ async function init() {
   const sz = localStorage.getItem('zoomLevel');
   if (sz) { currentZoom = parseInt(sz); document.getElementById('zoomSlider').value = currentZoom; }
 
+  // ── SESIÓN PERSISTENTE ("Mantener sesión iniciada") ──
+  // Si en este dispositivo se activó esa opción y no pasó un día completo
+  // sin usar la app, se entra directo con ese estudiante — sin pasar por
+  // selección de carrera, ni login, ni huella.
+  const sesion = _leerSesionPersistente();
+  if (sesion && CAREERS[sesion.carrera]) {
+    try {
+      currentCareer = sesion.carrera;
+      localStorage.setItem('ugb_career', sesion.carrera);
+      CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles));
+      _aplicarCareerHeaderUI(currentCareer);
+      _showLoading('Bienvenido/a de nuevo, ' + sesion.estudiante + '...', 'Restaurando tu sesión');
+      await selectStudent(sesion.estudiante);
+      return;
+    } catch (e) {
+      console.error('[Sesión] No se pudo restaurar la sesión automáticamente:', e);
+      _hideLoading();
+    }
+  }
+
   // Mostrar pantalla de selección de carrera — la lista de estudiantes
   // se carga después, una vez elegida la carrera, en chooseCareer()
   document.getElementById('careerSelectView').style.display = 'flex';
+}
+
+// Aplica al DOM (badge del login, encabezado de la app, menú lateral) la
+// info visual de una carrera — separado de chooseCareer() para poder
+// reutilizarlo también en la restauración silenciosa de sesión (init()),
+// que se salta la pantalla de selección de carrera por completo.
+function _aplicarCareerHeaderUI(career) {
+  const badge = document.getElementById('careerBadge');
+  if (badge) badge.textContent = CAREERS[career].label;
+  const h1 = document.getElementById('careerHeaderLine1');
+  const h2 = document.getElementById('careerHeaderLine2');
+  if (h1) h1.textContent = CAREERS[career].headerL1;
+  if (h2) h2.textContent = CAREERS[career].headerL2;
+  const sideSub = document.getElementById('sideCareerSub');
+  if (sideSub) sideSub.textContent = CAREERS[career].label || 'Ciclo II 2026';
 }
 
 // El usuario eligió una carrera — cargar su pénsum y la lista de estudiantes
@@ -1142,14 +1265,7 @@ async function chooseCareer(career) {
   document.getElementById('careerSelectView').style.display = 'none';
   document.getElementById('loginView').style.display = 'flex';
 
-  const badge = document.getElementById('careerBadge');
-  if (badge) badge.textContent = CAREERS[career].label;
-  const h1 = document.getElementById('careerHeaderLine1');
-  const h2 = document.getElementById('careerHeaderLine2');
-  if (h1) h1.textContent = CAREERS[career].headerL1;
-  if (h2) h2.textContent = CAREERS[career].headerL2;
-  const sideSub = document.getElementById('sideCareerSub');
-  if (sideSub) sideSub.textContent = CAREERS[career].label || 'Ciclo II 2026';
+  _aplicarCareerHeaderUI(career);
 
   appData = {};
 
@@ -1271,6 +1387,7 @@ function limpiarCache() {
   // Borrar solo datos locales (no config ni tema)
   localStorage.removeItem('ugb_pensum_appdata');
   localStorage.removeItem('ugb_last_student');
+  _borrarSesionPersistente();
   showToast('🧹 Caché limpiado — recargando...', 'success');
   setTimeout(() => location.reload(), 800);
 }
@@ -1379,6 +1496,7 @@ async function doLogin() {
   }
   // 'ok' o 'new' — entrar
   if (result === 'new') showToast('✓ Contraseña creada — guárdala bien', 'success');
+  _aplicarPreferenciaSesionActual(n);
   selectStudent(n);
 }
 
@@ -1461,6 +1579,7 @@ async function selectStudent(name) {
   document.getElementById('bottomBar').style.display = 'flex';
   document.getElementById('currentStudentName').textContent = '👤 ' + name;
   refreshDondeEstoyUI();
+  _marcarActividadSesion();
 
   if (config.appsScriptUrl && !_downloadOk) {
     // La descarga falló — Firestore reintenta la conexión solo, y en cuanto
@@ -1705,6 +1824,7 @@ async function resetearBaseDeDatosUI() {
     document.getElementById('bottomBar').style.display = 'none';
     document.getElementById('loginView').style.display = 'flex';
     localStorage.removeItem('ugb_last_student');
+    _borrarSesionPersistente();
     renderStudentList();
 
     _hideLoading();
@@ -1718,16 +1838,21 @@ async function resetearBaseDeDatosUI() {
 function changeStudent() {
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
+  _borrarSesionPersistente();
   document.getElementById('loginView').style.display='flex';
   document.getElementById('appView').style.display='none';
   document.getElementById('bottomBar').style.display='none';
   document.getElementById('loginName').value='';
   const _pEl=document.getElementById('loginPass'); if(_pEl)_pEl.value='';
+  const _chk=document.getElementById('mantenerSesionChk'); if(_chk)_chk.checked=false;
   stopAutoSyncInterval();
   stopNotifWatcher();
   closeDondeEstoy();
   document.getElementById('dondeEstoyFab').style.display='none';
-  renderStudentList();
+  // La lista de estudiantes puede no estar completa si se venía de una
+  // sesión restaurada automáticamente (que se salta chooseCareer) — se
+  // refresca desde Firebase para no mostrar una lista incompleta.
+  recargarLista();
 }
 
 // Abre el horario en una pestaña nueva, sin pasar por el login de estudiante
@@ -1787,6 +1912,7 @@ function cerrarSesion(){
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
   localStorage.removeItem('ugb_career');
+  _borrarSesionPersistente();
   stopAutoSyncInterval();
   stopNotifWatcher();
   closeDondeEstoy();
@@ -1813,6 +1939,11 @@ async function deleteStudent(name) {
 
   delete appData[name];
   renderStudentList();
+  // Si ese estudiante tenía "mantener sesión iniciada" activa en este
+  // dispositivo, se limpia para no intentar restaurar una cuenta borrada.
+  try {
+    if (localStorage.getItem('ugb_ses_estudiante') === name) _borrarSesionPersistente();
+  } catch(e) {}
   showToast('✓ ' + name + ' eliminado', 'success');
 }
 
@@ -1834,6 +1965,7 @@ function saveLocal(triggerSync=true) {
   sd.undoStack=undoStack.slice(-MAX_HIST);
   // NO guardamos en localStorage — Firebase es la única fuente de verdad
   document.getElementById('autoSaveTick').textContent='💾 '+new Date().toLocaleTimeString();
+  _marcarActividadSesion();
   if(triggerSync) triggerAutoSync();
 }
 

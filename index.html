@@ -103,6 +103,10 @@
               id="passVisBtn">👁</button>
     </div>
   </div>
+  <label style="display:flex;align-items:flex-start;gap:8px;margin-top:12px;cursor:pointer;font-size:12px;color:var(--text);line-height:1.4;">
+    <input type="checkbox" id="mantenerSesionChk" style="margin-top:2px;flex-shrink:0;">
+    <span>🔒 <b>Mantener sesión iniciada</b> en este dispositivo — no pedirá volver a ingresar hasta que cierres sesión o pase un día completo sin usarla. <span style="color:var(--gm);">No lo actives en una computadora compartida.</span></span>
+  </label>
   <button class="login-btn" id="loginButton" onclick="doLogin()" style="margin-top:14px;">Ingresar →</button>
   <button class="login-btn" id="loginHuellaBtn" onclick="loginConHuella()" style="display:none;margin-top:8px;background:transparent;color:var(--blue);border:1.5px solid var(--blue);">🫆 Ingresar con huella</button>
   <div style="display:flex;gap:8px;margin-top:14px;align-items:center;">
@@ -187,6 +191,7 @@
     <div class="side-label">Cuenta</div>
     <div class="ham-item" onclick="openChangePass();closeHam()" style="color:#1d4ed8;font-weight:700;"><span class="ham-ico">🔑</span> Cambiar contraseña</div>
     <div class="ham-item" onclick="openHuellaModal();closeHam()" style="color:#1d4ed8;font-weight:700;"><span class="ham-ico">🫆</span> Huella de cuenta</div>
+    <div class="ham-item" onclick="abrirSesionPersistenteModal();closeHam()" style="color:#1d4ed8;font-weight:700;"><span class="ham-ico">🔒</span> Mantener sesión iniciada</div>
     <div class="ham-item" onclick="openDeleteDataModal();closeHam()" style="color:#dc2626;font-weight:700;"><span class="ham-ico">🗑️</span> Borrar datos</div>
     <div class="ham-item" onclick="resetearBaseDeDatosUI();closeHam()" style="color:#fff;font-weight:800;background:#dc2626;border-radius:6px;margin:2px 10px;padding:11px 14px;"><span class="ham-ico">🧨</span> Resetear base de datos</div>
     <div class="ham-item" onclick="toggleAccountListVisibility();closeHam()" style="color:#991b1b;font-weight:700;"><span class="ham-ico">👁️</span> Mostrar/ocultar lista de cuentas</div>
@@ -730,6 +735,20 @@
 
 <!-- Huella de cuenta (WebAuthn) — agregar/quitar el desbloqueo por huella
      de este dispositivo (lector de huella, Windows Hello, Face ID, etc.) -->
+<div class="modal-overlay" id="sesionPersistenteModal">
+  <div class="modal" style="width:440px;max-width:94vw;">
+    <h3 style="text-align:center;margin-bottom:3px;">🔒 Mantener sesión iniciada</h3>
+    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">En este dispositivo, no se pedirá volver a iniciar sesión hasta que cierres sesión o pase un día completo sin abrir la app.</p>
+    <div id="sesionPersistenteEstado" style="background:var(--bg);border:1.5px solid var(--gl);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;font-weight:600;color:var(--text);"></div>
+    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:16px;font-size:13.5px;font-weight:700;">
+      <input type="checkbox" id="sesionPersistenteChk" onchange="toggleSesionPersistenteDesdeApp(this.checked)">
+      Mantener sesión iniciada en este dispositivo
+    </label>
+    <p style="font-size:11px;color:var(--gm);margin-bottom:14px;">⚠️ No la actives en una computadora compartida — cualquiera que la abra entrará directo a tu cuenta.</p>
+    <div class="modal-btns"><button class="modal-btn primary" onclick="document.getElementById('sesionPersistenteModal').classList.remove('open')">Cerrar</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="huellaModal">
   <div class="modal" style="width:480px;max-width:94vw;max-height:88vh;overflow-y:auto;">
     <h3 style="text-align:center;margin-bottom:3px;">🫆 Huella de cuenta</h3>

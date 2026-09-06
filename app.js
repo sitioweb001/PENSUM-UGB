@@ -912,18 +912,27 @@ async function _intentarAutoInicioHuella() {
 const SESION_PERSISTENTE_MS = 24 * 60 * 60 * 1000; // 1 día completo
 function _leerSesionPersistente() {
   try {
-    if (localStorage.getItem('ugb_mantener_sesion') !== '1') return null;
+    if (localStorage.getItem('ugb_mantener_sesion') !== '1') {
+      console.log('[Sesión] No hay "mantener sesión iniciada" activa en este dispositivo (flag apagado).');
+      return null;
+    }
     const estudiante = localStorage.getItem('ugb_ses_estudiante');
     const carrera    = localStorage.getItem('ugb_ses_carrera');
     const ts = parseInt(localStorage.getItem('ugb_ses_actividad') || '0', 10);
-    if (!estudiante || !carrera || !ts) return null;
-    if (Date.now() - ts > SESION_PERSISTENTE_MS) {
-      // Pasó más de un día completo sin ingresar — la sesión expira sola.
-      _borrarSesionPersistente();
+    if (!estudiante || !carrera || !ts) {
+      console.log('[Sesión] Flag activo pero faltan datos guardados (estudiante/carrera/fecha) — se ignora.', {estudiante, carrera, ts});
       return null;
     }
+    const horasInactivo = ((Date.now() - ts) / 3600000).toFixed(1);
+    if (Date.now() - ts > SESION_PERSISTENTE_MS) {
+      // Pasó más de un día completo sin ingresar — la sesión expira sola.
+      console.log('[Sesión] Expirada por inactividad ('+horasInactivo+'h sin abrir la app) — se borra.');
+      _borrarSesionPersistente('expiró por inactividad ('+horasInactivo+'h)');
+      return null;
+    }
+    console.log('[Sesión] Sesión persistente válida encontrada:', estudiante, '/', carrera, '— última actividad hace', horasInactivo, 'h');
     return { estudiante, carrera };
-  } catch (e) { return null; }
+  } catch (e) { console.error('[Sesión] Error leyendo sesión persistente (¿localStorage bloqueado?):', e); return null; }
 }
 function _guardarSesionPersistente(estudiante, carrera) {
   try {
@@ -931,31 +940,35 @@ function _guardarSesionPersistente(estudiante, carrera) {
     localStorage.setItem('ugb_ses_estudiante', estudiante);
     localStorage.setItem('ugb_ses_carrera', carrera);
     localStorage.setItem('ugb_ses_actividad', String(Date.now()));
-  } catch (e) {}
+    console.log('[Sesión] ✓ Guardada como persistente en este dispositivo:', estudiante, '/', carrera);
+  } catch (e) { console.error('[Sesión] No se pudo guardar la sesión persistente (¿localStorage bloqueado/modo privado?):', e); }
 }
 // Refresca el "último uso" — se llama cada vez que se entra a la app
-// (login normal, con huella, o restauración automática), así el día
-// completo de inactividad se cuenta desde la última vez que se usó de
-// verdad, no desde el momento en que se activó la opción.
+// (login normal, con huella, o restauración automática) y cada vez que se
+// guarda algo, así el día completo de inactividad se cuenta desde la
+// última vez que se usó de verdad, no desde que se activó la opción.
 function _marcarActividadSesion() {
   try { if (localStorage.getItem('ugb_mantener_sesion') === '1') localStorage.setItem('ugb_ses_actividad', String(Date.now())); }
   catch (e) {}
 }
-function _borrarSesionPersistente() {
+function _borrarSesionPersistente(motivo) {
+  const habiaActiva = (function(){ try { return localStorage.getItem('ugb_mantener_sesion')==='1'; } catch(e){ return false; } })();
   try {
     localStorage.removeItem('ugb_mantener_sesion');
     localStorage.removeItem('ugb_ses_estudiante');
     localStorage.removeItem('ugb_ses_carrera');
     localStorage.removeItem('ugb_ses_actividad');
   } catch (e) {}
+  if (habiaActiva) console.log('[Sesión] Sesión persistente borrada' + (motivo ? (' — motivo: ' + motivo) : ''));
 }
 // Se llama justo después de un login EXITOSO (contraseña o huella, nunca
 // durante la restauración automática) para activar/desactivar la opción
 // según el estado del checkbox del login.
 function _aplicarPreferenciaSesionActual(nombre) {
   const chk = document.getElementById('mantenerSesionChk');
+  console.log('[Sesión] Checkbox "mantener sesión" al iniciar sesión:', chk ? (chk.checked ? 'MARCADO' : 'desmarcado') : 'NO ENCONTRADO EN EL DOM (¿versión vieja de index.html?)');
   if (chk && chk.checked) _guardarSesionPersistente(nombre, currentCareer);
-  else _borrarSesionPersistente();
+  else _borrarSesionPersistente(chk ? 'checkbox desmarcado al iniciar sesión' : 'checkbox no existe en este index.html');
 }
 // true si HAY una sesión persistente activa ahora mismo en este
 // dispositivo (para reflejar el estado en el checkbox del login y en el
@@ -977,7 +990,7 @@ function abrirSesionPersistenteModal() {
 }
 function toggleSesionPersistenteDesdeApp(checked) {
   if (checked) _guardarSesionPersistente(currentStudent, currentCareer);
-  else _borrarSesionPersistente();
+  else _borrarSesionPersistente('desactivada desde el menú Cuenta');
   const estado = document.getElementById('sesionPersistenteEstado');
   if (estado) estado.textContent = checked
     ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — no se pedirá iniciar sesión de nuevo aquí hasta que cierres sesión o pase un día completo sin usar la app.'
@@ -1196,6 +1209,7 @@ async function doChangePass() {
 }
 
 async function init() {
+  console.log('[PénsumUGB] app.js cargado — build: sesion-persistente-v2 (2026-09-06)');
   appData = {};
   // "appsScriptUrl" ya no apunta a Apps Script — es solo un sentinel truthy
   // para que todos los `if (config.appsScriptUrl)` que quedan repartidos en
@@ -1230,6 +1244,7 @@ async function init() {
   // carrera y pintar el encabezado); selectStudent() se deja correr sola,
   // y si falla, solo se registra en consola sin tocar la pantalla.
   const sesion = _leerSesionPersistente();
+  console.log('[Sesión] Resultado de _leerSesionPersistente():', sesion);
   if (sesion && CAREERS[sesion.carrera]) {
     try {
       currentCareer = sesion.carrera;
@@ -1404,7 +1419,7 @@ function limpiarCache() {
   // Borrar solo datos locales (no config ni tema)
   localStorage.removeItem('ugb_pensum_appdata');
   localStorage.removeItem('ugb_last_student');
-  _borrarSesionPersistente();
+  _borrarSesionPersistente('se limpió la caché local');
   showToast('🧹 Caché limpiado — recargando...', 'success');
   setTimeout(() => location.reload(), 800);
 }
@@ -1841,7 +1856,7 @@ async function resetearBaseDeDatosUI() {
     document.getElementById('bottomBar').style.display = 'none';
     document.getElementById('loginView').style.display = 'flex';
     localStorage.removeItem('ugb_last_student');
-    _borrarSesionPersistente();
+    _borrarSesionPersistente('se reseteó la base de datos local');
     renderStudentList();
 
     _hideLoading();
@@ -1855,7 +1870,7 @@ async function resetearBaseDeDatosUI() {
 function changeStudent() {
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
-  _borrarSesionPersistente();
+  _borrarSesionPersistente('se presionó "Cambiar estudiante"');
   document.getElementById('loginView').style.display='flex';
   document.getElementById('appView').style.display='none';
   document.getElementById('bottomBar').style.display='none';
@@ -1929,7 +1944,7 @@ function cerrarSesion(){
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
   localStorage.removeItem('ugb_career');
-  _borrarSesionPersistente();
+  _borrarSesionPersistente('se presionó "Cerrar sesión"');
   stopAutoSyncInterval();
   stopNotifWatcher();
   closeDondeEstoy();
@@ -1959,7 +1974,7 @@ async function deleteStudent(name) {
   // Si ese estudiante tenía "mantener sesión iniciada" activa en este
   // dispositivo, se limpia para no intentar restaurar una cuenta borrada.
   try {
-    if (localStorage.getItem('ugb_ses_estudiante') === name) _borrarSesionPersistente();
+    if (localStorage.getItem('ugb_ses_estudiante') === name) _borrarSesionPersistente('se eliminó la cuenta "'+name+'"');
   } catch(e) {}
   showToast('✓ ' + name + ' eliminado', 'success');
 }

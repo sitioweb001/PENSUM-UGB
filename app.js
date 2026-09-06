@@ -614,6 +614,33 @@ let currentStudent=null, appData={}, config={};
 let _userConfig = { tecnicoDefault: '', selloDefault: '' };
 try { _userConfig = Object.assign(_userConfig, JSON.parse(localStorage.getItem('userConfigDI') || '{}')); } catch (e) {}
 function _guardarUserConfig() { try { localStorage.setItem('userConfigDI', JSON.stringify(_userConfig)); } catch (e) {} }
+
+// ── Posición/tamaño de los logos y la marca de agua del PDF de Bitácora DI —
+// TODO MANUAL, nada se calcula ni se ajusta solo. Los valores de acá abajo
+// son EXACTAMENTE los que ya traía la plantilla oficial (coordenadas en pt,
+// tamaño carta horizontal 792×612pt), así que mientras nadie toque nada en
+// ☰ → Configuración el PDF sale idéntico a como salía siempre. Ver
+// _renderLogosPdfConfig() / guardarLogosPdfConfig() más abajo. ──
+const PDF_LOGO_DEFAULTS = {
+  header: { x: 28,    y: 30,    w: 168,   h: 70.2 },                 // logo2.jpg, arriba a la izquierda del encabezado
+  escudo: { x: 384.6, y: 18.3,  w: 549,   h: 557.5, opacity: 0.2 },  // escudo, marca de agua (misma posición en las 3 páginas)
+  logoP1: { x: 294.8, y: 145.6, w: 448.2, h: 96.7 },                 // logo DI completo, marca de agua página 1
+  logoP2: { x: 92.5,  y: 460,   w: 607,   h: 131 },                  // logo DI completo, marca de agua página 2
+  logoP3: { x: 71.5,  y: 442,   w: 649,   h: 140 }                   // logo DI completo, marca de agua página 3
+};
+const PDF_LOGO_LABELS = {
+  header: 'Logo superior izquierdo (encabezado — logo2)',
+  escudo: 'Escudo (marca de agua, esquina superior derecha)',
+  logoP1: 'Logo DI completo — marca de agua página 1',
+  logoP2: 'Logo DI completo — marca de agua página 2',
+  logoP3: 'Logo DI completo — marca de agua página 3'
+};
+let _pdfLogoConfig = JSON.parse(JSON.stringify(PDF_LOGO_DEFAULTS));
+try {
+  const _pdfLogoGuardado = JSON.parse(localStorage.getItem('pdfLogoConfigDI') || 'null');
+  if (_pdfLogoGuardado) Object.keys(PDF_LOGO_DEFAULTS).forEach(k => { if (_pdfLogoGuardado[k]) _pdfLogoConfig[k] = Object.assign({}, PDF_LOGO_DEFAULTS[k], _pdfLogoGuardado[k]); });
+} catch (e) {}
+function _guardarPdfLogoConfigStorage() { try { localStorage.setItem('pdfLogoConfigDI', JSON.stringify(_pdfLogoConfig)); } catch (e) {} }
 let pendingDeleteAction=null, loginMode='name';
 let accountListVisible=true; // ajuste global (Firebase) — ver toggleAccountListVisibility()
 let currentZoom=85, currentCycleId=null;
@@ -912,27 +939,18 @@ async function _intentarAutoInicioHuella() {
 const SESION_PERSISTENTE_MS = 24 * 60 * 60 * 1000; // 1 día completo
 function _leerSesionPersistente() {
   try {
-    if (localStorage.getItem('ugb_mantener_sesion') !== '1') {
-      console.log('[Sesión] No hay "mantener sesión iniciada" activa en este dispositivo (flag apagado).');
-      return null;
-    }
+    if (localStorage.getItem('ugb_mantener_sesion') !== '1') return null;
     const estudiante = localStorage.getItem('ugb_ses_estudiante');
     const carrera    = localStorage.getItem('ugb_ses_carrera');
     const ts = parseInt(localStorage.getItem('ugb_ses_actividad') || '0', 10);
-    if (!estudiante || !carrera || !ts) {
-      console.log('[Sesión] Flag activo pero faltan datos guardados (estudiante/carrera/fecha) — se ignora.', {estudiante, carrera, ts});
-      return null;
-    }
-    const horasInactivo = ((Date.now() - ts) / 3600000).toFixed(1);
+    if (!estudiante || !carrera || !ts) return null;
     if (Date.now() - ts > SESION_PERSISTENTE_MS) {
       // Pasó más de un día completo sin ingresar — la sesión expira sola.
-      console.log('[Sesión] Expirada por inactividad ('+horasInactivo+'h sin abrir la app) — se borra.');
-      _borrarSesionPersistente('expiró por inactividad ('+horasInactivo+'h)');
+      _borrarSesionPersistente();
       return null;
     }
-    console.log('[Sesión] Sesión persistente válida encontrada:', estudiante, '/', carrera, '— última actividad hace', horasInactivo, 'h');
     return { estudiante, carrera };
-  } catch (e) { console.error('[Sesión] Error leyendo sesión persistente (¿localStorage bloqueado?):', e); return null; }
+  } catch (e) { return null; }
 }
 function _guardarSesionPersistente(estudiante, carrera) {
   try {
@@ -940,35 +958,31 @@ function _guardarSesionPersistente(estudiante, carrera) {
     localStorage.setItem('ugb_ses_estudiante', estudiante);
     localStorage.setItem('ugb_ses_carrera', carrera);
     localStorage.setItem('ugb_ses_actividad', String(Date.now()));
-    console.log('[Sesión] ✓ Guardada como persistente en este dispositivo:', estudiante, '/', carrera);
-  } catch (e) { console.error('[Sesión] No se pudo guardar la sesión persistente (¿localStorage bloqueado/modo privado?):', e); }
+  } catch (e) {}
 }
 // Refresca el "último uso" — se llama cada vez que se entra a la app
-// (login normal, con huella, o restauración automática) y cada vez que se
-// guarda algo, así el día completo de inactividad se cuenta desde la
-// última vez que se usó de verdad, no desde que se activó la opción.
+// (login normal, con huella, o restauración automática), así el día
+// completo de inactividad se cuenta desde la última vez que se usó de
+// verdad, no desde el momento en que se activó la opción.
 function _marcarActividadSesion() {
   try { if (localStorage.getItem('ugb_mantener_sesion') === '1') localStorage.setItem('ugb_ses_actividad', String(Date.now())); }
   catch (e) {}
 }
-function _borrarSesionPersistente(motivo) {
-  const habiaActiva = (function(){ try { return localStorage.getItem('ugb_mantener_sesion')==='1'; } catch(e){ return false; } })();
+function _borrarSesionPersistente() {
   try {
     localStorage.removeItem('ugb_mantener_sesion');
     localStorage.removeItem('ugb_ses_estudiante');
     localStorage.removeItem('ugb_ses_carrera');
     localStorage.removeItem('ugb_ses_actividad');
   } catch (e) {}
-  if (habiaActiva) console.log('[Sesión] Sesión persistente borrada' + (motivo ? (' — motivo: ' + motivo) : ''));
 }
 // Se llama justo después de un login EXITOSO (contraseña o huella, nunca
 // durante la restauración automática) para activar/desactivar la opción
 // según el estado del checkbox del login.
 function _aplicarPreferenciaSesionActual(nombre) {
   const chk = document.getElementById('mantenerSesionChk');
-  console.log('[Sesión] Checkbox "mantener sesión" al iniciar sesión:', chk ? (chk.checked ? 'MARCADO' : 'desmarcado') : 'NO ENCONTRADO EN EL DOM (¿versión vieja de index.html?)');
   if (chk && chk.checked) _guardarSesionPersistente(nombre, currentCareer);
-  else _borrarSesionPersistente(chk ? 'checkbox desmarcado al iniciar sesión' : 'checkbox no existe en este index.html');
+  else _borrarSesionPersistente();
 }
 // true si HAY una sesión persistente activa ahora mismo en este
 // dispositivo (para reflejar el estado en el checkbox del login y en el
@@ -990,7 +1004,7 @@ function abrirSesionPersistenteModal() {
 }
 function toggleSesionPersistenteDesdeApp(checked) {
   if (checked) _guardarSesionPersistente(currentStudent, currentCareer);
-  else _borrarSesionPersistente('desactivada desde el menú Cuenta');
+  else _borrarSesionPersistente();
   const estado = document.getElementById('sesionPersistenteEstado');
   if (estado) estado.textContent = checked
     ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — no se pedirá iniciar sesión de nuevo aquí hasta que cierres sesión o pase un día completo sin usar la app.'
@@ -1209,7 +1223,6 @@ async function doChangePass() {
 }
 
 async function init() {
-  console.log('[PénsumUGB] app.js cargado — build: sesion-persistente-v2 (2026-09-06)');
   appData = {};
   // "appsScriptUrl" ya no apunta a Apps Script — es solo un sentinel truthy
   // para que todos los `if (config.appsScriptUrl)` que quedan repartidos en
@@ -1234,38 +1247,15 @@ async function init() {
   // Si en este dispositivo se activó esa opción y no pasó un día completo
   // sin usar la app, se entra directo con ese estudiante — sin pasar por
   // selección de carrera, ni login, ni huella.
-  //
-  // IMPORTANTE: una vez que selectStudent() arranca, cualquier error NO
-  // crítico que ocurra más adelante (por ejemplo al revisar notificaciones
-  // o sincronizar) NUNCA debe hacer que la pantalla "retroceda" a login —
-  // eso es exactamente lo mismo que le pasa a un login normal con
-  // contraseña, que tampoco deshace la app si algo falla después. Por eso
-  // acá solo se protege con try/catch la parte síncrona previa (elegir
-  // carrera y pintar el encabezado); selectStudent() se deja correr sola,
-  // y si falla, solo se registra en consola sin tocar la pantalla.
   const sesion = _leerSesionPersistente();
-  console.log('[Sesión] Resultado de _leerSesionPersistente():', sesion);
   if (sesion && CAREERS[sesion.carrera]) {
     try {
       currentCareer = sesion.carrera;
       localStorage.setItem('ugb_career', sesion.carrera);
       CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles));
       _aplicarCareerHeaderUI(currentCareer);
-      // Ocultar YA MISMO ambas pantallas (selección de carrera y login) —
-      // así, pase lo que pase mientras selectStudent() descarga los datos,
-      // no queda nada clickeable de la pantalla de login/carrera de fondo.
-      document.getElementById('careerSelectView').style.display = 'none';
-      document.getElementById('loginView').style.display = 'none';
       _showLoading('Bienvenido/a de nuevo, ' + sesion.estudiante + '...', 'Restaurando tu sesión');
-      selectStudent(sesion.estudiante).catch(e => {
-        console.error('[Sesión] selectStudent falló durante la restauración automática:', e);
-        // Si a pesar del error ya se alcanzó a mostrar la app, la dejamos
-        // como está — no tiene sentido tirar abajo una sesión que sí cargó.
-        if (document.getElementById('appView').style.display !== 'block') {
-          _hideLoading();
-          document.getElementById('careerSelectView').style.display = 'flex';
-        }
-      });
+      await selectStudent(sesion.estudiante);
       return;
     } catch (e) {
       console.error('[Sesión] No se pudo restaurar la sesión automáticamente:', e);
@@ -1295,7 +1285,6 @@ function _aplicarCareerHeaderUI(career) {
 
 // El usuario eligió una carrera — cargar su pénsum y la lista de estudiantes
 async function chooseCareer(career) {
-  console.log('[Carrera] chooseCareer("'+career+'") ejecutándose — esto SOLO debería pasar por un clic manual, nunca durante una restauración automática de sesión.', new Error().stack);
   currentCareer = career;
   localStorage.setItem('ugb_career', career);
   CYCLES = JSON.parse(JSON.stringify(CAREERS[career].cycles));
@@ -1425,7 +1414,7 @@ function limpiarCache() {
   // Borrar solo datos locales (no config ni tema)
   localStorage.removeItem('ugb_pensum_appdata');
   localStorage.removeItem('ugb_last_student');
-  _borrarSesionPersistente('se limpió la caché local');
+  _borrarSesionPersistente();
   showToast('🧹 Caché limpiado — recargando...', 'success');
   setTimeout(() => location.reload(), 800);
 }
@@ -1862,7 +1851,7 @@ async function resetearBaseDeDatosUI() {
     document.getElementById('bottomBar').style.display = 'none';
     document.getElementById('loginView').style.display = 'flex';
     localStorage.removeItem('ugb_last_student');
-    _borrarSesionPersistente('se reseteó la base de datos local');
+    _borrarSesionPersistente();
     renderStudentList();
 
     _hideLoading();
@@ -1876,7 +1865,7 @@ async function resetearBaseDeDatosUI() {
 function changeStudent() {
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
-  _borrarSesionPersistente('se presionó "Cambiar estudiante"');
+  _borrarSesionPersistente();
   document.getElementById('loginView').style.display='flex';
   document.getElementById('appView').style.display='none';
   document.getElementById('bottomBar').style.display='none';
@@ -1950,7 +1939,7 @@ function cerrarSesion(){
   currentStudent=null;
   localStorage.removeItem('ugb_last_student');
   localStorage.removeItem('ugb_career');
-  _borrarSesionPersistente('se presionó "Cerrar sesión"');
+  _borrarSesionPersistente();
   stopAutoSyncInterval();
   stopNotifWatcher();
   closeDondeEstoy();
@@ -1980,7 +1969,7 @@ async function deleteStudent(name) {
   // Si ese estudiante tenía "mantener sesión iniciada" activa en este
   // dispositivo, se limpia para no intentar restaurar una cuenta borrada.
   try {
-    if (localStorage.getItem('ugb_ses_estudiante') === name) _borrarSesionPersistente('se eliminó la cuenta "'+name+'"');
+    if (localStorage.getItem('ugb_ses_estudiante') === name) _borrarSesionPersistente();
   } catch(e) {}
   showToast('✓ ' + name + ' eliminado', 'success');
 }
@@ -3535,7 +3524,9 @@ function renderAsistencia(){
         <div style="font-weight:700;font-size:13px;color:${isToday?'var(--pass)':'var(--text)'};">${a.fecha}${isToday?' <span style="font-size:9px;background:var(--pass);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">HOY</span>':''}${a.manual?' <span style="font-size:9px;background:var(--pend);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">REGISTRO MANUAL</span>':''}</div>
         <div style="font-size:11px;color:var(--gm);">🕐 Entrada: ${a.hora}${a.horaSalida?' · Salida: '+a.horaSalida:''}</div>
         ${a.manual?`<div style="font-size:11px;color:var(--pend);margin-top:2px;">📋 Motivo: ${escapeHtml(a.motivo||'')}</div>`:''}
+        ${(a.ediciones&&a.ediciones.length)?`<div style="font-size:10.5px;color:var(--pend);margin-top:2px;">✏️ Editado${a.ediciones.length>1?' ('+a.ediciones.length+' veces)':''} · último motivo: ${escapeHtml(a.ediciones[a.ediciones.length-1].motivo)}</div>`:''}
       </div>
+      <button onclick="editarAsistencia('${a.fecha}')" style="background:transparent;border:none;color:var(--pend);cursor:pointer;font-size:13px;" title="Editar este registro">✏️</button>
       <button onclick="borrarAsistencia('${a.fecha}')" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:13px;">🗑</button>
     </div>`;
   }).join('');
@@ -3546,52 +3537,119 @@ function borrarAsistencia(fecha){
 }
 
 // ═══════════════════════════════════════════════════════════
-// ASISTENCIA MANUAL ATRASADA — para cuando el estudiante olvidó marcar
-// un día en específico y ya pasó ese día. Pide justificación (con motivos
-// predefinidos: "OLVIDO DE MARCACIÓN" / "SIN WIFI" / otro a escribir) y la
-// hora de entrada y salida de ese día.
+// ASISTENCIA MANUAL — para cuando el estudiante olvidó marcar un día
+// (pasado o el de hoy) y también para EDITAR un registro que ya existe.
+// Pide justificación en los registros nuevos (motivos predefinidos:
+// "OLVIDO DE MARCACIÓN" / "SIN WIFI" / otro a escribir); al editar uno
+// que ya existía, pide en cambio el motivo de la edición y lo deja
+// guardado en el propio registro (mismo criterio que el historial de
+// ediciones de Bitácora DI).
 // ═══════════════════════════════════════════════════════════
+let _asistEditandoFecha = null; // null = registro nuevo; string = editando ese día
+
+// Deriva "HH:MM" en hora local a partir de un ISO — sirve para precargar
+// la hora de entrada al editar, sin importar si el registro original se
+// guardó como automático (hora en formato largo con am/pm) o manual
+// (ya en HH:MM), porque el "ts" siempre es un ISO real.
+function _hhmmFromIso(iso){
+  try { const d=new Date(iso); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+  catch(e){ return ''; }
+}
+
 function openAsistenciaManual(){
-  const y=new Date(); y.setDate(y.getDate()-1);
-  const ayer=y.toISOString().slice(0,10);
+  _asistEditandoFecha=null;
+  const hoy=getTodayKey();
   const fechaInp=document.getElementById('asistManualFecha');
   fechaInp.value='';
-  fechaInp.max=ayer;
+  fechaInp.disabled=false;
+  fechaInp.max=hoy; // manual o automática: ahora también se puede elegir el día de hoy, no solo días atrasados
   document.getElementById('asistManualEntrada').value='';
   document.getElementById('asistManualSalida').value='';
   document.getElementById('asistManualMotivo').innerHTML=MOTIVOS_ASISTENCIA_MANUAL.map(m=>`<option value="${m}">${m}</option>`).join('');
   document.getElementById('asistManualMotivo').value='OLVIDO DE MARCACIÓN';
   document.getElementById('asistManualOtroField').style.display='none';
   document.getElementById('asistManualOtro').value='';
+  document.getElementById('asistManualMotivoField').style.display='';
+  document.getElementById('asistManualMotivoEdicionField').style.display='none';
+  document.getElementById('asistManualMotivoEdicion').value='';
+  document.getElementById('asistManualTitulo').textContent='📝 Registrar asistencia manual';
+  document.getElementById('asistManualDesc').textContent='Usalo si olvidaste marcar un día (pasado o de hoy). Se guardará con la justificación que indiques.';
+  document.getElementById('asistManualGuardarBtn').textContent='Guardar registro';
   document.getElementById('asistenciaManualModal').classList.add('open');
 }
+
+// Abre el mismo modal pero en modo "editar": la fecha queda fija (para no
+// mover el registro de lugar) y en vez del motivo de "por qué no marqué"
+// pide el motivo de la corrección — todo manual, nada se ajusta solo.
+function editarAsistencia(fecha){
+  const reg=getAsistencias()[fecha];
+  if(!reg) return;
+  _asistEditandoFecha=fecha;
+  const fechaInp=document.getElementById('asistManualFecha');
+  fechaInp.value=fecha;
+  fechaInp.disabled=true;
+  document.getElementById('asistManualEntrada').value=_hhmmFromIso(reg.ts);
+  document.getElementById('asistManualSalida').value=(reg.horaSalida||'').slice(0,5);
+  document.getElementById('asistManualMotivoField').style.display='none';
+  document.getElementById('asistManualOtroField').style.display='none';
+  document.getElementById('asistManualMotivoEdicionField').style.display='';
+  document.getElementById('asistManualMotivoEdicion').value='';
+  document.getElementById('asistManualTitulo').textContent='✏️ Editar asistencia del '+fecha;
+  document.getElementById('asistManualDesc').textContent='Corregí la hora de entrada/salida. La fecha no se puede cambiar acá — si es de otro día, eliminá el registro y creá uno nuevo. El cambio queda guardado con el motivo que indiques.';
+  document.getElementById('asistManualGuardarBtn').textContent='Guardar corrección';
+  document.getElementById('asistenciaManualModal').classList.add('open');
+}
+
 function closeAsistenciaManual(){
   document.getElementById('asistenciaManualModal').classList.remove('open');
+  document.getElementById('asistManualFecha').disabled=false;
+  _asistEditandoFecha=null;
 }
 function onAsistManualMotivoChange(){
   const esOtro=document.getElementById('asistManualMotivo').value==='Otro';
   document.getElementById('asistManualOtroField').style.display=esOtro?'':'none';
 }
 function guardarAsistenciaManual(){
-  const fecha=document.getElementById('asistManualFecha').value;
+  const modoEdicion=!!_asistEditandoFecha;
+  const fecha=modoEdicion?_asistEditandoFecha:document.getElementById('asistManualFecha').value;
   const entrada=document.getElementById('asistManualEntrada').value;
   const salida=document.getElementById('asistManualSalida').value;
+  const hoyKey=getTodayKey();
+  if(!fecha){showToast('Seleccioná la fecha','error');return;}
+  if(!modoEdicion&&fecha>hoyKey){showToast('No podés registrar una fecha futura','error');return;}
+  if(!entrada){showToast('Ingresá la hora de entrada','error');return;}
+  const lista=getAsistencias();
+
+  if(modoEdicion){
+    const motivoEdicion=(document.getElementById('asistManualMotivoEdicion').value||'').trim();
+    if(!motivoEdicion){showToast('Indicá el motivo de la edición','error');return;}
+    const reg=lista[fecha];
+    if(!reg){showToast('Ese registro ya no existe','error');closeAsistenciaManual();return;}
+    // Mantiene el mismo "formato" de hora que ya tenía ese registro
+    // (manual = HH:MM corto, automático = hora larga con am/pm) para no
+    // romper otras vistas que ya lo muestran así.
+    reg.hora=reg.manual?entrada:new Date(fecha+'T'+entrada).toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    reg.horaSalida=salida||reg.horaSalida||'';
+    reg.ts=new Date(fecha+'T'+entrada).toISOString();
+    reg.ediciones=(reg.ediciones||[]).concat([{motivo:motivoEdicion,ts:new Date().toISOString()}]);
+    saveLocal();
+    renderAsistencia();
+    closeAsistenciaManual();
+    showToast('✏️ Registro corregido','success');
+    return;
+  }
+
+  if(!salida){showToast('Ingresa la hora de salida de ese día','error');return;}
   const motivoSel=document.getElementById('asistManualMotivo').value;
   const motivoOtro=document.getElementById('asistManualOtro').value.trim();
-  const hoyKey=getTodayKey();
-  if(!fecha){showToast('Selecciona la fecha del día que olvidaste marcar','error');return;}
-  if(fecha>=hoyKey){showToast('Esta opción es solo para días anteriores a hoy — usa "Marcar Asistencia de Hoy" para el día actual','error');return;}
-  if(!entrada){showToast('Ingresa la hora de entrada de ese día','error');return;}
-  if(!salida){showToast('Ingresa la hora de salida de ese día','error');return;}
   if(motivoSel==='Otro'&&!motivoOtro){showToast('Describe el motivo por el que no marcaste asistencia ese día','error');return;}
-  const lista=getAsistencias();
-  if(lista[fecha]){showToast('Ya existe un registro de asistencia para esa fecha','error');return;}
+  if(lista[fecha]){showToast('Ya existe un registro para esa fecha — usá ✏️ Editar en ese registro si necesitás corregirlo','error');return;}
   const motivoFinal=motivoSel==='Otro'?motivoOtro:motivoSel;
   lista[fecha]={fecha,hora:entrada,horaSalida:salida,ts:new Date(fecha+'T'+entrada).toISOString(),manual:true,motivo:motivoFinal};
   saveLocal();
   renderAsistencia();
   closeAsistenciaManual();
-  showToast('✅ Asistencia atrasada registrada con justificación','success');
+  showToast('✅ Asistencia manual registrada con justificación','success');
   _showAsistConfirm('diaConfirmBanner');
 }
 
@@ -3829,15 +3887,24 @@ function exportAsistenciaExcel(){
 // ═══════════════════════════════════════════════════════════
 let actFilter='today';
 
+// null = formulario en modo "registro nuevo"; string = editando ese id
+let _actEditandoId=null;
+
 function openAsistenciaActividad(){
   actFilter='today';
+  _actEditandoId=null;
   const tabs=document.querySelectorAll('#actFilterTabs .filter-tab');
   tabs.forEach(t=>t.classList.remove('active'));
   if(tabs[0]) tabs[0].classList.add('active'); // "Hoy" es la primera pestaña
-  const nie=document.getElementById('actNie'), tecnico=document.getElementById('actTecnico'),
+  const fecha=document.getElementById('actFecha'),
+        nie=document.getElementById('actNie'), tecnico=document.getElementById('actTecnico'),
         horaEntrada=document.getElementById('actHoraEntrada'), horaSalida=document.getElementById('actHoraSalida'), cupos=document.getElementById('actCupos'),
         sede=document.getElementById('actSede'), nom=document.getElementById('actNombre'),
         tipo=document.getElementById('actTipo'), otroDesc=document.getElementById('actOtroDesc');
+  // La fecha arranca en "hoy" (automático) pero es un <input type="date">
+  // editable — el usuario la puede cambiar a mano si está registrando un
+  // día distinto. Nada se recalcula solo después de esto.
+  if(fecha){ fecha.value=getTodayKey(); fecha.max=getTodayKey(); }
   if(nie) nie.value='';
   if(tecnico) tecnico.value=_userConfig.tecnicoDefault||'';
   if(horaEntrada) horaEntrada.value='';
@@ -3847,6 +3914,10 @@ function openAsistenciaActividad(){
   if(nom) nom.value='';
   if(tipo) tipo.value=''; // sin tipo preseleccionado — el usuario debe elegir uno
   if(otroDesc) otroDesc.value='';
+  document.getElementById('actMotivoEdicionField').style.display='none';
+  document.getElementById('actMotivoEdicion').value='';
+  document.getElementById('actFormTitulo').textContent='📝 Formulario de Asistencia DI';
+  document.getElementById('actValidarBtn').textContent='✅ Validar Asistencia';
   const banner=document.getElementById('actConfirmBanner'); if(banner) banner.style.display='none';
   _toggleActOtro();
   renderAsistenciaActividad();
@@ -3862,6 +3933,13 @@ function _toggleActOtro(){
 }
 
 function validarAsistenciaActividad(){
+  const fechaEl=document.getElementById('actFecha');
+  // Manual o automática: si el usuario no tocó el campo, queda la fecha de
+  // hoy que se puso por defecto al abrir el formulario; si la cambió a
+  // mano, se respeta esa. Nunca se recalcula sola después de validar.
+  const fecha=(fechaEl&&fechaEl.value)?fechaEl.value:getTodayKey();
+  const hoyKey=getTodayKey();
+  if(fecha>hoyKey){showToast('No podés registrar una fecha futura','error');return;}
   const nieEl=document.getElementById('actNie');
   const nie=(nieEl.value||'').trim();
   if(!nie){showToast('Ingresá el NIE del estudiante','error');return;}
@@ -3881,13 +3959,37 @@ function validarAsistenciaActividad(){
     if(!desc){showToast('Describí el tipo de asistencia','error');return;}
     tipoFinal='Otro — '+desc;
   }
+  // El "ts" (usado para ordenar/filtrar por período) se arma con la fecha
+  // elegida + la hora de entrada si existe, para que un registro cargado
+  // con fecha manual caiga en el día que corresponde y no en "hoy".
+  const ts=(fecha&&horaEntrada)?new Date(fecha+'T'+horaEntrada).toISOString():(fecha?new Date(fecha+'T00:00').toISOString():new Date().toISOString());
+
+  // ── Modo edición: corrige el registro existente y pide el motivo ──
+  if(_actEditandoId){
+    const motivoEdicion=(document.getElementById('actMotivoEdicion').value||'').trim();
+    if(!motivoEdicion){showToast('Indicá el motivo de la edición','error');return;}
+    const lista=getAsistenciasActividad();
+    const reg=lista[_actEditandoId];
+    if(!reg){showToast('Ese registro ya no existe','error');_actEditandoId=null;return;}
+    Object.assign(reg,{nie,tecnico,horaEntrada,horaSalida,cupos,sede,nombre,tipo:tipoFinal,fecha,ts});
+    reg.ediciones=(reg.ediciones||[]).concat([{motivo:motivoEdicion,ts:new Date().toISOString()}]);
+    saveLocal();
+    _actEditandoId=null;
+    document.getElementById('actMotivoEdicionField').style.display='none';
+    document.getElementById('actFormTitulo').textContent='📝 Formulario de Asistencia DI';
+    document.getElementById('actValidarBtn').textContent='✅ Validar Asistencia';
+    renderAsistenciaActividad();
+    showToast('✏️ Registro corregido','success');
+    return;
+  }
+
   const now=new Date();
   const id=String(now.getTime());
   const lista=getAsistenciasActividad();
-  lista[id]={id,nie,tecnico,horaEntrada,horaSalida,cupos,sede,nombre,tipo:tipoFinal,fecha:getTodayKey(),hora:now.toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),ts:now.toISOString()};
+  lista[id]={id,nie,tecnico,horaEntrada,horaSalida,cupos,sede,nombre,tipo:tipoFinal,fecha,manual:(fecha!==hoyKey),hora:now.toLocaleTimeString('es-SV',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),ts};
   saveLocal();
   // Limpiar solo NIE y nombre del estudiante para la siguiente persona —
-  // técnico/horas/cupos/sede/tipo normalmente se repiten para todo el
+  // técnico/horas/cupos/sede/tipo/fecha normalmente se repiten para todo el
   // grupo que va en la misma ruta, así que se dejan como están.
   nieEl.value='';
   document.getElementById('actNombre').value='';
@@ -3916,7 +4018,8 @@ function renderAsistenciaActividad(){
       <span style="font-size:17px;">📝</span>
       <div style="flex:1;">
         <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(a.nombre)} <span style="font-size:10px;color:var(--gm);font-weight:600;">(${escapeHtml(a.nie)})</span></div>
-        <div style="font-size:11px;color:var(--gm);">${escapeHtml(a.tipo)} · 📅 ${a.fecha} 🕐 ${a.hora}</div>
+        <div style="font-size:11px;color:var(--gm);">${escapeHtml(a.tipo)} · 📅 ${a.fecha} 🕐 ${a.hora}${a.manual?' <span style="font-size:9px;background:var(--pend);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">FECHA MANUAL</span>':''}</div>
+        ${(a.ediciones&&a.ediciones.length)?`<div style="font-size:10.5px;color:var(--pend);margin-top:2px;">✏️ Editado${a.ediciones.length>1?' ('+a.ediciones.length+' veces)':''} · último motivo: ${escapeHtml(a.ediciones[a.ediciones.length-1].motivo)}</div>`:''}
       </div>
       <button onclick="event.stopPropagation();borrarAsistenciaActividad('${a.id}')" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:13px;">🗑</button>
     </div>`).join('');
@@ -3936,7 +4039,7 @@ function verDetalleActividad(id){
       <span style="color:var(--gm);font-weight:600;">${label}</span>
       <span style="font-weight:700;text-align:right;">${escapeHtml(val||'—')}</span>
     </div>`;
-  document.getElementById('actDetalleBody').innerHTML =
+  let html =
     row('NIE', reg.nie) +
     row('Estudiante', reg.nombre) +
     row('Tipo de asistencia', reg.tipo) +
@@ -3947,7 +4050,49 @@ function verDetalleActividad(id){
     row('Sede', reg.sede) +
     row('Fecha', reg.fecha) +
     row('Hora de registro', reg.hora);
+  if((reg.ediciones||[]).length){
+    html += '<div style="margin-top:10px;font-weight:700;font-size:11px;color:var(--gm);text-transform:uppercase;">Historial de ediciones</div>';
+    reg.ediciones.forEach(e => { html += row((e.ts||'').slice(0,16).replace('T',' '), e.motivo); });
+  }
+  document.getElementById('actDetalleBody').innerHTML = html;
   document.getElementById('actDetalleModal').classList.add('open');
+}
+
+// Abre el formulario ya lleno con los datos del registro elegido, en modo
+// edición: la fecha queda editable igual que un registro nuevo, pero acá
+// se exige además el motivo de la corrección, y al guardar se actualiza
+// ESE registro (no se crea uno nuevo) y queda su historial de ediciones.
+function editarAsistenciaActividadDesdeDetalle(){
+  if(!_actDetalleIdActual) return;
+  const reg=getAsistenciasActividad()[_actDetalleIdActual];
+  if(!reg) return;
+  _actEditandoId=_actDetalleIdActual;
+  document.getElementById('actDetalleModal').classList.remove('open');
+  const set=(id,val)=>{ const el=document.getElementById(id); if(el) el.value=val||''; };
+  set('actFecha', reg.fecha);
+  document.getElementById('actFecha').max=getTodayKey();
+  set('actNie', reg.nie);
+  set('actTecnico', reg.tecnico);
+  set('actHoraEntrada', reg.horaEntrada);
+  set('actHoraSalida', reg.horaSalida);
+  set('actCupos', reg.cupos==='Desconocido / N/A' ? '' : reg.cupos);
+  set('actSede', reg.sede);
+  set('actNombre', reg.nombre);
+  const tipoSelect=document.getElementById('actTipo');
+  if(reg.tipo && reg.tipo.indexOf('Otro — ')===0){
+    tipoSelect.value='Otro';
+    set('actOtroDesc', reg.tipo.slice('Otro — '.length));
+  } else {
+    tipoSelect.value=reg.tipo||'';
+    set('actOtroDesc','');
+  }
+  _toggleActOtro();
+  document.getElementById('actMotivoEdicionField').style.display='';
+  document.getElementById('actMotivoEdicion').value='';
+  document.getElementById('actFormTitulo').textContent='✏️ Editar Asistencia DI';
+  document.getElementById('actValidarBtn').textContent='💾 Guardar corrección';
+  const banner=document.getElementById('actConfirmBanner'); if(banner) banner.style.display='none';
+  document.getElementById('asistActividadModal').classList.add('open');
 }
 function borrarAsistenciaActividadDesdeDetalle(){
   if(!_actDetalleIdActual) return;
@@ -5351,13 +5496,23 @@ async function _bitacCargarActividadesPregrabadas() {
   catch (e) { console.error('No se pudieron cargar las actividades pregrabadas', e); }
   return _actividadesPregrabadasCache;
 }
-function _bitacPregrabadaOptionsHTML() {
+function _bitacPregrabadaOptionsHTML(tecnicoFiltro) {
   let html = '<option value="">▾ Usar actividad pregrabada…</option>';
-  _actividadesPregrabadasCache.forEach(a => { html += `<option value="${escapeHtml(a.texto)}">${escapeHtml(a.texto)}</option>`; });
+  _actividadesPregrabadasCache
+    .filter(a => !a.tecnico || a.tecnico === tecnicoFiltro)
+    .forEach(a => { html += `<option value="${escapeHtml(a.texto)}">${escapeHtml(a.texto)}${a.tecnico ? ' 👤' : ''}</option>`; });
   return html;
 }
+// Refresca cada select de pregrabadas con el catálogo que le corresponde
+// según el técnico ya elegido en ESA fila (las frases marcadas para "solo
+// ese técnico" no aparecen en filas de otros técnicos). El id de cada
+// select trae el group/n de su fila para poder ubicar ese técnico.
 function _bitacRefrescarPregrabadasSelects() {
-  document.querySelectorAll('.bit-pregrabada-select').forEach(sel => { sel.innerHTML = _bitacPregrabadaOptionsHTML(); });
+  document.querySelectorAll('.bit-pregrabada-select').forEach(sel => {
+    const m = /^bitPregrabada_([a-z])_(\d+)$/.exec(sel.id);
+    const tecnico = m ? _bitacTecActualNombre(m[1], m[2]) : '';
+    sel.innerHTML = _bitacPregrabadaOptionsHTML(tecnico);
+  });
 }
 
 async function _bitacCargarTecnicos() {
@@ -5425,6 +5580,10 @@ function _bitacTecnicoOptionsHTML(selected) {
 let _bitacEditingRecordId = null; // id del registro de historial que se está reeditando (null = generación normal)
 let _bitacBorradorActual = null;  // nombre del borrador cargado ahora mismo (null = ninguno / recién generado)
 
+// Clave reservada para el autoguardado silencioso — no aparece en la lista
+// de borradores que ve el usuario (ver el filtro en _bitacRenderBorradorSelect).
+const BITAC_AUTOSAVE_KEY = '⏱ Autoguardado automático';
+
 function _bitacGetBorradores() {
   if (!appData[currentStudent]) appData[currentStudent] = {};
   if (!appData[currentStudent].bitacoraBorradores) appData[currentStudent].bitacoraBorradores = {};
@@ -5435,7 +5594,7 @@ function _bitacRenderBorradorSelect() {
   const sel = document.getElementById('bitBorradorSelect');
   if (!sel) return;
   const borradores = _bitacGetBorradores();
-  const nombres = Object.keys(borradores).sort();
+  const nombres = Object.keys(borradores).filter(n => n !== BITAC_AUTOSAVE_KEY).sort();
   const activos = nombres.filter(n => !borradores[n].finalizado);
   const finales = nombres.filter(n => borradores[n].finalizado);
   let html = '<option value="">— Cargar un borrador guardado —</option>';
@@ -5526,10 +5685,46 @@ function _bitacAplicarFormulario(datos) {
       _bitacTecOtroToggle(group, n);
       const to = document.getElementById(`bitTecOtro_${group}_${n}`); if (to) to.value = f.tecOtro || '';
       const selloSel = document.getElementById(`bitSello_${group}_${n}`); if (selloSel) selloSel.innerHTML = _bitacSelloOptionsHTML(f.sello || '');
+      const pregSel = document.getElementById(`bitPregrabada_${group}_${n}`); if (pregSel) pregSel.innerHTML = _bitacPregrabadaOptionsHTML(_bitacTecActualNombre(group, n));
     });
   });
 }
 
+// Guarda el objeto del borrador bajo el nombre indicado — usada tanto por
+// "Guardar" (rápido, sin preguntar nombre) como por "Guardar como…"
+// (siempre pregunta). Centralizado acá para no repetir la lógica de
+// Firebase/localStorage/refrescos en los dos botones.
+function _bitacGuardarBorradorComoNombre(nombre) {
+  const borradores = _bitacGetBorradores();
+  const previo = borradores[nombre];
+  borradores[nombre] = Object.assign(_bitacRecolectarFormulario(), {
+    finalizado: previo ? !!previo.finalizado : false,
+    actualizado: new Date().toISOString()
+  });
+  // Ya quedó a salvo con un nombre elegido por el usuario — la ranura de
+  // autoguardado automático deja de tener sentido hasta el próximo cambio.
+  delete borradores[BITAC_AUTOSAVE_KEY];
+  try { _bitacAutosaveUltimoSnapshot = JSON.stringify(_bitacRecolectarFormulario()); } catch (e) {}
+  try { saveLocal(); } catch (e) {}
+  window.FirebaseDB.guardarBitacoraBorradores(currentStudent, currentCareer, borradores).catch(()=>{});
+  _bitacBorradorActual = nombre;
+  _bitacRenderBorradorSelect();
+}
+
+// "Guardar" — guardado rápido, manual (el usuario lo dispara tocando el
+// botón, nunca se guarda solo). Si ya hay un borrador cargado, actualiza
+// ESE borrador sin volver a preguntar el nombre. Si todavía no hay ninguno
+// cargado, no hay nada que "actualizar" — se comporta como "Guardar como…"
+// y pide el nombre una única vez.
+function bitacGuardarRapido() {
+  if (!currentStudent) return;
+  if (!_bitacBorradorActual) { bitacGuardarBorrador(); return; }
+  _bitacGuardarBorradorComoNombre(_bitacBorradorActual);
+  showToast('💾 Borrador "' + _bitacBorradorActual + '" actualizado', 'success');
+}
+
+// "Guardar como…" — SIEMPRE pregunta el nombre (aunque haya un borrador
+// cargado), para poder guardar una copia nueva sin pisar la que ya existía.
 function bitacGuardarBorrador() {
   if (!currentStudent) return;
   const borradoresActuales = _bitacGetBorradores();
@@ -5543,16 +5738,7 @@ function bitacGuardarBorrador() {
   }
   const nombre = (prompt('Nombre para este borrador (podés dejar el sugerido o escribir el que quieras):', sugerido) || '').trim();
   if (!nombre) return;
-  const borradores = _bitacGetBorradores();
-  const previo = borradores[nombre];
-  borradores[nombre] = Object.assign(_bitacRecolectarFormulario(), {
-    finalizado: previo ? !!previo.finalizado : false,
-    actualizado: new Date().toISOString()
-  });
-  try { saveLocal(); } catch (e) {}
-  window.FirebaseDB.guardarBitacoraBorradores(currentStudent, currentCareer, borradores).catch(()=>{});
-  _bitacBorradorActual = nombre;
-  _bitacRenderBorradorSelect();
+  _bitacGuardarBorradorComoNombre(nombre);
   showToast('💾 Borrador "' + nombre + '" guardado', 'success');
 }
 
@@ -5716,9 +5902,85 @@ function openBitacoraDI() {
   _bitacRenderRows('o');
   _bitacRenderRows('e');
   _bitacRenderBorradorSelect();
+  _bitacMostrarBannerAutoguardadoSiExiste();
   document.getElementById('bitacoraDIModal').classList.add('open');
   _bitacCargarTecnicos().then(_bitacRefrescarSelectsTecnico);
   _bitacCargarActividadesPregrabadas().then(_bitacRefrescarPregrabadasSelects);
+  _bitacIniciarAutoguardado();
+}
+
+// Cierra el formulario de Bitácora DI apagando el autoguardado — para que
+// no siga guardando en segundo plano un formulario que ya no está en pantalla.
+function cerrarBitacoraDIModal() {
+  _bitacDetenerAutoguardado();
+  document.getElementById('bitacoraDIModal').classList.remove('open');
+}
+
+// ── Autoguardado silencioso del borrador — TODO sigue siendo manual desde
+// el punto de vista del usuario (los botones "Guardar"/"Guardar como…" no
+// cambian en nada), esto es solo una red de seguridad por si el navegador
+// se cierra solo o hay un corte de luz: cada 30s, si el formulario cambió
+// desde el último autoguardado y tiene al menos algo cargado, se guarda
+// en una ranura aparte que no aparece en la lista de borradores del
+// usuario. No reemplaza ni pisa ningún borrador con nombre. ──
+let _bitacAutosaveTimer = null;
+let _bitacAutosaveUltimoSnapshot = null;
+
+function _bitacFormularioTieneContenido(datos) {
+  if (datos.perfil && (datos.perfil.nombreEstudiante || '').trim() && datos.perfil.nombreEstudiante !== currentStudent) return true;
+  if ((datos.perfil.telefonoCorreo || datos.perfil.universidad || datos.perfil.regional || datos.perfil.carrera || datos.perfil.ciclo || '').trim()) return true;
+  const filas = [].concat(datos.filas.o || [], datos.filas.e || []);
+  return filas.some(f => (f.actividad || f.rec || '').trim());
+}
+
+function _bitacIniciarAutoguardado() {
+  _bitacDetenerAutoguardado();
+  try { _bitacAutosaveUltimoSnapshot = JSON.stringify(_bitacRecolectarFormulario()); } catch (e) { _bitacAutosaveUltimoSnapshot = null; }
+  _bitacAutosaveTimer = setInterval(_bitacAutoguardarSiCambio, 30000);
+}
+function _bitacDetenerAutoguardado() {
+  if (_bitacAutosaveTimer) { clearInterval(_bitacAutosaveTimer); _bitacAutosaveTimer = null; }
+}
+function _bitacAutoguardarSiCambio() {
+  if (!currentStudent || !document.getElementById('bitacoraDIModal').classList.contains('open')) { _bitacDetenerAutoguardado(); return; }
+  let datos;
+  try { datos = _bitacRecolectarFormulario(); } catch (e) { return; }
+  const snapshot = JSON.stringify(datos);
+  if (snapshot === _bitacAutosaveUltimoSnapshot) return; // nada cambió, no escribe de más
+  if (!_bitacFormularioTieneContenido(datos)) return; // formulario vacío, nada que proteger todavía
+  _bitacAutosaveUltimoSnapshot = snapshot;
+  const borradores = _bitacGetBorradores();
+  borradores[BITAC_AUTOSAVE_KEY] = Object.assign(datos, { finalizado: false, actualizado: new Date().toISOString() });
+  try { saveLocal(); } catch (e) {}
+  window.FirebaseDB.guardarBitacoraBorradores(currentStudent, currentCareer, borradores).catch(()=>{});
+}
+
+// Si al abrir el formulario hay un autoguardado más nuevo que lo que se ve
+// en pantalla (formulario recién reseteado a los valores por defecto),
+// se avisa con un banner — recuperarlo es una decisión manual del usuario,
+// nunca se aplica solo.
+function _bitacMostrarBannerAutoguardadoSiExiste() {
+  const banner = document.getElementById('bitAutoguardadoBanner');
+  if (!banner) return;
+  const b = _bitacGetBorradores()[BITAC_AUTOSAVE_KEY];
+  if (!b) { banner.style.display = 'none'; return; }
+  const cuando = (b.actualizado || '').slice(0, 16).replace('T', ' ');
+  document.getElementById('bitAutoguardadoCuando').textContent = cuando || 'hace un momento';
+  banner.style.display = '';
+}
+function bitacRecuperarAutoguardado() {
+  const b = _bitacGetBorradores()[BITAC_AUTOSAVE_KEY];
+  if (!b) return;
+  _bitacAplicarFormulario(b);
+  document.getElementById('bitAutoguardadoBanner').style.display = 'none';
+  showToast('↩️ Autoguardado recuperado', 'success');
+}
+function bitacDescartarAutoguardado() {
+  const borradores = _bitacGetBorradores();
+  delete borradores[BITAC_AUTOSAVE_KEY];
+  try { saveLocal(); } catch (e) {}
+  window.FirebaseDB.guardarBitacoraBorradores(currentStudent, currentCareer, borradores).catch(()=>{});
+  document.getElementById('bitAutoguardadoBanner').style.display = 'none';
 }
 
 // Se dispara al cambiar el técnico responsable: sugiere el sello guardado
@@ -5854,6 +6116,10 @@ function _bitacTecChange(group, n) {
     }
   }
   selloSel.innerHTML = _bitacSelloOptionsHTML(pref || '');
+  // La fila puede tener actividades pregrabadas exclusivas de este técnico —
+  // se refresca esa lista al cambiar de técnico (nada queda desactualizado).
+  const pregSel = document.getElementById(`bitPregrabada_${group}_${n}`);
+  if (pregSel) pregSel.innerHTML = _bitacPregrabadaOptionsHTML(nombre);
 }
 
 function _bitacSourceChange(group, n) {
@@ -5864,7 +6130,7 @@ function _bitacSourceChange(group, n) {
       <div class="modal-field" style="margin-bottom:0;grid-column:1/-1;">
         <label>Actividad realizada</label>
         <input type="text" id="bitAct_${group}_${n}" placeholder="Ej: Apoyo administrativo en sede de DI en Berlín">
-        <select class="bit-pregrabada-select" style="margin-top:6px;" onchange="if(this.value){document.getElementById('bitAct_${group}_${n}').value=this.value;this.value='';}">${_bitacPregrabadaOptionsHTML()}</select>
+        <select id="bitPregrabada_${group}_${n}" class="bit-pregrabada-select" style="margin-top:6px;" onchange="if(this.value){document.getElementById('bitAct_${group}_${n}').value=this.value;this.value='';}">${_bitacPregrabadaOptionsHTML('')}</select>
       </div>
       <div class="modal-field" style="margin-bottom:0;"><label>Fecha</label><input type="text" id="bitFecha_${group}_${n}" placeholder="Ej: V-10/07/2026"></div>
       ${_bitacTecFieldHTML(group, n)}`;
@@ -5941,8 +6207,9 @@ function _bitacLeerFila(group, n) {
 // tamaño carta horizontal 792×612pt) para que el diseño nunca varíe. ──
 function _bitacDrawHeader(doc) {
   const pageW = 792;
+  const lg = _pdfLogoConfig.header;
   doc.setFillColor(0, 0, 0); doc.rect(22, 20, 54, 2, 'F');
-  try { doc.addImage(BITAC_LOGO2_B64, 'PNG', 28, 30, 168, 70.2); } catch (e) {}
+  try { doc.addImage(BITAC_LOGO2_B64, 'PNG', lg.x, lg.y, lg.w, lg.h); } catch (e) {}
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
   doc.text('DIRECCIÓN DE INTEGRACIÓN CONTINUIDAD', pageW / 2, 62, { align: 'center' });
@@ -5962,16 +6229,17 @@ function _bitacDrawHeader(doc) {
 // de la tabla de datos en la página 1, o encima del pie de página en las
 // páginas 2 y 3).
 function _bitacDrawWatermark(doc, logoRect) {
+  const es = _pdfLogoConfig.escudo;
   try {
     doc.saveGraphicsState();
-    doc.setGState(new doc.GState({ opacity: 0.2 }));
-    doc.addImage(BITAC_ESCUDO_B64, 'PNG', 384.6, 18.3, 549, 557.5);
+    doc.setGState(new doc.GState({ opacity: es.opacity }));
+    doc.addImage(BITAC_ESCUDO_B64, 'PNG', es.x, es.y, es.w, es.h);
     doc.restoreGraphicsState();
   } catch (e) {}
   if (logoRect) {
     try {
       doc.saveGraphicsState();
-      doc.setGState(new doc.GState({ opacity: 0.2 }));
+      doc.setGState(new doc.GState({ opacity: es.opacity }));
       doc.addImage(BITAC_LOGOFULL_B64, 'PNG', logoRect.x, logoRect.y, logoRect.w, logoRect.h);
       doc.restoreGraphicsState();
     } catch (e) {}
@@ -6128,7 +6396,7 @@ function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, ext
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
 
   // ---- PÁGINA 1: datos del voluntario + 3 actividades obligatorias (N° 1-3) ----
-  _bitacDrawWatermark(doc, { x: 294.8, y: 145.6, w: 448.2, h: 96.7 });
+  _bitacDrawWatermark(doc, _pdfLogoConfig.logoP1);
   _bitacDrawHeader(doc);
   _bitacDrawPerfilTable(doc, 124.5, [
     ['NOMBRE DEL VOLUNTARIO:', perfil.nombreVoluntario],
@@ -6145,7 +6413,7 @@ function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, ext
 
   // ---- PÁGINA 2: actividades extra opcionales (N° 4-6) + firma de cierre ----
   doc.addPage();
-  _bitacDrawWatermark(doc, { x: 92.5, y: 460, w: 607, h: 131 });
+  _bitacDrawWatermark(doc, _pdfLogoConfig.logoP2);
   const introTxt = 'A CONTINUACIÓN, ESTIMADO BECADO SE TE PROPORCIONA UNA TABLA EXTRA PARA LAS ACTIVIDADES OBLIGATORIAS CORRESPONDIENTES A ESTE CICLO; ADEMAS DE LAS 3 ACTIVIDADES OBLIGATORIAS POR CICLO. ESTA MISMA TE SERVIRA PARA LAS ACTIVIDADES POR FALTAS O STRIKE SI NECESITAS MAS SE ANEXAN MAS CUADROS.';
   doc.setFont('helvetica', 'normal'); doc.setFontSize(12); doc.setTextColor(0, 0, 0);
   let ly = 50;
@@ -6162,7 +6430,7 @@ function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, ext
 
   // ---- PÁGINA 3: anexos (N° 7-12 — usa las filas extra 4 a 9 si existen; si no, queda en blanco para uso posterior a mano) ----
   doc.addPage();
-  _bitacDrawWatermark(doc, { x: 71.5, y: 442, w: 649, h: 140 });
+  _bitacDrawWatermark(doc, _pdfLogoConfig.logoP3);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(0, 0, 0);
   doc.text('ANEXOS', 36, 58);
   doc.setLineWidth(0.9); doc.line(36, 63, 94, 63);
@@ -6178,6 +6446,13 @@ function _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, ext
 // ── Generación final: lee el formulario, valida, guarda perfil + registro
 // de historial (con motivo si se estaba reeditando una bitácora previa),
 // arma el PDF y lo descarga. ──
+// Vista previa antes de descargar: guarda todo lo que hace falta para
+// terminar el trámite (doc ya construido, nombre de archivo, registro de
+// historial y motivo de edición si aplica) hasta que el usuario confirme
+// desde el modal de vista previa. Nada se guarda en Firebase ni se
+// descarga solo — todo pasa por el botón "Confirmar y descargar".
+let _bitacPdfPreview = { doc: null, blobUrl: null, fname: null, registro: null, editingId: null };
+
 function generarBitacoraDIPDF() {
   if (!currentStudent) { showToast('Selecciona un estudiante primero', 'error'); return; }
   if (!(window.jspdf && window.jspdf.jsPDF)) { showToast('El generador de PDF no cargó. Recargá la página e intentá de nuevo.', 'error'); return; }
@@ -6211,36 +6486,56 @@ function generarBitacoraDIPDF() {
     if (!motivoEdicion) { showToast('Necesitás indicar el motivo para guardar la edición', 'error'); return; }
   }
 
-  // Guardar el perfil para la próxima vez que se abra esta modal (no bloquea la generación).
-  if (!appData[currentStudent]) appData[currentStudent] = {};
-  appData[currentStudent].bitacoraPerfil = Object.assign({}, perfil, { tecnicoResponsable: tecRespNombre, selloResponsable: selloRespVal });
-  try { saveLocal(); } catch (e) {}
-  window.FirebaseDB.guardarBitacoraPerfil(currentStudent, currentCareer, appData[currentStudent].bitacoraPerfil).catch(()=>{});
-
   const doc = _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, extra, selloRespImg);
   const fname = 'Bitacora_DI_' + currentStudent.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
-  doc.save(fname);
 
-  // Guardar/actualizar el registro en el historial de bitácoras.
-  const nowIso = new Date().toISOString();
   const registro = {
-    generadoTs: nowIso,
+    generadoTs: new Date().toISOString(),
     generadoFecha: getTodayKey(),
     perfil, tecnicoResponsable: tecRespNombre, selloResponsable: selloRespVal,
     obligatorias: obligatorias.map(r => ({ actividad: r.actividad, fecha: r.fecha, tecNombre: r.tecNombre, selloSelVal: r.selloSelVal })),
     extra: extra.map(r => ({ actividad: r.actividad, fecha: r.fecha, tecNombre: r.tecNombre, selloSelVal: r.selloSelVal })),
-    ediciones: []
+    ediciones: [],
+    _motivoEdicionPendiente: motivoEdicion
   };
+
+  // Limpia cualquier vista previa anterior que hubiera quedado abierta.
+  if (_bitacPdfPreview.blobUrl) { try { URL.revokeObjectURL(_bitacPdfPreview.blobUrl); } catch (e) {} }
+  const blob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(blob);
+  _bitacPdfPreview = { doc, blobUrl, fname, registro, editingId: _bitacEditingRecordId };
+
+  document.getElementById('bitacPdfPreviewFrame').src = blobUrl;
+  document.getElementById('bitacPdfPreviewModal').classList.add('open');
+}
+
+// El usuario ya vio la vista previa y confirma: recién ACÁ se descarga el
+// archivo y se guarda todo en Firebase (perfil, historial, borrador). Si
+// en vez de esto cierra la vista previa, no se guarda ni se descarga nada.
+function bitacConfirmarDescargaPDF() {
+  const { doc, fname, registro, editingId } = _bitacPdfPreview;
+  if (!doc) return;
+  const motivoEdicion = registro._motivoEdicionPendiente;
+  delete registro._motivoEdicionPendiente;
+
+  doc.save(fname);
+
+  if (!appData[currentStudent]) appData[currentStudent] = {};
+  appData[currentStudent].bitacoraPerfil = Object.assign({}, registro.perfil, { tecnicoResponsable: registro.tecnicoResponsable, selloResponsable: registro.selloResponsable });
+  try { saveLocal(); } catch (e) {}
+  window.FirebaseDB.guardarBitacoraPerfil(currentStudent, currentCareer, appData[currentStudent].bitacoraPerfil).catch(()=>{});
+
+  const nowIso = new Date().toISOString();
   const guardarHistorial = (id) => {
     window.FirebaseDB.guardarRegistroBitacora(currentStudent, currentCareer, id, registro).catch(e => console.error(e));
   };
-  if (_bitacEditingRecordId) {
+  if (editingId) {
     window.FirebaseDB.listarBitacoras(currentStudent, currentCareer).then(lista => {
-      const prev = lista.find(r => r.id === _bitacEditingRecordId);
+      const prev = lista.find(r => r.id === editingId);
       registro.ediciones = ((prev && prev.ediciones) || []).concat([{ motivo: motivoEdicion, ts: nowIso }]);
       registro.generadoTs = (prev && prev.generadoTs) || nowIso; // conserva la fecha de creación original
-      guardarHistorial(_bitacEditingRecordId);
-    }).catch(() => guardarHistorial(_bitacEditingRecordId));
+      guardarHistorial(editingId);
+    }).catch(() => guardarHistorial(editingId));
   } else {
     guardarHistorial(null);
   }
@@ -6258,8 +6553,21 @@ function generarBitacoraDIPDF() {
     _bitacBorradorActual = null;
   }
 
+  bitacCerrarVistaPreviaPDF();
+  _bitacDetenerAutoguardado();
+  const _borradoresLimpios = _bitacGetBorradores();
+  if (_borradoresLimpios[BITAC_AUTOSAVE_KEY]) { delete _borradoresLimpios[BITAC_AUTOSAVE_KEY]; window.FirebaseDB.guardarBitacoraBorradores(currentStudent, currentCareer, _borradoresLimpios).catch(()=>{}); }
   showToast('✓ Bitácora DI generada', 'success');
   document.getElementById('bitacoraDIModal').classList.remove('open');
+}
+
+// Cierra la vista previa sin guardar ni descargar nada — el formulario de
+// bitácora sigue abierto tal como estaba, para seguir editando.
+function bitacCerrarVistaPreviaPDF() {
+  document.getElementById('bitacPdfPreviewModal').classList.remove('open');
+  document.getElementById('bitacPdfPreviewFrame').src = 'about:blank';
+  if (_bitacPdfPreview.blobUrl) { try { URL.revokeObjectURL(_bitacPdfPreview.blobUrl); } catch (e) {} }
+  _bitacPdfPreview = { doc: null, blobUrl: null, fname: null, registro: null, editingId: null };
 }
 
 // ══════════════════════════════════════════════════════════
@@ -6299,11 +6607,13 @@ function _renderHistorialBitacoras() {
     }
     const fecha = (r.generadoTs || '').slice(0, 10) || r.generadoFecha || '—';
     const nEdits = (r.ediciones || []).length;
+    const ultimoMotivo = nEdits ? r.ediciones[nEdits - 1].motivo : '';
     return `<div class="asist-hist-row" style="cursor:default;">
       <span style="font-size:17px;">📄</span>
       <div style="flex:1;">
         <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(fecha)} ${nEdits ? `<span style="font-size:10px;color:var(--gm);font-weight:600;">· editada ${nEdits}×</span>` : ''}</div>
         <div style="font-size:11px;color:var(--gm);">Técnico responsable: ${escapeHtml(r.tecnicoResponsable || '—')}</div>
+        ${nEdits ? `<div style="font-size:10.5px;color:var(--pend);margin-top:2px;">✏️ Último motivo: ${escapeHtml(ultimoMotivo)}</div>` : ''}
       </div>
       <button onclick="verBitacoraHist('${r.id}')" title="Ver detalle" style="background:transparent;border:none;color:var(--blue);cursor:pointer;font-size:14px;">👁</button>
       <button onclick="descargarBitacoraHist('${r.id}')" title="Volver a descargar" style="background:transparent;border:none;color:var(--blue);cursor:pointer;font-size:14px;">⬇️</button>
@@ -6826,9 +7136,122 @@ async function openConfigUsuario() {
   document.getElementById('cfgTecnicoDefault').innerHTML = _bitacTecnicoOptionsHTML(_userConfig.tecnicoDefault || '');
   document.getElementById('cfgSelloDefault').innerHTML = _bitacSelloOptionsHTML(_userConfig.selloDefault || '');
   _cfgTecnicoDefaultChange();
+  document.getElementById('cfgActividadTecnico').innerHTML = _bitacTecnicoOptionsHTMLParaTodos('');
   document.getElementById('cfgActividadesList').innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Cargando…</div>';
   await _bitacCargarActividadesPregrabadas();
   _renderActividadesPregrabadasList();
+  _renderLogosPdfConfig();
+  _renderLogoPerfilesSelect();
+}
+
+// Igual que _bitacTecnicoOptionsHTML pero con el primer valor pensado para
+// este selector puntual (asignar una actividad pregrabada a un técnico).
+function _bitacTecnicoOptionsHTMLParaTodos(selected) {
+  return _bitacTecnicoOptionsHTML(selected).replace('— Sin técnico —', '— Para todos los técnicos —');
+}
+
+// ── Logos y marca de agua del PDF de Bitácora DI — TODO manual, con
+// campos numéricos de posición (X/Y), tamaño (ancho/alto) y, para el
+// escudo, opacidad. Nada se ajusta ni se calcula solo: si nadie toca este
+// panel, el PDF sale exactamente igual que siempre (ver PDF_LOGO_DEFAULTS).
+// Se guarda en este dispositivo, igual que el resto de "Configuración". ──
+function _campoNumLogoHTML(key, campo, valor, label) {
+  return `<label style="font-size:9.5px;color:var(--gm);display:block;">${label}
+      <input type="number" step="0.1" id="logoPdf_${key}_${campo}" value="${valor}" style="width:100%;padding:5px 6px;margin-top:2px;border:1.5px solid var(--inp-b);border-radius:6px;background:var(--inp-bg);color:var(--text);font-size:11.5px;">
+    </label>`;
+}
+
+function _renderLogosPdfConfig() {
+  const cont = document.getElementById('cfgLogosPdfList');
+  if (!cont) return;
+  cont.innerHTML = Object.keys(PDF_LOGO_DEFAULTS).map(key => {
+    const v = _pdfLogoConfig[key];
+    const esEscudo = key === 'escudo';
+    let campos = _campoNumLogoHTML(key, 'x', v.x, 'X') + _campoNumLogoHTML(key, 'y', v.y, 'Y') +
+                 _campoNumLogoHTML(key, 'w', v.w, 'Ancho') + _campoNumLogoHTML(key, 'h', v.h, 'Alto');
+    if (esEscudo) campos += _campoNumLogoHTML(key, 'opacity', v.opacity, 'Opacidad (0–1)');
+    return `<div style="border:1.5px solid var(--gl);border-radius:8px;padding:9px 10px;margin-bottom:8px;">
+        <div style="font-size:11.5px;font-weight:700;color:var(--text);margin-bottom:6px;">${PDF_LOGO_LABELS[key]}</div>
+        <div style="display:grid;grid-template-columns:repeat(${esEscudo ? 5 : 4},1fr);gap:6px;">${campos}</div>
+      </div>`;
+  }).join('');
+}
+
+function guardarLogosPdfConfig() {
+  _aplicarCamposLogosPdfDesdeUI();
+  _guardarPdfLogoConfigStorage();
+  showToast('🖼️ Posición de logos guardada en este dispositivo', 'success');
+}
+
+// Lee los campos numéricos del panel y los aplica a _pdfLogoConfig (sin
+// avisar ni guardar todavía) — centralizado para que "Guardar posición de
+// logos" y "Guardar como perfil…" lean exactamente los mismos valores.
+function _aplicarCamposLogosPdfDesdeUI() {
+  Object.keys(PDF_LOGO_DEFAULTS).forEach(key => {
+    const leer = campo => {
+      const el = document.getElementById(`logoPdf_${key}_${campo}`);
+      const n = el ? parseFloat(el.value) : NaN;
+      return isNaN(n) ? PDF_LOGO_DEFAULTS[key][campo] : n;
+    };
+    _pdfLogoConfig[key] = { x: leer('x'), y: leer('y'), w: leer('w'), h: leer('h') };
+    if (key === 'escudo') _pdfLogoConfig.escudo.opacity = Math.min(1, Math.max(0, leer('opacity')));
+  });
+}
+
+// ── Perfiles de logos con nombre — para cuando una misma cuenta genera
+// bitácoras de más de una sede/carrera y cada una necesita otra posición.
+// Guardado 100% manual, en este dispositivo (localStorage), igual que el
+// resto del panel de ajustes de logos. ──
+let _pdfLogoPerfiles = {};
+try { _pdfLogoPerfiles = JSON.parse(localStorage.getItem('pdfLogoPerfilesDI') || '{}'); } catch (e) { _pdfLogoPerfiles = {}; }
+function _guardarPdfLogoPerfilesStorage() { try { localStorage.setItem('pdfLogoPerfilesDI', JSON.stringify(_pdfLogoPerfiles)); } catch (e) {} }
+
+function _renderLogoPerfilesSelect() {
+  const sel = document.getElementById('cfgLogoPerfilSelect');
+  if (!sel) return;
+  const nombres = Object.keys(_pdfLogoPerfiles).sort();
+  sel.innerHTML = '<option value="">— Perfil actual (sin nombre) —</option>' + nombres.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+}
+
+function cargarPerfilLogosPdf() {
+  const nombre = document.getElementById('cfgLogoPerfilSelect').value;
+  if (!nombre) { showToast('Elegí un perfil guardado para cargar', 'error'); return; }
+  const perfil = _pdfLogoPerfiles[nombre];
+  if (!perfil) return;
+  _pdfLogoConfig = JSON.parse(JSON.stringify(perfil));
+  _guardarPdfLogoConfigStorage();
+  _renderLogosPdfConfig();
+  showToast('📂 Perfil de logos "' + nombre + '" cargado', 'success');
+}
+
+function guardarPerfilLogosPdfComoNuevo() {
+  _aplicarCamposLogosPdfDesdeUI();
+  _guardarPdfLogoConfigStorage();
+  const nombre = (prompt('Nombre para este perfil de logos (ej: "Sede Central", "Sede San Miguel"):') || '').trim();
+  if (!nombre) return;
+  _pdfLogoPerfiles[nombre] = JSON.parse(JSON.stringify(_pdfLogoConfig));
+  _guardarPdfLogoPerfilesStorage();
+  _renderLogoPerfilesSelect();
+  document.getElementById('cfgLogoPerfilSelect').value = nombre;
+  showToast('💾 Perfil "' + nombre + '" guardado', 'success');
+}
+
+function eliminarPerfilLogosPdf() {
+  const nombre = document.getElementById('cfgLogoPerfilSelect').value;
+  if (!nombre) { showToast('Elegí un perfil guardado para eliminar', 'error'); return; }
+  if (!confirm('¿Eliminar el perfil de logos "' + nombre + '"? (esto no cambia la posición actual, solo borra el perfil guardado)')) return;
+  delete _pdfLogoPerfiles[nombre];
+  _guardarPdfLogoPerfilesStorage();
+  _renderLogoPerfilesSelect();
+  showToast('🗑 Perfil "' + nombre + '" eliminado', 'success');
+}
+
+function restablecerLogosPdfConfig() {
+  if (!confirm('¿Restablecer la posición, tamaño y opacidad de los logos a los valores originales de la plantilla?')) return;
+  _pdfLogoConfig = JSON.parse(JSON.stringify(PDF_LOGO_DEFAULTS));
+  _guardarPdfLogoConfigStorage();
+  _renderLogosPdfConfig();
+  showToast('↩️ Logos restablecidos a su posición original', 'success');
 }
 
 // Muestra la firma que ya tiene guardada el técnico elegido como
@@ -6881,7 +7304,7 @@ function _renderActividadesPregrabadasList() {
   if (!_actividadesPregrabadasCache.length) { cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Todavía no hay actividades pregrabadas.</div>'; return; }
   cont.innerHTML = _actividadesPregrabadasCache.map(a => `<div class="asist-hist-row">
       <span style="font-size:15px;">📌</span>
-      <div style="flex:1;font-size:12.5px;color:var(--text);">${escapeHtml(a.texto)}</div>
+      <div style="flex:1;font-size:12.5px;color:var(--text);">${escapeHtml(a.texto)}${a.tecnico ? ` <span style="font-size:9.5px;background:var(--pend);color:#fff;border-radius:999px;padding:1px 6px;margin-left:4px;">👤 ${escapeHtml(a.tecnico)}</span>` : ''}</div>
       <button onclick="eliminarActividadPregrabadaUI('${a.id}')" title="Eliminar" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:14px;">🗑</button>
     </div>`).join('');
 }
@@ -6889,14 +7312,16 @@ function _renderActividadesPregrabadasList() {
 async function agregarActividadPregrabada() {
   const inp = document.getElementById('cfgActividadInput');
   const texto = (inp.value || '').trim();
+  const tecnico = (document.getElementById('cfgActividadTecnico').value || '').trim();
   if (!texto) { showToast('Escribí el texto de la actividad', 'error'); return; }
   try {
-    await window.FirebaseDB.guardarActividadPregrabada(null, texto);
+    await window.FirebaseDB.guardarActividadPregrabada(null, texto, tecnico);
     inp.value = '';
+    document.getElementById('cfgActividadTecnico').value = '';
     await _bitacCargarActividadesPregrabadas();
     _renderActividadesPregrabadasList();
     _bitacRefrescarPregrabadasSelects();
-    showToast('✓ Actividad pregrabada agregada', 'success');
+    showToast('✓ Actividad pregrabada agregada' + (tecnico ? ' (solo para ' + tecnico + ')' : ''), 'success');
   } catch (e) { showToast('No se pudo guardar', 'error'); }
 }
 

@@ -257,10 +257,10 @@ export async function listarActividadesPregrabadas() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export async function guardarActividadPregrabada(id, texto) {
+export async function guardarActividadPregrabada(id, texto, tecnico) {
   const col = collection(db, 'actividadesPregrabadas');
   const ref = id ? doc(col, id) : doc(col);
-  await setDoc(ref, { texto, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(ref, { texto, tecnico: tecnico || '', updatedAt: serverTimestamp() }, { merge: true });
   return ref.id;
 }
 

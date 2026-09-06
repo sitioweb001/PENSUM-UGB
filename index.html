@@ -477,7 +477,7 @@
     <div class="asist-hoy-box" id="asistenciaHoy"></div>
     <div id="diaConfirmBanner" style="display:none;background:rgba(16,185,129,.12);border:1.5px solid var(--pass);color:var(--pass);font-weight:700;font-size:12.5px;text-align:center;border-radius:9px;padding:9px 12px;margin-bottom:12px;">✅ Asistencia verificada. Cerrá el modal o revisá su historial abajo.</div>
     <div style="text-align:center;margin-bottom:10px;"><button class="asist-mark-btn" id="asistenciaBtn" onclick="marcarAsistencia()">✅ Marcar Asistencia de Hoy</button></div>
-    <div style="text-align:center;margin-bottom:16px;"><button class="modal-btn secondary" style="padding:7px 12px;font-size:12.5px;" onclick="openAsistenciaManual()" title="¿Olvidaste marcar un día? Regístralo aquí con justificación">📝 Registrar día atrasado</button></div>
+    <div style="text-align:center;margin-bottom:16px;"><button class="modal-btn secondary" style="padding:7px 12px;font-size:12.5px;" onclick="openAsistenciaManual()" title="Registrá un día atrasado (o de hoy) con hora manual">📝 Registrar asistencia manual</button></div>
     <div class="filter-tabs" id="asistFilterTabs">
       <button class="filter-tab active" onclick="setAsistFilter('today',this)">Hoy</button>
       <button class="filter-tab" onclick="setAsistFilter('week',this)">Semana</button>
@@ -496,9 +496,9 @@
 
 <div class="modal-overlay" id="asistenciaManualModal" style="z-index:9999;">
   <div class="modal" style="width:460px;">
-    <h3>📝 Registrar día atrasado</h3>
-    <p>Usa esto si olvidaste marcar tu asistencia un día que ya pasó. Se guardará con la justificación que indiques.</p>
-    <div class="modal-field"><label>Fecha del día que olvidaste marcar</label>
+    <h3 id="asistManualTitulo">📝 Registrar asistencia manual</h3>
+    <p id="asistManualDesc">Usalo si olvidaste marcar un día (pasado o de hoy). Se guardará con la justificación que indiques.</p>
+    <div class="modal-field"><label>Fecha</label>
       <input type="date" id="asistManualFecha" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
     <div style="display:flex;gap:10px;">
       <div class="modal-field" style="flex:1;"><label>Hora de entrada</label>
@@ -506,13 +506,15 @@
       <div class="modal-field" style="flex:1;"><label>Hora de salida</label>
         <input type="time" id="asistManualSalida" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
     </div>
-    <div class="modal-field"><label>Motivo por el que no marcaste ese día</label>
+    <div class="modal-field" id="asistManualMotivoField"><label>Motivo por el que no marcaste ese día</label>
       <select id="asistManualMotivo" onchange="onAsistManualMotivoChange()" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></select></div>
     <div class="modal-field" id="asistManualOtroField" style="display:none;"><label>Describe el motivo</label>
       <input type="text" id="asistManualOtro" placeholder="Ej. Cita médica" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+    <div class="modal-field" id="asistManualMotivoEdicionField" style="display:none;"><label>Motivo de la edición <span style="font-weight:400;color:var(--gm);">(obligatorio para guardar la corrección)</span></label>
+      <input type="text" id="asistManualMotivoEdicion" placeholder="Ej: Se corrigió la hora de salida" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
     <div class="modal-btns">
       <button class="modal-btn secondary" onclick="closeAsistenciaManual()">Cancelar</button>
-      <button class="modal-btn primary" onclick="guardarAsistenciaManual()">Guardar registro</button>
+      <button class="modal-btn primary" id="asistManualGuardarBtn" onclick="guardarAsistenciaManual()">Guardar registro</button>
     </div>
   </div>
 </div>
@@ -522,9 +524,13 @@
     <div class="asist-logos" style="justify-content:center;">
       <img src="DI.svg" alt="Dirección de Integración" style="height:90px;object-fit:contain;" onerror="this.outerHTML='<span style=\'font-size:12px;color:var(--gm);font-weight:700;\'>Dirección de Integración UGB</span>'">
     </div>
-    <h3 style="text-align:center;margin-bottom:3px;">📝 Formulario de Asistencia DI</h3>
+    <h3 style="text-align:center;margin-bottom:3px;" id="actFormTitulo">📝 Formulario de Asistencia DI</h3>
     <p style="text-align:center;margin-bottom:13px;">Dirección de Integración · Universidad Gerardo Barrios</p>
 
+    <div class="modal-field">
+      <label>Fecha <span style="font-weight:400;color:var(--gm);">(automática: hoy — cambiala si necesitás registrar otro día)</span></label>
+      <input type="date" id="actFecha">
+    </div>
     <div class="modal-field">
       <label>NIE del estudiante</label>
       <input type="text" id="actNie" placeholder="Ej: 20230012">
@@ -568,6 +574,11 @@
     <div class="modal-field" id="actOtroField" style="display:none;">
       <label>Describe el tipo de asistencia</label>
       <input type="text" id="actOtroDesc" placeholder="Ej: Logística de sonido">
+    </div>
+
+    <div class="modal-field" id="actMotivoEdicionField" style="display:none;">
+      <label>Motivo de la edición <span style="font-weight:400;color:var(--gm);">(obligatorio para guardar la corrección)</span></label>
+      <input type="text" id="actMotivoEdicion" placeholder="Ej: Se corrigió la hora de salida">
     </div>
 
     <div id="actConfirmBanner" style="display:none;background:rgba(16,185,129,.12);border:1.5px solid var(--pass);color:var(--pass);font-weight:700;font-size:12.5px;text-align:center;border-radius:9px;padding:9px 12px;margin-bottom:12px;">✅ Asistencia verificada. Cerrá el modal o revisá su historial abajo.</div>
@@ -620,12 +631,20 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <select id="bitBorradorSelect" onchange="bitacCargarBorradorSeleccionado()" style="flex:1;min-width:160px;padding:7px 10px;border:1.5px solid var(--inp-b);border-radius:7px;background:var(--inp-bg);color:var(--text);font-size:12.5px;"></select>
-        <button type="button" onclick="bitacGuardarBorrador()" class="modal-btn secondary" style="padding:7px 12px;font-size:12px;">Guardar como…</button>
+        <button type="button" onclick="bitacGuardarRapido()" class="modal-btn primary" style="padding:7px 12px;font-size:12px;" title="Actualiza el borrador ya cargado sin volver a preguntar el nombre">💾 Guardar</button>
+        <button type="button" onclick="bitacGuardarBorrador()" class="modal-btn secondary" style="padding:7px 12px;font-size:12px;" title="Guarda una copia nueva con el nombre que elijas">Guardar como…</button>
         <button type="button" onclick="bitacFinalizarBorrador()" class="modal-btn secondary" style="padding:7px 12px;font-size:12px;">✅ Marcar finalizada</button>
         <button type="button" onclick="bitacBorrarBorradorSeleccionado()" class="modal-btn secondary" style="padding:7px 12px;font-size:12px;">Eliminar</button>
         <button type="button" onclick="openHistorialBitacoras()" class="modal-btn secondary" style="padding:7px 12px;font-size:12px;">📚 Historial</button>
       </div>
-      <p style="font-size:10.5px;color:var(--gm);margin:8px 0 0;">Guardá el avance con un nombre para retomarlo después. Al generar el PDF desde un borrador cargado, se marca como finalizada automáticamente.</p>
+      <p style="font-size:10.5px;color:var(--gm);margin:8px 0 0;">💾 <b>Guardar</b> actualiza el borrador ya cargado sin preguntar nada. <b>Guardar como…</b> te deja ponerle un nombre nuevo (para tener varias versiones). Al generar el PDF desde un borrador cargado, se marca como finalizada automáticamente. Además, cada 30s se hace un autoguardado silencioso en segundo plano (no reemplaza tus borradores con nombre, es solo por si el navegador se cierra solo).</p>
+      <div id="bitAutoguardadoBanner" style="display:none;margin-top:8px;background:rgba(245,158,11,.12);border:1.5px solid var(--pend);border-radius:8px;padding:8px 10px;font-size:11.5px;color:var(--text);">
+        🕓 Hay un autoguardado de <b id="bitAutoguardadoCuando"></b> que no está en ningún borrador con nombre.
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          <button type="button" class="modal-btn primary" style="padding:5px 10px;font-size:11.5px;" onclick="bitacRecuperarAutoguardado()">↩️ Recuperar</button>
+          <button type="button" class="modal-btn secondary" style="padding:5px 10px;font-size:11.5px;" onclick="bitacDescartarAutoguardado()">✖ Descartar</button>
+        </div>
+      </div>
     </div>
 
     <div id="bitEditingBanner" style="display:none;background:rgba(245,158,11,.12);border:1.5px solid var(--pend);color:var(--pend);font-weight:700;font-size:12px;text-align:center;border-radius:9px;padding:9px 12px;margin-bottom:14px;"></div>
@@ -652,8 +671,22 @@
     <div id="bitExtraRows"></div>
 
     <div class="modal-btns" style="margin-top:16px;">
-      <button class="modal-btn secondary" onclick="document.getElementById('bitacoraDIModal').classList.remove('open')">Cancelar</button>
-      <button class="modal-btn primary" onclick="generarBitacoraDIPDF()">📄 Generar PDF</button>
+      <button class="modal-btn secondary" onclick="cerrarBitacoraDIModal()">Cancelar</button>
+      <button class="modal-btn primary" onclick="generarBitacoraDIPDF()">👁️ Vista previa y descargar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Vista previa del PDF antes de descargar — nada se guarda en Firebase
+     ni se descarga hasta que el usuario toque "Confirmar y descargar". -->
+<div class="modal-overlay" id="bitacPdfPreviewModal" style="z-index:10000;">
+  <div class="modal" style="width:min(880px,96vw);max-width:96vw;">
+    <h3 style="text-align:center;margin-bottom:3px;">👁️ Vista previa de la Bitácora DI</h3>
+    <p style="text-align:center;margin-bottom:10px;">Revisá que los logos, datos y firma salgan bien antes de descargar. Si algo no se ve como querés, cerrá esta vista y seguí editando.</p>
+    <iframe id="bitacPdfPreviewFrame" style="width:100%;height:60vh;border:1.5px solid var(--gl);border-radius:8px;background:#fff;"></iframe>
+    <div class="modal-btns" style="margin-top:14px;">
+      <button class="modal-btn secondary" onclick="bitacCerrarVistaPreviaPDF()">⬅️ Seguir editando</button>
+      <button class="modal-btn primary" onclick="bitacConfirmarDescargaPDF()">⬇️ Confirmar y descargar</button>
     </div>
   </div>
 </div>
@@ -854,12 +887,35 @@
 
     <div class="ham-divider" style="margin-bottom:12px;"></div>
     <h4 style="margin-bottom:2px;">Actividades pregrabadas</h4>
-    <p style="font-size:11px;color:var(--gm);margin-bottom:8px;">Aparecen como opción rápida al llenar una fila manual de la Bitácora.</p>
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <input type="text" id="cfgActividadInput" placeholder="Ej: Apoyo administrativo en sede DI en Berlín" style="flex:1;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-size:13px;">
+    <p style="font-size:11px;color:var(--gm);margin-bottom:8px;">Aparecen como opción rápida al llenar una fila manual de la Bitácora. Asignala a un técnico si es una frase que solo ese técnico usa — si no, queda disponible para todos.</p>
+    <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+      <input type="text" id="cfgActividadInput" placeholder="Ej: Apoyo administrativo en sede DI en Berlín" style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-size:13px;">
       <button type="button" class="modal-btn primary" onclick="agregarActividadPregrabada()" style="padding:7px 14px;font-size:12px;white-space:nowrap;">+ Agregar</button>
     </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+      <label style="font-size:11px;color:var(--gm);white-space:nowrap;">Solo para el técnico:</label>
+      <select id="cfgActividadTecnico" style="flex:1;padding:7px 10px;border:1.5px solid var(--inp-b);border-radius:7px;background:var(--inp-bg);color:var(--text);font-size:12px;"></select>
+    </div>
     <div id="cfgActividadesList"></div>
+
+    <div class="ham-divider" style="margin:14px 0 12px;"></div>
+    <h4 style="margin-bottom:2px;">🖼️ Logos y marca de agua del PDF (Bitácora DI)</h4>
+    <p style="font-size:11px;color:var(--gm);margin-bottom:8px;">Todo es manual — nada se ajusta ni se mueve solo. Cambiá los números si un logo necesita otra posición, tamaño u opacidad en el PDF; si no tocás nada, queda igual que siempre.</p>
+
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;background:var(--bg);border:1.5px solid var(--gl);border-radius:8px;padding:8px 10px;">
+      <span style="font-size:10.5px;font-weight:700;color:var(--gm);white-space:nowrap;">📂 PERFILES</span>
+      <select id="cfgLogoPerfilSelect" style="flex:1;min-width:140px;padding:6px 8px;border:1.5px solid var(--inp-b);border-radius:6px;background:var(--inp-bg);color:var(--text);font-size:12px;"></select>
+      <button type="button" class="modal-btn secondary" style="padding:6px 10px;font-size:11.5px;" onclick="cargarPerfilLogosPdf()" title="Carga los valores guardados de ese perfil en los campos de abajo">Cargar</button>
+      <button type="button" class="modal-btn secondary" style="padding:6px 10px;font-size:11.5px;" onclick="eliminarPerfilLogosPdf()" title="Elimina el perfil elegido (no afecta la posición actual)">🗑</button>
+    </div>
+    <p style="font-size:10.5px;color:var(--gm);margin:-4px 0 8px;">Usalo si generás bitácoras para más de una sede/carrera y cada una necesita otra posición de logos — guardá cada combinación con un nombre y cambiá de perfil según haga falta.</p>
+
+    <div id="cfgLogosPdfList"></div>
+    <div style="display:flex;gap:8px;margin:6px 0 16px;flex-wrap:wrap;">
+      <button type="button" class="modal-btn primary" style="flex:1;padding:7px 12px;font-size:12px;" onclick="guardarLogosPdfConfig()">💾 Guardar posición de logos</button>
+      <button type="button" class="modal-btn secondary" style="padding:7px 12px;font-size:12px;" onclick="guardarPerfilLogosPdfComoNuevo()" title="Guarda estos valores como un perfil nuevo con nombre">💾 Guardar como perfil…</button>
+      <button type="button" class="modal-btn secondary" style="padding:7px 12px;font-size:12px;" onclick="restablecerLogosPdfConfig()">↩️ Restablecer</button>
+    </div>
 
     <div class="ham-divider" style="margin:14px 0 12px;"></div>
     <button type="button" class="modal-btn secondary" style="width:100%;" onclick="document.getElementById('configUsuarioModal').classList.remove('open');openTecnicosModal();">🧑‍💼 Administrar técnicos…</button>
@@ -890,7 +946,8 @@
   <div class="modal" style="width:420px;">
     <h3 style="text-align:center;margin-bottom:13px;">📝 Detalle de Asistencia</h3>
     <div id="actDetalleBody" style="font-size:13px;"></div>
-    <div class="modal-btns" style="margin-top:14px;">
+    <div class="modal-btns" style="margin-top:14px;flex-wrap:wrap;">
+      <button class="modal-btn secondary" onclick="editarAsistenciaActividadDesdeDetalle()">✏️ Editar</button>
       <button class="modal-btn danger" onclick="borrarAsistenciaActividadDesdeDetalle()">🗑 Eliminar</button>
       <button class="modal-btn primary" onclick="document.getElementById('actDetalleModal').classList.remove('open')">Cerrar</button>
     </div>

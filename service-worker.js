@@ -5,7 +5,7 @@
 // siempre de Firebase — este service worker NUNCA cachea eso, así que
 // nunca vas a ver datos viejos por culpa de la caché.
 
-const CACHE_NAME = 'pensum-ugb-v7'; // v7: la restauración de sesión oculta explícitamente login/carrera + log que delata quién llama a chooseCareer()
+const CACHE_NAME = 'pensum-ugb-v4'; // v4: asistencia atrasada, actividad DI -> bitácora, filtro/fechas de ciclos, botón "En Proceso", mantener sesión iniciada (24h)
 const SHELL_FILES = [
   './',
   './index.html',

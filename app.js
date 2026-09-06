@@ -1251,6 +1251,11 @@ async function init() {
       localStorage.setItem('ugb_career', sesion.carrera);
       CYCLES = JSON.parse(JSON.stringify(CAREERS[currentCareer].cycles));
       _aplicarCareerHeaderUI(currentCareer);
+      // Ocultar YA MISMO ambas pantallas (selección de carrera y login) —
+      // así, pase lo que pase mientras selectStudent() descarga los datos,
+      // no queda nada clickeable de la pantalla de login/carrera de fondo.
+      document.getElementById('careerSelectView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'none';
       _showLoading('Bienvenido/a de nuevo, ' + sesion.estudiante + '...', 'Restaurando tu sesión');
       selectStudent(sesion.estudiante).catch(e => {
         console.error('[Sesión] selectStudent falló durante la restauración automática:', e);
@@ -1290,6 +1295,7 @@ function _aplicarCareerHeaderUI(career) {
 
 // El usuario eligió una carrera — cargar su pénsum y la lista de estudiantes
 async function chooseCareer(career) {
+  console.log('[Carrera] chooseCareer("'+career+'") ejecutándose — esto SOLO debería pasar por un clic manual, nunca durante una restauración automática de sesión.', new Error().stack);
   currentCareer = career;
   localStorage.setItem('ugb_career', career);
   CYCLES = JSON.parse(JSON.stringify(CAREERS[career].cycles));

@@ -5,7 +5,7 @@
 // siempre de Firebase — este service worker NUNCA cachea eso, así que
 // nunca vas a ver datos viejos por culpa de la caché.
 
-const CACHE_NAME = 'pensum-ugb-v6'; // v6: logs de diagnóstico para "mantener sesión iniciada" (busca [Sesión] en la consola)
+const CACHE_NAME = 'pensum-ugb-v7'; // v7: la restauración de sesión oculta explícitamente login/carrera + log que delata quién llama a chooseCareer()
 const SHELL_FILES = [
   './',
   './index.html',

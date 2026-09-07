@@ -656,65 +656,6 @@ const MOTIVOS_ASISTENCIA_MANUAL = ['OLVIDO DE MARCACIÓN', 'SIN WIFI', 'Otro'];
 // INIT
 // ═══════════════════════════════════════════════════════════
 
-// ── JSONP puro — el mismo patrón que funciona sin CORS ──
-// Apps Script responde: callbackName(json);
-// El <script> lo ejecuta y resuelve la Promise
-function _jsonpFetch(url, timeoutMs) {
-  timeoutMs = timeoutMs || 18000;
-  return new Promise(function(resolve, reject) {
-    const cbName = '_ugb_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-    let settled = false;
-
-    // keepStub=true → Google puede tardar más que nuestro timeout y la
-    // respuesta llegar DESPUÉS de que ya nos rendimos. Si borramos la
-    // función del callback de inmediato, esa respuesta tardía revienta
-    // con un "ReferenceError: _ugb_... is not defined" en consola. En
-    // vez de borrarla, la dejamos como no-op un rato para que no truene.
-    function cleanup(keepStub) {
-      const s = document.getElementById(cbName);
-      if (s && s.parentNode) s.parentNode.removeChild(s);
-      if (keepStub) {
-        window[cbName] = function(){};
-        setTimeout(function(){ try { delete window[cbName]; } catch(e){} }, 60000);
-      } else {
-        try { delete window[cbName]; } catch(e) {}
-      }
-    }
-
-    const timer = setTimeout(function() {
-      if (settled) return;
-      settled = true;
-      cleanup(true);
-      reject(new Error('timeout'));
-    }, timeoutMs);
-
-    window[cbName] = function(data) {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      cleanup(false);
-      resolve(data);
-    };
-
-    const sep = url.indexOf('?') >= 0 ? '&' : '?';
-    const script = document.createElement('script');
-    script.id  = cbName;
-    script.src = url + sep + 'callback=' + cbName;
-    script.onerror = function() {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      cleanup(true);
-      reject(new Error('Script load error'));
-    };
-    document.head.appendChild(script);
-  });
-}
-
-// Alias
-function _apsFetch(url, t) { return _jsonpFetch(url, t); }
-
-
 // ══════════════════════════════════════════════════════════════
 // SISTEMA DE CONTRASEÑAS — SHA-256 en el cliente
 // La contraseña nunca viaja ni se guarda como texto plano
@@ -3158,6 +3099,51 @@ function renderEvents(){
   }).join('');
 }
 
+// Exporta a .ics (formato estándar de calendario) EXACTAMENTE lo que se ve
+// en pantalla ahora mismo — respeta el filtro de período y de ciclo ya
+// aplicados. Se puede importar en Google Calendar, Outlook, Apple
+// Calendar, etc. Es un archivo aparte, no se sube a ningún lado solo.
+function exportarCalendarioICS(){
+  const evs=appData[currentStudent].events||[];
+  const sorted=[...evs].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  let filtered=filterByPeriod(sorted,'date',calFilter);
+  if(calCycleFilter!=='all') filtered=filtered.filter(ev=>{ const c=getCycleOfEvent(ev); return c && c.id===calCycleFilter; });
+  if(!filtered.length){ showToast('No hay actividades en este filtro para exportar','error'); return; }
+  const pad=n=>String(n).padStart(2,'0');
+  const now=new Date();
+  const stamp=now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'T'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds())+'Z';
+  const escapeICS=s=>String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+  const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Pensum UGB//Calendario//ES','CALSCALE:GREGORIAN'];
+  filtered.forEach(ev=>{
+    let sname='';CYCLES.forEach(c=>c.subjects.forEach(s=>{if(s.num===ev.subject)sname=s.name;}));
+    const isDI=ev.type==='Actividad DI';
+    const fecha=(ev.date||'').replace(/-/g,'');
+    if(!fecha) return;
+    const summary=(isDI?'🏛 Actividad DI':ev.type)+(sname?' — '+sname:'');
+    const cycleOf=getCycleOfEvent(ev);
+    const descParts=[];
+    if(ev.comment) descParts.push(ev.comment);
+    if(cycleOf) descParts.push('Ciclo: '+cycleOf.name);
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:ugb-pensum-'+ev.id+'@pensumugb');
+    lines.push('DTSTAMP:'+stamp);
+    lines.push('DTSTART;VALUE=DATE:'+fecha);
+    lines.push('SUMMARY:'+escapeICS(summary));
+    if(descParts.length) lines.push('DESCRIPTION:'+escapeICS(descParts.join(' — ')));
+    if(ev.done) lines.push('STATUS:CONFIRMED');
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  const blob=new Blob([lines.join('\r\n')],{type:'text/calendar;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='calendario_'+(currentStudent||'estudiante').replace(/\s+/g,'_')+'.ics';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  showToast('📤 '+filtered.length+' actividad(es) exportadas a .ics','success');
+}
+
 // ═══════════════════════════════════════════════════════════
 // NOTIFICACIONES (laboratorios, parciales y actividades del calendario)
 // Verde = falta ~1 semana · Amarillo = faltan 3-4 días · Rojo = faltan 2 o menos.
@@ -3189,6 +3175,58 @@ function getNotifSeen(){
 function setNotifSeen(map){
   try{ localStorage.setItem(notifSeenStorageKey(), JSON.stringify(map)); }
   catch(e){ console.error('[Notif] Error guardando notificaciones vistas:', e); }
+}
+
+// ── Silenciar por MATERIA — a diferencia de "🔕 Ocultar esta notificación"
+// (que solo tapa ESE evento puntual), esto apaga TODOS los avisos futuros
+// de una materia entera hasta que se reactive a mano desde
+// ⚙️ Configurar notificaciones → Materias silenciadas. Guardado 100% local
+// (localStorage, por dispositivo), igual que el resto de notifConfig. ──
+function notifMutedStorageKey(){ return 'ugb_notif_muted_subj_'+_notifKeyBase(); }
+function getNotifMutedSubjects(){
+  try{ return JSON.parse(localStorage.getItem(notifMutedStorageKey())||'{}'); }
+  catch(e){ return {}; }
+}
+function setNotifMutedSubjects(map){
+  try{ localStorage.setItem(notifMutedStorageKey(), JSON.stringify(map)); }
+  catch(e){ console.error('[Notif] Error guardando materias silenciadas:', e); }
+}
+function silenciarMateriaNotif(subjectNum, sname){
+  if(subjectNum===null||subjectNum===undefined) return;
+  const map=getNotifMutedSubjects();
+  map[subjectNum]=true;
+  setNotifMutedSubjects(map);
+  renderNotifList();
+  showToast('🔇 "'+(sname||'Esa materia')+'" silenciada — reactivala cuando quieras en ⚙️ Configurar notificaciones', 'success');
+}
+function reactivarMateriaNotif(subjectNum){
+  const map=getNotifMutedSubjects();
+  delete map[subjectNum];
+  setNotifMutedSubjects(map);
+  _renderMateriasSilenciadasList();
+  refreshNotifBadge();
+  showToast('🔊 Notificaciones reactivadas para esa materia','success');
+}
+// Nombre legible de una materia a partir de su número, buscando en todos
+// los ciclos (una materia silenciada puede no estar en el ciclo actual).
+function _nombreMateriaPorNum(num){
+  let nombre='';
+  CYCLES.forEach(c=>c.subjects.forEach(s=>{ if(String(s.num)===String(num)) nombre=s.name; }));
+  return nombre;
+}
+function _renderMateriasSilenciadasList(){
+  const cont=document.getElementById('notifMateriasSilenciadasList');
+  if(!cont) return;
+  const muted=getNotifMutedSubjects();
+  const nums=Object.keys(muted);
+  if(!nums.length){ cont.innerHTML='<div style="text-align:center;padding:10px;color:var(--gm);font-size:11.5px;">Ninguna materia silenciada.</div>'; return; }
+  cont.innerHTML=nums.map(num=>{
+    const nombre=_nombreMateriaPorNum(num)||('Materia #'+num);
+    return `<div class="notif-cfg-row">
+      <label>🔇 ${escapeHtml(nombre)}</label>
+      <button class="modal-btn secondary" style="padding:5px 10px;font-size:11px;" onclick="reactivarMateriaNotif('${num}')">🔊 Reactivar</button>
+    </div>`;
+  }).join('');
 }
 
 function daysUntil(dateStr){
@@ -3235,10 +3273,12 @@ function computeNotifications(){
   if(!currentStudent||!appData[currentStudent]) return [];
   const evs=appData[currentStudent].events||[];
   const dismissed=getNotifDismissed();
+  const muted=getNotifMutedSubjects();
   const items=[];
   evs.forEach(ev=>{
     if(ev.done||!ev.date) return;
     if(dismissed[ev.id]) return;
+    if(ev.subject!==null&&ev.subject!==undefined&&muted[ev.subject]) return;
     const daysLeft=daysUntil(ev.date);
     const tier=notifTier(daysLeft);
     if(!tier) return;
@@ -3292,6 +3332,7 @@ function renderNotifList(){
         <span class="notif-row-days">${notifDaysLabel(it.daysLeft)}</span>
         <div class="notif-row-actions">
           <button class="notif-row-btn" title="Ocultar esta notificación" onclick="dismissNotifItem(${it.id})">🔕</button>
+          ${(it.subject!==null&&it.subject!==undefined)?`<button class="notif-row-btn" title="Silenciar TODAS las notificaciones de esta materia" onclick="silenciarMateriaNotif('${it.subject}','${escapeHtml(it.sname||'').replace(/'/g,"\\'")}')">🔇</button>`:''}
           <button class="notif-row-btn" title="Eliminar del calendario" onclick="askDeleteEvent(${it.id})">🗑</button>
         </div>
       </div>
@@ -3334,6 +3375,7 @@ function openNotifConfig(){
   document.getElementById('notifCfgYellow').value = notifConfig.yellowDays;
   document.getElementById('notifCfgRed').value = notifConfig.redDays;
   document.getElementById('notifCfgDuration').value = notifConfig.duration;
+  _renderMateriasSilenciadasList();
   document.getElementById('notifModal').classList.remove('open');
   document.getElementById('notifConfigModal').classList.add('open');
 }
@@ -4434,6 +4476,11 @@ function exportAsistenciaCombinadaExcel(){
 // ═══════════════════════════════════════════════════════════
 function openPasteModal(){document.getElementById('pasteModal').classList.add('open');document.getElementById('pasteTextarea').value='';}
 function closePasteModal(){document.getElementById('pasteModal').classList.remove('open');}
+// El pegado de notas del portal ahora es en dos pasos: primero se arma una
+// VISTA PREVIA de qué materia va a cambiar y con qué valores (comparando
+// contra lo que ya había cargado), y solo si el usuario toca "✅ Confirmar
+// y aplicar" se sobrescribe algo. Nada se aplica solo con solo pegar.
+let _pastePreviewData = [];
 function processPaste(){
   const text=document.getElementById('pasteTextarea').value.trim();
   if(!text){showToast('Pega una tabla primero','error');return;}
@@ -4449,7 +4496,7 @@ function processPaste(){
   let cycle=null;
   if(currentCycleId) cycle=CYCLES.find(c=>c.id===currentCycleId);
   const subSorted=cycle?[...cycle.subjects].sort((a,b)=>a.code.localeCompare(b.code)):[];
-  let imported=0;
+  const preview=[];
   valid.forEach((vl,i)=>{
     const m=vl.line.match(/^(\d{2,4})\s*-\s*/);
     const code=m?m[1]:null;
@@ -4458,14 +4505,68 @@ function processPaste(){
     else if(cycle&&i<subSorted.length) sub=subSorted[i];
     if(!sub) return;
     const n=vl.nums;
-    const sd=getSubjectData(sub.num);
-    sd.computos[0]={lab1:n[0],lab2:n[1],parcial:n[2]};
-    sd.computos[1]={lab1:n[4],lab2:n[5],parcial:n[6]};
-    sd.computos[2]={lab1:n[8],lab2:n[9],parcial:n[10]};
+    const actual=getSubjectData(sub.num);
+    preview.push({
+      subNum: sub.num, nombre: sub.name, codigo: sub.code,
+      antes: actual.computos.map(c=>({lab1:c.lab1,lab2:c.lab2,parcial:c.parcial})),
+      despues: [{lab1:n[0],lab2:n[1],parcial:n[2]},{lab1:n[4],lab2:n[5],parcial:n[6]},{lab1:n[8],lab2:n[9],parcial:n[10]}]
+    });
+  });
+  if(!preview.length){showToast('No se encontraron materias válidas','error');return;}
+  _pastePreviewData=preview;
+  _renderPastePreview();
+  closePasteModal();
+  document.getElementById('pastePreviewModal').classList.add('open');
+}
+
+function _fmtNota(v){ return (v===undefined||v===null||v==='')?'—':v; }
+function _renderPastePreview(){
+  const huboCambios = _pastePreviewData.some(p => p.despues.some((d,idx)=>{
+    const a=p.antes[idx]||{};
+    return String(_fmtNota(a.lab1))!==String(_fmtNota(d.lab1)) || String(_fmtNota(a.lab2))!==String(_fmtNota(d.lab2)) || String(_fmtNota(a.parcial))!==String(_fmtNota(d.parcial));
+  }));
+  document.getElementById('pastePreviewResumen').textContent = _pastePreviewData.length + ' materia(s) encontrada(s)' + (huboCambios ? ' — se muestran en amarillo los valores que van a cambiar.' : ' — no hay cambios reales respecto a lo que ya tenías cargado.');
+  document.getElementById('pastePreviewList').innerHTML = _pastePreviewData.map(p=>{
+    const filas=['1° parcial','2° parcial','3° parcial'].map((label,idx)=>{
+      const a=p.antes[idx]||{}, d=p.despues[idx]||{};
+      const campo=(campo)=>{
+        const va=_fmtNota(a[campo]), vd=_fmtNota(d[campo]);
+        const cambia = String(va)!==String(vd);
+        return `<span style="${cambia?'background:rgba(245,158,11,.18);border-radius:4px;padding:1px 4px;font-weight:700;':''}">${va} → ${vd}</span>`;
+      };
+      return `<div style="font-size:11.5px;color:var(--gm);display:flex;gap:10px;padding:2px 0;">
+        <span style="min-width:66px;">${label}</span>
+        <span>Lab1: ${campo('lab1')}</span><span>Lab2: ${campo('lab2')}</span><span>Parcial: ${campo('parcial')}</span>
+      </div>`;
+    }).join('');
+    return `<div style="border:1.5px solid var(--gl);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+      <div style="font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:4px;">${escapeHtml(p.codigo)} — ${escapeHtml(p.nombre)}</div>
+      ${filas}
+    </div>`;
+  }).join('');
+}
+
+function cancelarPegadoNotas(){
+  document.getElementById('pastePreviewModal').classList.remove('open');
+  _pastePreviewData=[];
+  document.getElementById('pasteModal').classList.add('open');
+}
+
+function confirmarPegadoNotas(){
+  let imported=0;
+  _pastePreviewData.forEach(p=>{
+    const sd=getSubjectData(p.subNum);
+    sd.computos[0]={lab1:p.despues[0].lab1,lab2:p.despues[0].lab2,parcial:p.despues[0].parcial};
+    sd.computos[1]={lab1:p.despues[1].lab1,lab2:p.despues[1].lab2,parcial:p.despues[1].parcial};
+    sd.computos[2]={lab1:p.despues[2].lab1,lab2:p.despues[2].lab2,parcial:p.despues[2].parcial};
     imported++;
   });
-  if(!imported) showToast('No se encontraron materias válidas','error');
-  else{saveLocal();closePasteModal();showToast(`✓ ${imported} materias importadas`,'success');if(currentCycleId)renderSubjects(CYCLES.find(c=>c.id===currentCycleId));else renderPensum();}
+  saveLocal();
+  document.getElementById('pastePreviewModal').classList.remove('open');
+  _pastePreviewData=[];
+  showToast(`✓ ${imported} materias importadas`,'success');
+  if(currentCycleId) renderSubjects(CYCLES.find(c=>c.id===currentCycleId));
+  else renderPensum();
 }
 
 // ═══════════════════════════════════════════════════════════

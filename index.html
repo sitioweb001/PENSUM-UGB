@@ -301,6 +301,21 @@
   </div>
 </div>
 
+<!-- Vista previa antes de sobrescribir notas — nada se guarda hasta que se
+     toca "✅ Confirmar y aplicar". Muestra lo que hay ahora vs. lo que
+     traería el pegado, materia por materia. -->
+<div class="modal-overlay" id="pastePreviewModal" style="z-index:10000;">
+  <div class="modal" style="width:620px;max-width:96vw;max-height:85vh;overflow-y:auto;">
+    <h3 style="text-align:center;margin-bottom:3px;">👁️ Vista previa antes de aplicar</h3>
+    <p style="text-align:center;margin-bottom:12px;color:var(--gm);font-size:12px;" id="pastePreviewResumen"></p>
+    <div id="pastePreviewList"></div>
+    <div class="modal-btns" style="margin-top:14px;">
+      <button class="modal-btn secondary" onclick="cancelarPegadoNotas()">⬅️ Volver a editar</button>
+      <button class="modal-btn primary" onclick="confirmarPegadoNotas()">✅ Confirmar y aplicar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="copyGradesModal">
   <div class="modal" style="width:580px;">
     <h3>📤 Copiar notas</h3>
@@ -355,6 +370,7 @@
     <div style="display:flex;gap:7px;margin-bottom:11px;">
       <button class="modal-btn secondary" id="calCycleFilterBtn" style="flex:1;padding:6px 10px;font-size:12px;" onclick="openCicloFilterModal()">🔽 Filtrar por Ciclo</button>
       <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="openCicloDateRangesModal()" title="Configura las fechas de cada ciclo para detectar automáticamente a qué ciclo corresponde cada actividad">📅 Fechas de ciclos</button>
+      <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="exportarCalendarioICS()" title="Descarga un archivo .ics para importar en Google Calendar, Outlook, etc.">📤 Exportar .ics</button>
     </div>
     <div id="eventsList" style="max-height:360px;overflow-y:auto;margin-bottom:13px;"></div>
     <div class="modal-btns"><button class="modal-btn primary" onclick="closeCalendarModal()">Cerrar</button></div>
@@ -457,6 +473,12 @@
       <input type="number" id="notifCfgDuration" min="2" max="60">
     </div>
     <p style="font-size:11px;margin-top:-4px;">Desliza cualquier mensaje emergente hacia la derecha para ocultarlo antes de tiempo. Esta configuración se guarda en este dispositivo.</p>
+
+    <div class="ham-divider" style="margin:12px 0 10px;"></div>
+    <h4 style="margin-bottom:2px;">🔇 Materias silenciadas</h4>
+    <p style="font-size:11px;color:var(--gm);margin-bottom:8px;">Tocá el 🔇 en cualquier notificación para silenciar TODOS los avisos futuros de esa materia (no solo esa fecha). Se pueden reactivar acá cuando quieras.</p>
+    <div id="notifMateriasSilenciadasList"></div>
+
     <div class="modal-btns">
       <button class="modal-btn secondary" onclick="resetNotifConfig()">Restaurar</button>
       <button class="modal-btn primary" onclick="saveNotifConfigUI()">Guardar</button>

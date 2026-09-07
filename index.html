@@ -316,6 +316,20 @@
   </div>
 </div>
 
+<!-- Vista previa antes de exportar CSV — nada se descarga hasta tocar
+     "⬇️ Descargar CSV". -->
+<div class="modal-overlay" id="csvPreviewModal" style="z-index:10000;">
+  <div class="modal" style="width:min(720px,96vw);max-width:96vw;max-height:85vh;overflow-y:auto;">
+    <h3 style="text-align:center;margin-bottom:3px;">👁️ Vista previa del CSV</h3>
+    <p style="text-align:center;margin-bottom:12px;color:var(--gm);font-size:12px;" id="csvPreviewResumen"></p>
+    <div id="csvPreviewTable" style="max-height:50vh;overflow:auto;border:1.5px solid var(--gl);border-radius:8px;"></div>
+    <div class="modal-btns" style="margin-top:14px;">
+      <button class="modal-btn secondary" onclick="cancelarExportCSV()">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmarExportCSV()">⬇️ Descargar CSV</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="copyGradesModal">
   <div class="modal" style="width:580px;">
     <h3>📤 Copiar notas</h3>
@@ -1110,12 +1124,15 @@
 
 <div class="toast" id="toast"></div>
 
+<div id="offlineBanner">📴 Sin conexión — tus cambios se guardan en este dispositivo y se suben solos cuando vuelva internet.</div>
+
 <div id="syncQueueBadge">
   <div class="sq-spinner"></div>
   <span class="sq-icon ok-icon">✅</span>
   <span class="sq-icon err-icon">⚠️</span>
   <span id="sqText">Guardando...</span>
   <span class="sq-count" id="sqCount" style="display:none;"></span>
+  <button class="sq-retry" onclick="reintentarSyncManual()">🔄 Reintentar</button>
 </div>
 <div id="syncFlash"></div>
 <div id="printArea"></div>

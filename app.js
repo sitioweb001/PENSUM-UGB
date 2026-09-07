@@ -1978,13 +1978,45 @@ function triggerAutoSync() {
 let _queuePendingSync = 0;   // cambios acumulados sin subir todavía
 let _syncInFlight = false;   // hay una subida en curso ahora mismo
 let _syncQueueRunner = null; // referencia al setTimeout de reintento
+// true si mientras había cambios locales sin subir llegó una actualización
+// desde OTRO dispositivo para este mismo estudiante — señal de posible
+// edición simultánea. Se avisa una sola vez, apenas termine de subir lo
+// local (ver _avisarSiHuboConflictoPendiente).
+let _huboConflictoPendiente = false;
+function _avisarSiHuboConflictoPendiente(){
+  if (!_huboConflictoPendiente) return;
+  _huboConflictoPendiente = false;
+  showToast('ℹ️ Este estudiante se actualizó desde otro dispositivo mientras subías tus cambios — revisá que todo esté correcto.', 'error');
+}
+
+// ── INDICADOR DE "SIN CONEXIÓN" ── Firestore ya guarda los cambios en este
+// dispositivo aunque no haya internet y los sube solo en cuanto vuelve la
+// señal (cache local activada en firebase-init.js) — así que no hace falta
+// bloquear la edición. Lo que faltaba era AVISAR con claridad que se está
+// offline, para que no se piense que algo no se guardó.
+function _actualizarBannerOffline(){
+  const banner = document.getElementById('offlineBanner');
+  if (!banner) return;
+  if (navigator.onLine) banner.classList.remove('show');
+  else banner.classList.add('show');
+}
+window.addEventListener('online', () => {
+  _actualizarBannerOffline();
+  showToast('✅ Conexión restablecida — subiendo cambios pendientes', 'success');
+  if (_queuePendingSync > 0) _enqueueSync();
+});
+window.addEventListener('offline', () => {
+  _actualizarBannerOffline();
+  showToast('📴 Sin conexión — tus cambios se guardan y se suben solos después', 'error');
+});
+_actualizarBannerOffline(); // estado inicial, por si la página ya carga sin conexión
 
 function _updateSyncBadge(state, extra) {
   const badge = document.getElementById('syncQueueBadge');
   const text  = document.getElementById('sqText');
   const count = document.getElementById('sqCount');
   if (!badge) return;
-  badge.classList.remove('ok','err');
+  badge.classList.remove('ok','err','err-final');
   badge.classList.add('show');
 
   if (state === 'pending') {
@@ -2008,7 +2040,12 @@ function _updateSyncBadge(state, extra) {
     }
   } else if (state === 'err') {
     badge.classList.add('err');
-    text.textContent = '⚠️ Error al guardar — reintentando...';
+    if (extra && extra.retrying) {
+      text.textContent = '⚠️ Error al guardar — reintentando...';
+    } else {
+      badge.classList.add('err-final'); // recién acá se muestra el botón de reintentar manual
+      text.textContent = '❌ No se pudo guardar — revisá tu conexión';
+    }
     count.style.display = 'none';
   }
 
@@ -2039,7 +2076,7 @@ async function _enqueueSync() {
         ok = true;
       } catch (e) {
         if (attempts < 3) {
-          _updateSyncBadge('err');
+          _updateSyncBadge('err', { retrying: true });
           await new Promise(r => setTimeout(r, 900 * attempts));
         }
       }
@@ -2051,15 +2088,25 @@ async function _enqueueSync() {
         _updateSyncBadge('uploading', { queued: _queuePendingSync });
       } else {
         _updateSyncBadge('ok');
+        _avisarSiHuboConflictoPendiente();
       }
     } else {
-      _updateSyncBadge('err');
-      showToast('⚠️ No se pudo guardar después de varios intentos. Verifica tu conexión.', 'error');
+      _updateSyncBadge('err'); // final — ya no reintenta sola, queda el botón "🔄 Reintentar"
+      showToast('⚠️ No se pudo guardar después de varios intentos. Tocá "🔄 Reintentar" cuando tengas conexión.', 'error');
       break;
     }
   }
 
   _syncInFlight = false;
+}
+
+// Botón manual del badge de sincronización — para cuando ya se agotaron
+// los 3 reintentos automáticos y hace falta un empujón manual (por
+// ejemplo, apenas vuelve la conexión). Nunca se dispara sola.
+function reintentarSyncManual(){
+  if (_syncInFlight) { showToast('Ya se está subiendo…', 'error'); return; }
+  _queuePendingSync = Math.max(_queuePendingSync, 1);
+  _enqueueSync();
 }
 
 // ── FLAGS para la bajada (descarga) ──
@@ -2096,7 +2143,15 @@ function stopAutoSyncInterval() {
 // para no pisar un cambio local que el usuario acaba de hacer y que todavía
 // no terminó de subir (misma protección de antes contra la condición de carrera).
 function _applyRemoteUpdate(d) {
-  if (_syncInFlight || _queuePendingSync > 0 || !currentStudent) return;
+  if (!currentStudent) return;
+  if (_syncInFlight || _queuePendingSync > 0) {
+    // Llegó una actualización desde otro dispositivo justo mientras
+    // todavía había cambios locales sin subir — se ignora por ahora (para
+    // no pisar lo que el usuario acaba de escribir) y se avisa apenas
+    // termine de subirse lo local, en vez de quedar en silencio.
+    _huboConflictoPendiente = true;
+    return;
+  }
   const local = appData[currentStudent];
   if (!local) return;
   if (!local.notas) local.notas = {};
@@ -4481,6 +4536,10 @@ function closePasteModal(){document.getElementById('pasteModal').classList.remov
 // contra lo que ya había cargado), y solo si el usuario toca "✅ Confirmar
 // y aplicar" se sobrescribe algo. Nada se aplica solo con solo pegar.
 let _pastePreviewData = [];
+// Adónde volver si se cancela la vista previa: 'pasteModal' cuando viene
+// del pegado manual, null cuando viene de importar un CSV (ahí no hay
+// modal de origen que reabrir).
+let _pastePreviewVolverA = 'pasteModal';
 function processPaste(){
   const text=document.getElementById('pasteTextarea').value.trim();
   if(!text){showToast('Pega una tabla primero','error');return;}
@@ -4514,6 +4573,7 @@ function processPaste(){
   });
   if(!preview.length){showToast('No se encontraron materias válidas','error');return;}
   _pastePreviewData=preview;
+  _pastePreviewVolverA='pasteModal';
   _renderPastePreview();
   closePasteModal();
   document.getElementById('pastePreviewModal').classList.add('open');
@@ -4549,7 +4609,7 @@ function _renderPastePreview(){
 function cancelarPegadoNotas(){
   document.getElementById('pastePreviewModal').classList.remove('open');
   _pastePreviewData=[];
-  document.getElementById('pasteModal').classList.add('open');
+  if(_pastePreviewVolverA) document.getElementById(_pastePreviewVolverA).classList.add('open');
 }
 
 function confirmarPegadoNotas(){
@@ -4680,6 +4740,11 @@ function importJSON(){
   };
   inp.click();
 }
+// Igual que el pegado de notas (Fase 5): antes de descargar el CSV se
+// arma una vista previa con la tabla completa, para poder confirmar que
+// es el ciclo/datos correctos antes de compartirlo. Nada se descarga con
+// solo tocar "Exportar CSV".
+let _csvExportRows = null;
 function exportCSV(){
   const rows=[['Ciclo','#','Código','Materia','UV','Prerreq','L1-C1','L2-C1','P-C1','C1','L1-C2','L2-C2','P-C2','C2','L1-C3','L2-C3','P-C3','C3','Nota Final','Estado']];
   CYCLES.forEach(cy=>cy.subjects.forEach(sub=>{
@@ -4688,29 +4753,63 @@ function exportCSV(){
     const fg=calcFinal(sd.computos);
     rows.push([cy.name,sub.num,sub.code,sub.name,sub.uv,sub.prereq,sd.computos[0].lab1,sd.computos[0].lab2,sd.computos[0].parcial,c1!==null?c1.toFixed(2):'',sd.computos[1].lab1,sd.computos[1].lab2,sd.computos[1].parcial,c2!==null?c2.toFixed(2):'',sd.computos[2].lab1,sd.computos[2].lab2,sd.computos[2].parcial,c3!==null?c3.toFixed(2):'',fg!==null?fg.toFixed(2):'',sd.status]);
   }));
-  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='notas_ugb_'+new Date().toISOString().slice(0,10)+'.csv';a.click();showToast('✓ CSV exportado','success');
+  _csvExportRows=rows;
+  document.getElementById('csvPreviewResumen').textContent=(rows.length-1)+' materia(s) — revisá que sean los datos correctos antes de descargar.';
+  const header=rows[0], body=rows.slice(1);
+  let html='<table style="width:100%;border-collapse:collapse;font-size:10.5px;"><thead><tr>'+
+    header.map(h=>`<th style="position:sticky;top:0;background:var(--comp-bg);border-bottom:2px solid var(--gl);padding:5px 7px;text-align:left;white-space:nowrap;">${escapeHtml(String(h))}</th>`).join('')+
+    '</tr></thead><tbody>'+
+    body.map(r=>'<tr>'+r.map(v=>`<td style="padding:4px 7px;border-bottom:1px solid var(--gl);white-space:nowrap;">${escapeHtml(String(v===undefined||v===null?'':v))}</td>`).join('')+'</tr>').join('')+
+    '</tbody></table>';
+  document.getElementById('csvPreviewTable').innerHTML=html;
+  document.getElementById('csvPreviewModal').classList.add('open');
 }
+function cancelarExportCSV(){
+  document.getElementById('csvPreviewModal').classList.remove('open');
+  _csvExportRows=null;
+}
+function confirmarExportCSV(){
+  if(!_csvExportRows) return;
+  const csv=_csvExportRows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='notas_ugb_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  document.getElementById('csvPreviewModal').classList.remove('open');
+  _csvExportRows=null;
+  showToast('✓ CSV exportado','success');
+}
+// Igual que exportar: importar un CSV tampoco sobrescribe directo — arma
+// la misma vista previa "antes → después" que usa el pegado de notas
+// (Fase 5) y reutiliza ese modal; solo aplica si se confirma ahí.
 function importCSV(){
   const inp=document.createElement('input');inp.type='file';inp.accept='.csv';
   inp.onchange=e=>{
     const f=e.target.files[0];if(!f) return;
     const r=new FileReader();
     r.onload=ev=>{
-      const lines=ev.target.result.split('\n').slice(1);let imported=0;
+      const lines=ev.target.result.split('\n').slice(1);
+      const preview=[];
       lines.forEach(line=>{
         const cols=line.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
         if(cols.length<19) return;
         const num=cols[1];if(!num) return;
-        const sd=getSubjectData(num);
+        let sub=null; CYCLES.forEach(c=>c.subjects.forEach(s=>{ if(String(s.num)===String(num)) sub=s; }));
+        if(!sub) return;
         const toF=v=>{const p=parseFloat(v);return isNaN(p)?'':p;};
-        sd.computos[0]={lab1:toF(cols[6]),lab2:toF(cols[7]),parcial:toF(cols[8])};
-        sd.computos[1]={lab1:toF(cols[10]),lab2:toF(cols[11]),parcial:toF(cols[12])};
-        sd.computos[2]={lab1:toF(cols[14]),lab2:toF(cols[15]),parcial:toF(cols[16])};
-        imported++;
+        const actual=getSubjectData(num);
+        preview.push({
+          subNum:num, nombre:sub.name, codigo:sub.code,
+          antes: actual.computos.map(c=>({lab1:c.lab1,lab2:c.lab2,parcial:c.parcial})),
+          despues:[
+            {lab1:toF(cols[6]), lab2:toF(cols[7]), parcial:toF(cols[8])},
+            {lab1:toF(cols[10]),lab2:toF(cols[11]),parcial:toF(cols[12])},
+            {lab1:toF(cols[14]),lab2:toF(cols[15]),parcial:toF(cols[16])}
+          ]
+        });
       });
-      if(imported){saveLocal();renderPensum();showToast(`✓ ${imported} materias importadas`,'success');}
-      else showToast('No se importaron materias','error');
+      if(!preview.length){showToast('No se encontraron materias válidas en el CSV','error');return;}
+      _pastePreviewData=preview;
+      _pastePreviewVolverA=null;
+      _renderPastePreview();
+      document.getElementById('pastePreviewModal').classList.add('open');
     };r.readAsText(f,'UTF-8');
   };inp.click();
 }

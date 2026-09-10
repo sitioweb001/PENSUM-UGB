@@ -1,0 +1,13 @@
+{
+  "name": "pensum-ugb",
+  "version": "1.0.0",
+  "description": "Pénsum UGB — seguimiento de pénsum, notas, asistencias y bitácora DI",
+  "private": true,
+  "scripts": {
+    "test": "node calculos.test.js",
+    "lint": "eslint app.js calculos.js firebase-db.js firebase-init.js firebase-bootstrap.js service-worker.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

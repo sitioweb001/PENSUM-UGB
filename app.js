@@ -6,6 +6,53 @@
      3) Lógica de la aplicación (UI, Firebase, pénsum, asistencia, etc.)
    ============================================================ */
 
+/* ------------------------------------------------------------
+   ÍNDICE — mapa aproximado de dónde está cada cosa en este archivo.
+   Los números de línea son una FOTO tomada en la Fase 8 de mejoras
+   (septiembre 2026): sirven para ubicarse rápido, pero se van a ir
+   corriendo de a poco a medida que el archivo cambie. Si un número no
+   coincide exactamente, buscá (Ctrl+F) el título entre "──" que aparece
+   arriba de esa sección en el código — esos títulos sí son estables.
+
+   Las funciones de cálculo puro (notas, fechas, escapeHtml) NO están acá
+   — se movieron a calculos.js, que se puede leer/probar por separado
+   (ver calculos.test.js: node calculos.test.js).
+
+     ~650   Sesión: contraseñas, huella (WebAuthn), "mantener sesión" 24h
+     ~660   JSONP / restos de infraestructura vieja (ver notas del README)
+     ~880   Sesión persistente (_leerSesionPersistente, _guardarSesionPersistente…)
+     ~1470  Login con contraseña (doLogin) y selección de estudiante (selectStudent)
+     ~1600  Helpers de loading / pantallas de carga
+     ~1630  Modal "Borrar datos" (selección granular por usuario y tipo)
+     ~1950  Autosave & Sync (cola de sincronización, badge, reintentos)
+     ~2100  Aplicar cambios en tiempo real desde Firestore (_applyRemoteUpdate)
+     ~2270  Tema (claro/oscuro) y menú hamburguesa
+     ~2290  Cálculo de notas — cascarón que llama a calculos.js
+     ~2310  Render del Pénsum (tarjetas de materias, ciclos)
+     ~2600  Historial de cambios del Pénsum (undo/redo)
+     ~2640  Detalle de ciclo
+     ~2940  Calendario (eventos, filtros, exportar a .ics)
+     ~3100  Notificaciones (config, silenciar por materia, watcher)
+     ~3560  Asistencia diaria (marcar, manual, editar, PDF)
+     ~3660  Respaldos automáticos (ver/descargar/restaurar)
+     ~3790  Asistencia por actividad / Formulario de Asistencia DI
+     ~4300  Detalle y PDF de asistencia por actividad
+     ~4410  Reportes combinados (PDF/Excel de ambas asistencias)
+     ~4510  Pegar notas del portal (con vista previa antes de aplicar)
+     ~4670  Exportar/Importar CSV (con vista previa)
+     ~4800  Generar PDF del Pénsum (modal de opciones + construcción HTML)
+     ~5440  Sincronización con Firebase (funciones de más bajo nivel)
+     ~5670  Toasts (mensajes emergentes)
+     ~5680  Atajos de teclado
+     ~5750  Bitácora DI: catálogo de técnicos/sellos, borradores, autoguardado
+     ~6180  Bitácora DI: formulario, construcción y vista previa del PDF
+     ~6290  Bitácora DI: logos/marca de agua ajustables (Fase 0)
+     ~6870  Historial de bitácoras generadas (ediciones, motivo, PDF)
+     ~7100  Técnicos: alta/edición, firmas, sellos, historial de imágenes
+     ~7330  Firma con el dedo/mouse (signature pad) y editor de sello/firma
+     ~7470  Configuración de usuario (técnico/sello por defecto, logos, actividades pregrabadas)
+   ------------------------------------------------------------ */
+
 /* ---------- html2canvas (vendor, minificado) ---------- */
 /* html2canvas 1.4.1 — empaquetado localmente (sin CDN) para exportar PDF directo */
 /*!
@@ -1944,7 +1991,9 @@ function getSubjectData(num) {
   if(!sd.notas[num]) sd.notas[num]={computos:[{lab1:'',lab2:'',parcial:''},{lab1:'',lab2:'',parcial:''},{lab1:'',lab2:'',parcial:''}],status:'pending',finalGrade:null};
   return sd.notas[num];
 }
-function escapeHtml(s){return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+// escapeHtml() ahora vive en calculos.js (se carga antes que este
+// archivo) — sigue disponible acá exactamente igual, solo se movió el
+// archivo para poder probarla con Node. Ver calculos.js / calculos.test.js.
 
 // ═══════════════════════════════════════════════════════════
 // AUTOSAVE & SYNC  (instantáneo en memoria, 1s debounce a Firebase)
@@ -2285,8 +2334,8 @@ function closeHam(){
 // ═══════════════════════════════════════════════════════════
 // GRADE CALC
 // ═══════════════════════════════════════════════════════════
-function calcComputo(c){const l1=parseFloat(c.lab1),l2=parseFloat(c.lab2),p=parseFloat(c.parcial);if(isNaN(l1)&&isNaN(l2)&&isNaN(p))return null;return(isNaN(l1)?0:l1*.3)+(isNaN(l2)?0:l2*.3)+(isNaN(p)?0:p*.4);}
-function calcFinal(computos){const s=computos.map(calcComputo);if(!s.some(x=>x!==null))return null;return s.reduce((a,b)=>a+(b===null?0:b),0)/3;}
+// calcComputo()/calcFinal() ahora viven en calculos.js — ver nota junto a
+// escapeHtml() más arriba en este mismo archivo.
 function getStatus(grade,computos){if(grade===null){return(computos||[]).some(c=>c.lab1!==''||c.lab2!==''||c.parcial!=='')?'inprogress':'pending';}return grade>=6.0?'pass':'fail';}
 
 // Versión que usa el status/finalGrade guardado en Firebase como respaldo
@@ -2781,10 +2830,10 @@ function openCycle(id,highlightNum=null){
   const started=cycle.subjects.some(s=>getEffectiveStatus(getSubjectData(s.num))!=='pending');
   const enProceso=!!(getCyclesInProgress()[id]);
   let badge='';
-  if(isDone) badge=`<span style="background:var(--pass);color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">✅ Finalizado</span>`;
-  else if(allPass) badge=`<span style="background:var(--pass);color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">100%</span>`;
-  else if(started) badge=`<span style="background:var(--pend);color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">Cursando</span>`;
-  if(enProceso && !isDone) badge+=`<span style="background:#8b5cf6;color:#fff;padding:3px 9px;border-radius:20px;font-size:11px;margin-left:6px;vertical-align:middle;">🔄 En Proceso</span>`;
+  if(isDone) badge=`<span style="background:var(--pass);color:var(--badge-text-on-solid);padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">✅ Finalizado</span>`;
+  else if(allPass) badge=`<span style="background:var(--pass);color:var(--badge-text-on-solid);padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">100%</span>`;
+  else if(started) badge=`<span style="background:var(--pend);color:var(--badge-text-on-solid);padding:3px 9px;border-radius:20px;font-size:11px;margin-left:10px;vertical-align:middle;">Cursando</span>`;
+  if(enProceso && !isDone) badge+=`<span style="background:#8b5cf6;color:var(--badge-text-on-solid);padding:3px 9px;border-radius:20px;font-size:11px;margin-left:6px;vertical-align:middle;">🔄 En Proceso</span>`;
   document.getElementById('cycleTitle').innerHTML=`${cycle.name} — ${cycle.year} ${badge}`;
   document.getElementById('cycleSubtitle').textContent=cycle.subjects.length+' asignaturas · 3 cómputos';
   document.getElementById('pensumView').classList.remove('active');
@@ -2855,7 +2904,7 @@ function buildComputos(n,sd){
       <div class="activity-row"><span class="activity-label">Parcial N°${i+1}</span><span class="activity-pct">40%</span>
         <input type="number" class="activity-input" step="0.1" min="0" max="10" id="inp-${n}-${i}-parcial" value="${c.parcial}" placeholder="0–10" oninput="updateGrade('${n}',${i},'parcial',this.value)"></div>
       <div class="computo-score"><span>Cómputo ${i+1}: <strong id="cscore-${n}-${i}">${scD}</strong></span></div>
-      <button onclick="clearComputo('${n}',${i})" style="margin-top:7px;font-size:10px;background:var(--fail);color:#fff;border:none;padding:4px 8px;border-radius:5px;cursor:pointer;width:100%;">Borrar cómputo</button>
+      <button onclick="clearComputo('${n}',${i})" style="margin-top:7px;font-size:10px;background:var(--fail);color:var(--badge-text-on-solid);border:none;padding:4px 8px;border-radius:5px;cursor:pointer;width:100%;">Borrar cómputo</button>
     </div>`;
   }
   h+='</div>';
@@ -2938,19 +2987,8 @@ function findSubject(num){for(const c of CYCLES)for(const s of c.subjects)if(s.n
 // ═══════════════════════════════════════════════════════════
 // FILTER UTILITY
 // ═══════════════════════════════════════════════════════════
-function filterByPeriod(arr, dateField, period){
-  if(period==='all') return arr;
-  const now=new Date();
-  return arr.filter(item=>{
-    const d=new Date(item[dateField]||'');
-    if(isNaN(d)) return true;
-    if(period==='today'){const t=new Date(now);t.setHours(0,0,0,0);const dd=new Date(d);dd.setHours(0,0,0,0);return dd.getTime()===t.getTime();}
-    if(period==='week'){const w=new Date(now);w.setDate(w.getDate()-7);return d>=w;}
-    if(period==='month'){return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();}
-    if(period==='year'){return d.getFullYear()===now.getFullYear();}
-    return true;
-  });
-}
+// filterByPeriod() ahora vive en calculos.js — ver nota junto a
+// escapeHtml() más arriba en este mismo archivo.
 
 // ═══════════════════════════════════════════════════════════
 // CALENDAR
@@ -3284,12 +3322,8 @@ function _renderMateriasSilenciadasList(){
   }).join('');
 }
 
-function daysUntil(dateStr){
-  const today=new Date(); today.setHours(0,0,0,0);
-  const d=new Date(dateStr+'T00:00:00');
-  if(isNaN(d)) return null;
-  return Math.round((d-today)/86400000);
-}
+// daysUntil() ahora vive en calculos.js — ver nota junto a escapeHtml()
+// más arriba en este mismo archivo.
 function notifTier(daysLeft){
   if(daysLeft===null) return null;
   if(daysLeft<=notifConfig.redDays) return 'red';
@@ -3585,7 +3619,8 @@ function openAsistencia(){
   renderAsistencia();
   document.getElementById('asistenciaModal').classList.add('open');
 }
-function getTodayKey(){return new Date().toISOString().slice(0,10);}
+// getTodayKey() ahora vive en calculos.js — ver nota junto a escapeHtml()
+// más arriba en este mismo archivo.
 function getAsistencias(){if(!appData[currentStudent].asistencias)appData[currentStudent].asistencias={};return appData[currentStudent].asistencias;}
 
 // Banner de confirmación reusado en Asistencia diaria y Asistencia DI —
@@ -3642,7 +3677,7 @@ function renderAsistencia(){
     return `<div class="asist-hist-row${isToday?' today-row':''}">
       <span style="font-size:17px;">${icon}</span>
       <div style="flex:1;">
-        <div style="font-weight:700;font-size:13px;color:${isToday?'var(--pass)':'var(--text)'};">${a.fecha}${isToday?' <span style="font-size:9px;background:var(--pass);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">HOY</span>':''}${a.manual?' <span style="font-size:9px;background:var(--pend);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">REGISTRO MANUAL</span>':''}</div>
+        <div style="font-weight:700;font-size:13px;color:${isToday?'var(--pass)':'var(--text)'};">${a.fecha}${isToday?' <span style="font-size:9px;background:var(--pass);color:var(--badge-text-on-solid);border-radius:999px;padding:1px 5px;margin-left:4px;">HOY</span>':''}${a.manual?' <span style="font-size:9px;background:var(--pend);color:var(--badge-text-on-solid);border-radius:999px;padding:1px 5px;margin-left:4px;">REGISTRO MANUAL</span>':''}</div>
         <div style="font-size:11px;color:var(--gm);">🕐 Entrada: ${a.hora}${a.horaSalida?' · Salida: '+a.horaSalida:''}</div>
         ${a.manual?`<div style="font-size:11px;color:var(--pend);margin-top:2px;">📋 Motivo: ${escapeHtml(a.motivo||'')}</div>`:''}
         ${(a.ediciones&&a.ediciones.length)?`<div style="font-size:10.5px;color:var(--pend);margin-top:2px;">✏️ Editado${a.ediciones.length>1?' ('+a.ediciones.length+' veces)':''} · último motivo: ${escapeHtml(a.ediciones[a.ediciones.length-1].motivo)}</div>`:''}
@@ -3749,10 +3784,8 @@ let _asistEditandoFecha = null; // null = registro nuevo; string = editando ese 
 // la hora de entrada al editar, sin importar si el registro original se
 // guardó como automático (hora en formato largo con am/pm) o manual
 // (ya en HH:MM), porque el "ts" siempre es un ISO real.
-function _hhmmFromIso(iso){
-  try { const d=new Date(iso); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
-  catch(e){ return ''; }
-}
+// _hhmmFromIso() ahora vive en calculos.js — ver nota junto a
+// escapeHtml() más arriba en este mismo archivo.
 
 function openAsistenciaManual(){
   _asistEditandoFecha=null;
@@ -4220,7 +4253,7 @@ function renderAsistenciaActividad(){
       <span style="font-size:17px;">📝</span>
       <div style="flex:1;">
         <div style="font-weight:700;font-size:13px;color:var(--text);">${escapeHtml(a.nombre)} <span style="font-size:10px;color:var(--gm);font-weight:600;">(${escapeHtml(a.nie)})</span></div>
-        <div style="font-size:11px;color:var(--gm);">${escapeHtml(a.tipo)} · 📅 ${a.fecha} 🕐 ${a.hora}${a.manual?' <span style="font-size:9px;background:var(--pend);color:#fff;border-radius:999px;padding:1px 5px;margin-left:4px;">FECHA MANUAL</span>':''}</div>
+        <div style="font-size:11px;color:var(--gm);">${escapeHtml(a.tipo)} · 📅 ${a.fecha} 🕐 ${a.hora}${a.manual?' <span style="font-size:9px;background:var(--pend);color:var(--badge-text-on-solid);border-radius:999px;padding:1px 5px;margin-left:4px;">FECHA MANUAL</span>':''}</div>
         ${(a.ediciones&&a.ediciones.length)?`<div style="font-size:10.5px;color:var(--pend);margin-top:2px;">✏️ Editado${a.ediciones.length>1?' ('+a.ediciones.length+' veces)':''} · último motivo: ${escapeHtml(a.ediciones[a.ediciones.length-1].motivo)}</div>`:''}
       </div>
       <button onclick="event.stopPropagation();borrarAsistenciaActividad('${a.id}')" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:13px;">🗑</button>
@@ -4579,7 +4612,8 @@ function processPaste(){
   document.getElementById('pastePreviewModal').classList.add('open');
 }
 
-function _fmtNota(v){ return (v===undefined||v===null||v==='')?'—':v; }
+// _fmtNota() ahora vive en calculos.js — ver nota junto a escapeHtml()
+// más arriba en este mismo archivo.
 function _renderPastePreview(){
   const huboCambios = _pastePreviewData.some(p => p.despues.some((d,idx)=>{
     const a=p.antes[idx]||{};
@@ -5692,13 +5726,43 @@ function showToast(msg,type=''){
 // ═══════════════════════════════════════════════════════════
 // KEYBOARD SHORTCUTS
 // ═══════════════════════════════════════════════════════════
+
+// Cierra con Escape el modal visible "de arriba" (el de mayor z-index, por
+// si hay más de uno abierto al mismo tiempo, como la vista previa del PDF
+// sobre el formulario de Bitácora) usando la MISMA función que ya usa su
+// propio botón "Cancelar"/"Cerrar" — así no se saltea limpiezas necesarias
+// (apagar el autoguardado, liberar la vista previa del PDF, resetear un
+// modo de edición). Los modales que no tienen una limpieza especial (su
+// propio botón ya cierra con un simple classList.remove) se cierran igual,
+// sin diferencia de comportamiento.
+const _MODAL_ESCAPE_CLOSERS = {
+  bitacoraDIModal: () => cerrarBitacoraDIModal(),
+  bitacPdfPreviewModal: () => bitacCerrarVistaPreviaPDF(),
+  pasteModal: () => closePasteModal(),
+  pastePreviewModal: () => cancelarPegadoNotas(),
+  csvPreviewModal: () => cancelarExportCSV(),
+  asistenciaManualModal: () => closeAsistenciaManual(),
+  dondeEstoyModal: () => closeDondeEstoy()
+};
+function _cerrarModalSuperiorConEscape(){
+  const abiertos = Array.from(document.querySelectorAll('.modal-overlay.open'));
+  if (!abiertos.length) return;
+  let top = abiertos[0], topZ = parseInt(getComputedStyle(top).zIndex) || 0;
+  for (const m of abiertos.slice(1)) {
+    const z = parseInt(getComputedStyle(m).zIndex) || 0;
+    if (z >= topZ) { top = m; topZ = z; }
+  }
+  const cerrar = _MODAL_ESCAPE_CLOSERS[top.id];
+  if (cerrar) { try { cerrar(); } catch (e) { top.classList.remove('open'); } }
+  else top.classList.remove('open');
+}
 document.addEventListener('keydown',e=>{
   // Ctrl+Z = deshacer, Ctrl+Y o Ctrl+Shift+Z = rehacer
   if(e.ctrlKey && !e.shiftKey && e.key==='z'){ e.preventDefault(); undoPensum(); return; }
   if(e.ctrlKey && (e.key==='y' || (e.shiftKey && e.key==='Z'))){ e.preventDefault(); redoPensum(); return; }
   if(e.key==='Escape'){
-    document.querySelectorAll('.modal-overlay.open,.ham-menu.open').forEach(el=>el.classList.remove('open'));
-    closeHam();
+    _cerrarModalSuperiorConEscape();
+    if (!document.querySelector('.modal-overlay.open')) closeHam();
   }
   // Navegación con Ctrl+Arrow en inputs de notas
   if(e.ctrlKey&&e.key.startsWith('Arrow')){
@@ -6298,7 +6362,7 @@ function _bitacTecRespChange() {
   if (!pref) {
     const tecObj = _bitacTecnicoPorNombre(nombre);
     if (tecObj && tecObj.sello) {
-      const match = SELLOS_DI.find(s => s.img === tecObj.sello);
+      const match = _bitacSellosDisponibles().find(s => s.img === tecObj.sello);
       pref = match ? ('sello:' + match.id) : 'firma';
     } else if (nombre) {
       pref = 'firma';
@@ -6414,7 +6478,7 @@ function _bitacTecChange(group, n) {
   if (!pref) {
     const tecObj = _bitacTecnicoPorNombre(nombre);
     if (tecObj && tecObj.sello) {
-      const match = SELLOS_DI.find(s => s.img === tecObj.sello);
+      const match = _bitacSellosDisponibles().find(s => s.img === tecObj.sello);
       pref = match ? ('sello:' + match.id) : 'firma';
     } else if (nombre) {
       pref = 'firma';
@@ -7513,8 +7577,15 @@ function _bitacTecnicoOptionsHTMLParaTodos(selected) {
 // panel, el PDF sale exactamente igual que siempre (ver PDF_LOGO_DEFAULTS).
 // Se guarda en este dispositivo, igual que el resto de "Configuración". ──
 function _campoNumLogoHTML(key, campo, valor, label) {
-  return `<label style="font-size:9.5px;color:var(--gm);display:block;">${label}
-      <input type="number" step="0.1" id="logoPdf_${key}_${campo}" value="${valor}" style="width:100%;padding:5px 6px;margin-top:2px;border:1.5px solid var(--inp-b);border-radius:6px;background:var(--inp-bg);color:var(--text);font-size:11.5px;">
+  const ayudas = {
+    x: 'Posición horizontal, en puntos, medida desde el borde IZQUIERDO de la hoja (0 = pegado al borde izquierdo; a más número, más a la derecha).',
+    y: 'Posición vertical, en puntos, medida desde el borde SUPERIOR de la hoja (0 = pegado arriba; a más número, más abajo).',
+    w: 'Ancho de la imagen, en puntos. La hoja completa (tamaño carta horizontal) mide 792pt de ancho.',
+    h: 'Alto de la imagen, en puntos. La hoja completa mide 612pt de alto.',
+    opacity: 'Qué tan visible es la marca de agua: 0 = invisible, 1 = totalmente opaca. El valor original es 0.2 (bien tenue).'
+  };
+  return `<label style="font-size:9.5px;color:var(--gm);display:block;" title="${ayudas[campo] || ''}">${label}
+      <input type="number" step="0.1" id="logoPdf_${key}_${campo}" value="${valor}" title="${ayudas[campo] || ''}" style="width:100%;padding:5px 6px;margin-top:2px;border:1.5px solid var(--inp-b);border-radius:6px;background:var(--inp-bg);color:var(--text);font-size:11.5px;">
     </label>`;
 }
 
@@ -7661,7 +7732,7 @@ function _renderActividadesPregrabadasList() {
   if (!_actividadesPregrabadasCache.length) { cont.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gm);">Todavía no hay actividades pregrabadas.</div>'; return; }
   cont.innerHTML = _actividadesPregrabadasCache.map(a => `<div class="asist-hist-row">
       <span style="font-size:15px;">📌</span>
-      <div style="flex:1;font-size:12.5px;color:var(--text);">${escapeHtml(a.texto)}${a.tecnico ? ` <span style="font-size:9.5px;background:var(--pend);color:#fff;border-radius:999px;padding:1px 6px;margin-left:4px;">👤 ${escapeHtml(a.tecnico)}</span>` : ''}</div>
+      <div style="flex:1;font-size:12.5px;color:var(--text);">${escapeHtml(a.texto)}${a.tecnico ? ` <span style="font-size:9.5px;background:var(--pend);color:var(--badge-text-on-solid);border-radius:999px;padding:1px 6px;margin-left:4px;">👤 ${escapeHtml(a.tecnico)}</span>` : ''}</div>
       <button onclick="eliminarActividadPregrabadaUI('${a.id}')" title="Eliminar" style="background:transparent;border:none;color:var(--fail);cursor:pointer;font-size:14px;">🗑</button>
     </div>`).join('');
 }

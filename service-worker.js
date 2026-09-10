@@ -5,11 +5,12 @@
 // siempre de Firebase — este service worker NUNCA cachea eso, así que
 // nunca vas a ver datos viejos por culpa de la caché.
 
-const CACHE_NAME = 'pensum-ugb-v4'; // v4: asistencia atrasada, actividad DI -> bitácora, filtro/fechas de ciclos, botón "En Proceso", mantener sesión iniciada (24h)
+const CACHE_NAME = 'pensum-ugb-v5'; // v5: se agregó calculos.js (funciones de cálculo puro separadas de app.js para poder probarlas con Node) + todas las mejoras de las Fases 0-7
 const SHELL_FILES = [
   './',
   './index.html',
   './styles.css',
+  './calculos.js',
   './app.js',
   './firebase-bootstrap.js',
   './manifest.json',

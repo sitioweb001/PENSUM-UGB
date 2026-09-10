@@ -5347,7 +5347,16 @@ async function exportPDFDirect(reportOpts){
   if(btn) btn.textContent='⏳ Generando…';
 
   const offscreen=document.createElement('div');
-  offscreen.style.cssText='position:fixed;top:0;left:0;transform:translateX(-99999px);background:#fff;';
+  // OJO: antes esto usaba transform:translateX(-99999px). Un offset tan
+  // extremo combinado con "transform" promueve el elemento a su propia
+  // capa GPU en una posición fuera de cualquier "tile" de composición
+  // razonable — en algunos navegadores/dispositivos eso hace que
+  // html2canvas capture esa capa con menos fidelidad (texto y colores se
+  // ven "lavados"), aunque la Vista de impresión nativa (que no usa
+  // canvas) se vea perfecta. Con "left" en vez de "transform", y un
+  // offset moderado, se evita la promoción a capa GPU y el problema no
+  // debería repetirse.
+  offscreen.style.cssText='position:fixed;top:0;left:-9000px;background:#fff;';
   offscreen.innerHTML=html;
   document.body.appendChild(offscreen);
 
@@ -5382,7 +5391,22 @@ async function exportPDFDirect(reportOpts){
       const y=spec.margin.top+Math.max(0,(contentHMM-hMM)/2);
       doc.addImage(imgData,'JPEG',x,y,wMM,hMM);
       pdfPageSpecs.push(spec);
+      // El dataURL ya quedó guardado en el PDF — liberamos la memoria del
+      // canvas de inmediato en vez de esperar al recolector de basura. En
+      // reportes largos (varias decenas de materias) esto evita ir
+      // acumulando canvases grandes sin usar mientras se arman las
+      // páginas siguientes.
+      canvas.width=0; canvas.height=0;
     };
+
+    // Espera a que el navegador termine de pintar de verdad antes de
+    // capturar — un solo requestAnimationFrame puede dispararse ANTES de
+    // que los estilos/colores recién aplicados (como el contenido recién
+    // armado de un "chunk") terminen de pintarse en pantalla; encadenar
+    // dos sí garantiza que ya pasó un ciclo completo de pintado.
+    function _esperarPintadoCompleto(){
+      return new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    }
 
     // Reparte un contenido con "items" repetidos (filas de tabla, tarjetas
     // de materia, etc.) en tantas hojas como haga falta, igual que el
@@ -5395,7 +5419,13 @@ async function exportPDFDirect(reportOpts){
       let idx=0, isFirstChunk=true;
       while(idx<allItems.length){
         const chunkDiv=document.createElement('div');
-        chunkDiv.style.cssText=`position:fixed;top:0;left:0;transform:translateX(-99999px);width:${contentWPx}px;background:#fff;box-sizing:border-box;`;
+        // Mismo criterio que el contenedor "offscreen" de más arriba: "left"
+        // con offset moderado, sin "transform", para no promover el elemento
+        // a su propia capa GPU en una posición extrema (eso era lo que hacía
+        // que las últimas hojas de reportes largos salieran con texto y
+        // colores "lavados" en el PDF, aunque la Vista de impresión nativa se
+        // viera perfecta).
+        chunkDiv.style.cssText=`position:fixed;top:0;left:-9000px;width:${contentWPx}px;background:#fff;box-sizing:border-box;`;
         chunkDiv.className=pageEl.className;
         chunkDiv.innerHTML=isFirstChunk?pageEl.innerHTML:continuationShellHTML;
         document.body.appendChild(chunkDiv);
@@ -5414,6 +5444,7 @@ async function exportPDFDirect(reportOpts){
           chunkWrapper.appendChild(allItems[idx].cloneNode(true));
           added=1;
         }
+        await _esperarPintadoCompleto();
         const canvas=await html2canvas(chunkDiv,{scale:SCALE,useCORS:true,backgroundColor:'#ffffff',logging:false});
         addCanvasAsPage(canvas,spec,contentWMM,contentHMM);
         document.body.removeChild(chunkDiv);
@@ -5459,10 +5490,10 @@ async function exportPDFDirect(reportOpts){
         continue;
       }
 
+      await _esperarPintadoCompleto();
       const canvas=await html2canvas(pageEl,{scale:SCALE,useCORS:true,backgroundColor:'#ffffff',logging:false});
       addCanvasAsPage(canvas,spec,contentWMM,contentHMM);
     }
-
     // Numeración de página al pie, alineada a la derecha — se dibuja al
     // final (con todas las hojas ya creadas) porque recién ahí se sabe el
     // total real de hojas, incluyendo las que renderChunked haya repartido.

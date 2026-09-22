@@ -1,0 +1,17 @@
+Esta carpeta es para documentos del expediente que sean imágenes
+(tipo "imagen" o "imagenes" en script.js), NO para el carnet ni los
+logos institucionales — esos van en sus propias carpetas ("carnet/"
+y "logos/").
+
+Ejemplo: si necesitas agregar una constancia escaneada en JPG,
+colócala aquí y regístrala en el archivo index.html (sección C.
+DOCUMENTOS DEL EXPEDIENTE, dentro de <script>) así:
+
+documentos.push({
+    nombre: "NOMBRE DEL DOCUMENTO",
+    archivo: "imagenes/nombre-del-archivo.jpg",
+    tipo: "imagen",
+    descripcion: "Descripción del documento"
+});
+
+Puedes borrar este archivo LEEME.txt cuando agregues tu primera imagen.

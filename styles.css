@@ -676,3 +676,21 @@ header{flex-wrap:wrap;row-gap:6px;}
 .pdf-summary-table td{padding:5px 8px;border-bottom:1px solid #e5e7eb;}
 .pdf-summary-table tbody tr:nth-child(even){background:rgba(0,0,0,.015);}
 .pdf-summary-table tr{page-break-inside:avoid;break-inside:avoid;}
+
+/* ── Vista previa de notas en tabla editable ── */
+.pv-wrap{overflow:auto;max-height:58vh;border:1.5px solid var(--gl);border-radius:8px;}
+.pv-t{border-collapse:collapse;width:100%;min-width:940px;font-size:12px;}
+.pv-t th{position:sticky;top:0;z-index:1;background:var(--blue);color:#fff;padding:5px 6px;font-weight:700;border:1px solid rgba(255,255,255,.25);}
+.pv-t td{border:1px solid var(--gl);padding:3px 5px;vertical-align:middle;}
+.pv-h{cursor:grab;text-align:center;width:26px;color:var(--gm);user-select:none;}
+.pv-nom{min-width:170px;font-weight:600;}.pv-nom label{cursor:pointer;display:flex;gap:6px;align-items:flex-start;}
+.pv-av{font-size:10.5px;color:#92400e;background:rgba(245,158,11,.12);border-radius:5px;padding:2px 6px;margin-top:3px;font-weight:500;}
+.pv-sel-m{width:100%;min-width:190px;padding:5px;border:1.5px solid var(--gl);border-radius:6px;font-size:11.5px;background:var(--bg);color:var(--text);}
+.pv-c{width:48px;text-align:center;}.pv-in{width:44px;padding:3px;text-align:center;border:1px solid var(--gl);border-radius:5px;background:var(--bg);color:var(--text);font-size:12px;}
+.pv-chg{background:rgba(245,158,11,.22);}.pv-chg .pv-in{font-weight:800;}
+.pv-sin td{background:rgba(239,68,68,.08);}.pv-sin .pv-sel-m{border-color:#ef4444;}
+.pv-off{opacity:.45;}.pv-sel td{outline:2px solid var(--blue);outline-offset:-2px;}
+.pv-vacia td{background:var(--comp-bg);color:var(--gm);border-style:dashed;}.pv-hint{text-align:center;font-size:11px;}
+.pv-btn{border:none;background:var(--gl);color:var(--text);border-radius:6px;padding:5px 8px;font-weight:700;font-size:11.5px;cursor:pointer;white-space:nowrap;}
+.pv-btn.on{background:#ef4444;color:#fff;}.pv-btn:hover{filter:brightness(.95);}
+.pv-ayuda{font-size:11.5px;color:var(--gm);margin:8px 2px 0;}

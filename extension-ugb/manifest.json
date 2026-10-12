@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Pénsum UGB — Extractor de notas",
+  "version": "1.0.0",
+  "description": "Lee la tabla de notas del Portal del Estudiante UGB y la envía a Pénsum UGB. Dirección de Integración · Universidad Gerardo Barrios.",
+  "icons": { "16": "icons/icon.png", "48": "icons/icon.png", "128": "icons/icon.png" },
+  "content_scripts": [{
+    "matches": ["https://estudiantes.ugb.edu.sv/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["logos/*"],
+    "matches": ["https://estudiantes.ugb.edu.sv/*"]
+  }]
+}

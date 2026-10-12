@@ -1,0 +1,17 @@
+PÉNSUM UGB — EXTRACTOR DE NOTAS
+Dirección de Integración · Universidad Gerardo Barrios
+
+INSTALACIÓN (Chrome / Edge / Brave)
+1. Descomprime este .zip en una carpeta (no lo borres después).
+2. Abre chrome://extensions  (en Edge: edge://extensions).
+3. Activa "Modo de desarrollador".
+4. Pulsa "Cargar descomprimida" y elige la carpeta descomprimida.
+
+USO
+1. Entra a https://estudiantes.ugb.edu.sv/Notas e inicia sesión.
+2. Aparece un recuadro abajo a la derecha con los logos UGB y Dirección de Integración.
+3. Pulsa "Enviar notas a Pénsum UGB": se abre la app con una vista previa
+   en tabla donde puedes mover / intercambiar filas y asignar materias
+   antes de confirmar. Nada se guarda hasta que confirmes.
+
+La extensión solo funciona en estudiantes.ugb.edu.sv y no envía datos a ningún servidor.

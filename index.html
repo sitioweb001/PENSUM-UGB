@@ -159,6 +159,7 @@
     <div class="side-label">Datos y calendario</div>
     <div class="ham-item" onclick="openPasteModal();closeHam()"><span class="ham-ico">📋</span> Pegar notas del portal</div>
     <div class="ham-item" onclick="openCopyGradesModal();closeHam()"><span class="ham-ico">📤</span> Copiar notas</div>
+    <div class="ham-item" onclick="descargarExtensionUGB();closeHam()"><span class="ham-ico">🧩</span> Descargar extensión UGB (extraer notas del portal)</div>
     <div class="ham-item" onclick="openCalendarModal();closeHam()"><span class="ham-ico">📅</span> Calendario</div>
     <div class="ham-item" onclick="openNotifModal();closeHam()"><span class="ham-ico">🔔</span> Notificaciones <span class="notif-badge" id="notifBadge"></span></div>
     <div class="ham-item" onclick="openAsistenciasHub();closeHam()"><span class="ham-ico">📋</span> Asistencias</div>
@@ -319,7 +320,7 @@
      toca "✅ Confirmar y aplicar". Muestra lo que hay ahora vs. lo que
      traería el pegado, materia por materia. -->
 <div class="modal-overlay" id="pastePreviewModal" style="z-index:10000;">
-  <div class="modal" style="width:620px;max-width:96vw;max-height:85vh;overflow-y:auto;">
+  <div class="modal" style="width:min(1060px,98vw);max-width:98vw;max-height:90vh;overflow-y:auto;">
     <h3 style="text-align:center;margin-bottom:3px;">👁️ Vista previa antes de aplicar</h3>
     <p style="text-align:center;margin-bottom:12px;color:var(--gm);font-size:12px;" id="pastePreviewResumen"></p>
     <div id="pastePreviewList"></div>
@@ -1171,5 +1172,6 @@
 <script type="module" src="firebase-bootstrap.js"></script>
 <script src="calculos.js"></script>
 <script src="app.js"></script>
+<script src="extension-ugb.js"></script>
 </body>
 </html>

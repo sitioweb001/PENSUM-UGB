@@ -1,0 +1,2143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dirección de Integración · Expediente Digital del Becario</title>
+<meta name="description" content="Expediente digital del becario — Dirección de Integración (UGB). Datos personales, carnet y documentos oficiales del Programa de Continuidad Académica y Técnica.">
+<meta name="theme-color" content="#0054ff">
+
+<!-- =========================================================
+     VISTA PREVIA AL COMPARTIR (Open Graph / Twitter Card)
+     -------------------------------------------------------------
+     Estas etiquetas son las que usan GitHub, WhatsApp, Slack,
+     Twitter/X, Discord, etc. para mostrar el logo y una
+     descripción cuando alguien comparte el enlace del sitio.
+
+     WhatsApp (a diferencia de Instagram) exige URL absoluta para
+     "og:image"/"twitter:image" — con ruta relativa falla en
+     silencio y solo muestra texto. Por eso aquí ya va la URL
+     completa del sitio publicado en GitHub Pages.
+     ========================================================= -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dirección de Integración">
+<meta property="og:locale" content="es_SV">
+<meta property="og:url" content="https://sitioweb001.github.io/EXPEDIENTE-DIGITAL-DI--UGB---EMERSON-CASTRO/">
+<meta property="og:title" content="Expediente Digital del Becario · Dirección de Integración">
+<meta property="og:description" content="Expediente digital del becario para la Dirección de Integración (UGB) — Programa de Continuidad Académica y Técnica. Datos del becario, carnet y documentos oficiales en PDF.">
+<meta property="og:image" content="https://sitioweb001.github.io/EXPEDIENTE-DIGITAL-DI--UGB---EMERSON-CASTRO/logos/social-preview.png">
+<meta property="og:image:secure_url" content="https://sitioweb001.github.io/EXPEDIENTE-DIGITAL-DI--UGB---EMERSON-CASTRO/logos/social-preview.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="Logo de la Dirección de Integración — Expediente Digital del Becario">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Expediente Digital del Becario · Dirección de Integración">
+<meta name="twitter:description" content="Expediente digital del becario — Dirección de Integración (UGB). Datos del becario, carnet y documentos oficiales en PDF.">
+<meta name="twitter:image" content="https://sitioweb001.github.io/EXPEDIENTE-DIGITAL-DI--UGB---EMERSON-CASTRO/logos/social-preview.png">
+<link rel="icon" href="logos/DI.svg" type="image/svg+xml">
+<style>
+/* =============================================================
+   DIRECCIÓN DE INTEGRACIÓN — Expediente Digital del Becario
+   Hoja de estilos
+   =============================================================
+   Sistema de diseño:
+   - Azul institucional (#0054FF) tomado directamente del logo DI.svg
+   - Tipografía serif (misma familia que el logo) para títulos,
+     sans-serif de sistema para texto de interfaz
+   - Tarjetas con un filete azul a la izquierda, en vez de sombra
+     genérica, como referencia a los filetes verticales del logo
+   ============================================================= */
+
+:root{
+  /* Color */
+  --color-bg: #eef1f8;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f6f8fc;
+  --color-primary: #0054ff;
+  --color-primary-dark: #0040c6;
+  --color-primary-soft: #e8eeff;
+  --color-ink: #0c1b33;
+  --color-ink-soft: #545f78;
+  --color-ink-faint: #8891a6;
+  --color-border: #dde3ef;
+  --color-success: #16794f;
+  --color-success-soft: #e3f4ec;
+  --color-warn-soft: #fff2e2;
+  --color-warn: #92500c;
+
+  /* Tipografía */
+  --font-serif: Georgia, 'Times New Roman', 'Liberation Serif', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Layout */
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-card: 0 1px 1px rgba(12,27,51,.03), 0 10px 24px -8px rgba(12,27,51,.10);
+  --sidebar-width: 340px;
+  --header-height: auto;
+}
+
+*, *::before, *::after{ box-sizing: border-box; }
+
+/* El atributo HTML "hidden" debe ganar siempre, incluso sobre
+   elementos cuya clase define display:flex/grid (ej. .modal,
+   .paginador). Sin esta regla, esos elementos se ven abiertos
+   al cargar la página aunque tengan el atributo hidden. */
+[hidden]{ display: none !important; }
+
+html{ scroll-behavior: smooth; }
+
+body{
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3{ font-family: var(--font-serif); font-weight: 700; margin: 0; }
+
+p{ margin: 0 0 .75em; color: var(--color-ink-soft); }
+p:last-child{ margin-bottom: 0; }
+
+code{
+  font-family: 'Courier New', monospace;
+  background: var(--color-primary-soft);
+  color: var(--color-primary-dark);
+  padding: .1em .4em;
+  border-radius: 4px;
+  font-size: .92em;
+}
+
+button{ font-family: inherit; cursor: pointer; }
+
+.skip-link{
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--color-primary);
+  color: #fff;
+  padding: .75em 1.25em;
+  z-index: 100;
+  border-radius: 0 0 8px 0;
+}
+.skip-link:focus{ left: 0; }
+
+:focus-visible{
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* =============================================================
+   ENCABEZADO INSTITUCIONAL
+   ============================================================= */
+
+.site-header{
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 1.5rem 1.75rem 1.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Patrón de estrellas muy sutil, referencia directa al membrete
+   oficial usado en las cartas de la Dirección de Integración */
+.site-header::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .035;
+  background-image:
+    radial-gradient(circle at 6px 6px, var(--color-primary) 1.6px, transparent 1.6px);
+  background-size: 34px 34px;
+}
+
+.header-top{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.brand{
+  display: flex;
+  align-items: center;
+  gap: clamp(.65rem, 1.8vw, 1.15rem);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.brand-divider{
+  width: 1px;
+  align-self: stretch;
+  min-height: 30px;
+  background: var(--color-border);
+  flex: none;
+}
+
+.brand-logo{
+  width: auto;
+  display: block;
+  flex: none;
+}
+
+/* Alturas fluidas: crecen y encogen suavemente según el ancho de
+   pantalla en vez de saltar de golpe en cada punto de quiebre.
+   El logo DI es proporcionalmente más ancho, así que recibe una
+   altura ligeramente menor para que ambos logos luzcan equilibrados. */
+.brand-logo-di{ height: clamp(36px, 5.4vw, 60px); }
+.brand-logo-ugb{ height: clamp(32px, 4.8vw, 54px); }
+
+.header-meta{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .4rem;
+  font-size: .85rem;
+  color: var(--color-ink-soft);
+}
+
+.status-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: .5em;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  padding: .3em .75em;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: .85rem;
+}
+.status-dot{
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(22,121,79,.18);
+  animation: pulso-estado 2.4s infinite;
+}
+@keyframes pulso-estado{
+  0%   { box-shadow: 0 0 0 0 rgba(22,121,79,.45); }
+  70%  { box-shadow: 0 0 0 7px rgba(22,121,79,0); }
+  100% { box-shadow: 0 0 0 0 rgba(22,121,79,0); }
+}
+
+.header-titles{ margin-top: 1.5rem; position: relative; }
+.header-titles h1{
+  font-size: clamp(1.5rem, 2.4vw, 2.05rem);
+  color: var(--color-ink);
+  letter-spacing: .2px;
+}
+.subtitle{
+  margin: .3rem 0 0;
+  color: var(--color-primary-dark);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* =============================================================
+   BOTÓN DE PANEL (visible en pantallas pequeñas / panel oculto)
+   ============================================================= */
+
+.sidebar-toggle{
+  display: none;
+  width: calc(100% - 2.5rem);
+  margin: 1rem 1.25rem 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: .85em 1em;
+  align-items: center;
+  gap: .6em;
+  font-weight: 600;
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card);
+}
+.toggle-icon{ font-size: 1.1em; }
+
+/* =============================================================
+   PANTALLA DE INICIO — menú con los 3 accesos principales
+   ============================================================= */
+
+.menu-inicio{
+  max-width: 900px;
+  margin: clamp(1.5rem, 4vw, 3rem) auto;
+  padding: 0 clamp(1rem, 3vw, 1.75rem);
+  text-align: center;
+}
+.menu-inicio-titulo{
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  color: var(--color-ink);
+  margin-bottom: .4rem;
+}
+.menu-inicio-desc{
+  font-size: .95rem;
+  color: var(--color-ink-soft);
+  max-width: 46ch;
+  margin: 0 auto 2rem;
+}
+
+.menu-botones{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+.menu-boton{
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 1.85rem 1.5rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  color: var(--color-ink);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  flex: 0 1 260px;
+  max-width: 300px;
+}
+.menu-boton:hover, .menu-boton:focus-visible{
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px -12px rgba(12,27,51,.2);
+  border-color: var(--color-primary-dark);
+}
+.menu-boton-icono{
+  font-size: 1.9rem;
+  line-height: 1;
+}
+.menu-boton-titulo{
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 1.08rem;
+}
+.menu-boton-desc{
+  font-size: .84rem;
+  color: var(--color-ink-soft);
+}
+
+/* Barra "Volver al menú" mostrada dentro de cada vista */
+.volver-bar{
+  max-width: 1320px;
+  margin: 1.25rem auto 0;
+  padding: 0 clamp(1rem, 3vw, 1.75rem);
+}
+.btn-volver-menu{
+  display: inline-flex;
+  align-items: center;
+  gap: .5em;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+  padding: .55em 1em;
+  border-radius: 8px;
+  font-size: .85rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-card);
+}
+.btn-volver-menu:hover{ background: var(--color-primary-soft); border-color: var(--color-primary); }
+
+/* Cuando el panel lateral no aplica a la vista actual (ej. "Ver datos
+   del becario"), la columna principal ocupa todo el ancho disponible. */
+.app-shell.vista-sin-sidebar{
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+/* =============================================================
+   ESTRUCTURA PRINCIPAL — panel lateral + contenido
+   ============================================================= */
+
+.app-shell{
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 10px minmax(0, 1fr);
+  gap: clamp(.35rem, 1vw, .75rem);
+  max-width: 1320px;
+  margin: 1.5rem auto;
+  padding: 0 clamp(1rem, 3vw, 1.75rem);
+  align-items: start;
+}
+
+.app-shell.sidebar-oculto{
+  grid-template-columns: 0 0 minmax(0, 1fr);
+}
+.app-shell.sidebar-oculto .sidebar-resizer{
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Divisor arrastrable — cambia el ancho del panel lateral */
+.sidebar-resizer{
+  align-self: stretch;
+  width: 10px;
+  cursor: col-resize;
+  position: relative;
+  background: transparent;
+  touch-action: none;
+}
+.sidebar-resizer::after{
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  width: 3px;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: var(--color-border);
+  transition: background .15s ease, width .15s ease;
+}
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
+.sidebar-resizer.redimensionando::after{
+  background: var(--color-primary);
+  width: 4px;
+}
+.sidebar-resizer:focus-visible{ outline: none; }
+
+.sidebar{
+  position: sticky;
+  top: 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  max-height: calc(100vh - 3rem);
+  overflow: hidden auto;
+  transition: opacity .2s ease;
+}
+
+.app-shell.sidebar-oculto .sidebar{
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.sidebar-collapse{
+  display: none;
+  position: sticky;
+  top: 0;
+  margin-left: auto;
+  background: var(--color-surface-alt);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0 0 0 8px;
+  width: 34px;
+  height: 30px;
+  font-size: 1rem;
+  color: var(--color-ink-soft);
+}
+
+.sidebar-section{
+  padding: 1.25rem 1.35rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.sidebar-section:last-child{ border-bottom: none; }
+
+.sidebar-section h2{
+  font-size: 1.02rem;
+  margin-bottom: .85rem;
+  color: var(--color-ink);
+}
+
+.resumen-lista{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  margin: 0;
+}
+.resumen-lista div{
+  background: var(--color-surface-alt);
+  border-radius: 8px;
+  padding: .6rem .7rem;
+}
+.resumen-lista dt{
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-ink-faint);
+  margin: 0 0 .25rem;
+}
+.resumen-lista dd{
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-family: var(--font-serif);
+  color: var(--color-primary-dark);
+}
+.resumen-lista .estado-texto{
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--color-success);
+}
+
+.buscar-label{
+  display: block;
+  font-size: .85rem;
+  font-weight: 600;
+  margin-bottom: .5rem;
+  color: var(--color-ink);
+}
+.buscar-caja input{
+  width: 100%;
+  padding: .65em .85em;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: .95rem;
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+}
+.buscar-caja input:focus{
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.lista-documentos{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.doc-item{
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: .7rem;
+  text-align: left;
+  background: var(--color-surface-alt);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: .65em .75em;
+  color: var(--color-ink);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.doc-item:hover{ border-color: var(--color-border); transform: translateY(-1px); box-shadow: 0 3px 8px rgba(12,27,51,.08); }
+.doc-item.activo{
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+.doc-icono{
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.doc-item.activo .doc-icono{ background: var(--color-primary-dark); }
+.doc-info{ min-width: 0; }
+.doc-nombre{
+  font-size: .9rem;
+  font-weight: 600;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.doc-desc{
+  font-size: .78rem;
+  color: var(--color-ink-soft);
+  display: block;
+  margin-top: .15rem;
+}
+.doc-tipo{
+  display: inline-block;
+  margin-top: .3rem;
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-ink-faint);
+}
+
+.sin-resultados{
+  font-size: .88rem;
+  padding: .5rem .1rem 0;
+}
+
+/* =============================================================
+   TARJETAS DE CONTENIDO
+   ============================================================= */
+
+.main-content{
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.card{
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: clamp(1.1rem, 2.6vw, 1.6rem) clamp(1.15rem, 3vw, 1.75rem);
+  animation: aparecer .4s ease both;
+}
+
+@keyframes aparecer{
+  from{ opacity: 0; transform: translateY(6px); }
+  to{ opacity: 1; transform: translateY(0); }
+}
+
+.card h2{
+  font-size: 1.2rem;
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  margin-bottom: 1.15rem;
+}
+.card h2 .rule{
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--color-primary);
+}
+
+/* Datos del becario */
+.datos-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1.1rem 1.5rem;
+}
+.dato{ min-width: 0; }
+.dato dt{
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-ink-faint);
+  margin-bottom: .3rem;
+}
+.dato dd{
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+/* Responsables */
+.responsables-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem;
+}
+.responsable-tarjeta{
+  background: var(--color-surface-alt);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.2rem;
+}
+.responsable-tarjeta h3{
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--color-primary-dark);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  margin-bottom: .6rem;
+}
+.responsable-nombre{
+  font-weight: 700;
+  font-size: 1.02rem;
+  margin-bottom: .15rem;
+}
+.responsable-cargo{
+  font-size: .85rem;
+  color: var(--color-ink-soft);
+  margin-bottom: .65rem;
+}
+.responsable-contacto{
+  font-size: .84rem;
+  color: var(--color-ink-soft);
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+.responsable-contacto a{ color: var(--color-primary-dark); text-decoration: none; }
+.responsable-contacto a:hover{ text-decoration: underline; }
+
+/* Carnet */
+.carnet-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+.carnet-cara{ margin: 0; }
+.carnet-imagen-wrap{
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 324px;
+  margin: 0 auto;
+  aspect-ratio: 648 / 1021; /* proporción real del carnet (648 x 1021 px) */
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-alt);
+  overflow: hidden;
+  padding: 0;
+}
+.carnet-imagen-wrap img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* el carnet siempre se ve completo, nunca recortado */
+  display: block;
+  transition: transform .25s ease;
+}
+.carnet-imagen-wrap:hover img{ transform: scale(1.02); }
+.carnet-fallback{
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  text-align: center;
+  padding: 1rem;
+  color: var(--color-ink-faint);
+  font-size: .85rem;
+  background: var(--color-surface-alt);
+}
+.carnet-fallback-icono{ font-size: 1.8rem; }
+.carnet-imagen-wrap.sin-imagen img{ display: none; }
+.carnet-imagen-wrap.sin-imagen .carnet-fallback{ display: flex; }
+.carnet-imagen-wrap.sin-imagen{ cursor: default; }
+
+.carnet-cara figcaption{
+  text-align: center;
+  margin-top: .6rem;
+  font-weight: 600;
+  font-size: .88rem;
+  color: var(--color-ink-soft);
+}
+.carnet-ayuda{
+  margin-top: 1.1rem;
+  font-size: .82rem;
+  text-align: center;
+}
+
+/* =============================================================
+   VISUALIZADOR DE DOCUMENTOS
+   ============================================================= */
+
+.visor-header{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-bottom: .5rem;
+}
+.visor-header h2{ margin-bottom: 0; }
+
+.visor-controles{
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.btn-icono{
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-ink);
+  padding: .5em .85em;
+  border-radius: 8px;
+  font-size: .82rem;
+  font-weight: 600;
+  transition: background .15s ease, border-color .15s ease;
+}
+.btn-icono:hover{ background: var(--color-primary-soft); border-color: var(--color-primary); }
+.btn-cerrar:hover{ background: #fdeaea; border-color: #d64545; color: #a12626; }
+.btn-icono:disabled{
+  opacity: .45;
+  cursor: not-allowed;
+  background: var(--color-surface-alt);
+  border-color: var(--color-border);
+  color: var(--color-ink-faint);
+}
+.btn-icono:disabled:hover{ background: var(--color-surface-alt); border-color: var(--color-border); }
+
+.documento-actual{
+  font-size: .88rem;
+  color: var(--color-ink-soft);
+  margin: .5rem 0 1rem;
+}
+.documento-actual strong{ color: var(--color-ink); }
+
+.visor-marco{
+  width: 100%;
+  min-height: 520px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  transition: opacity .2s ease;
+}
+.visor-marco.pantalla-completa{
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  border-radius: 0;
+  min-height: 100vh;
+}
+.visor-marco iframe,
+.visor-marco object,
+.visor-marco embed{
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  border: none;
+}
+.visor-marco.pantalla-completa iframe,
+.visor-marco.pantalla-completa object,
+.visor-marco.pantalla-completa embed{ min-height: 100vh; }
+
+/* Pantalla completa nativa (API Fullscreen): se usa cuando el
+   navegador la soporta; si no, se aplica la clase .pantalla-completa
+   de arriba como respaldo. */
+.visor-marco:fullscreen{
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  background: var(--color-surface-alt);
+}
+.visor-marco:fullscreen iframe,
+.visor-marco:fullscreen object,
+.visor-marco:fullscreen embed{ min-height: 100vh; }
+.visor-marco:-webkit-full-screen{ width: 100vw; height: 100vh; border-radius: 0; }
+
+.visor-vacio, .visor-error{
+  color: var(--color-ink-faint);
+  font-size: .92rem;
+  text-align: center;
+  padding: 2rem;
+}
+.visor-error{ display: flex; flex-direction: column; align-items: center; gap: .85rem; }
+
+/* Página de imagen dentro del visualizador */
+.visor-imagen-pagina{
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #dfe4ee;
+  padding: 1rem;
+}
+.visor-imagen-pagina img{
+  max-width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(12,27,51,.18);
+  aspect-ratio: 0.7727; /* tamaño carta 8.5 x 11 */
+}
+.visor-imagen-completa{
+  width: 100%;
+  max-height: 78vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+.visor-imagen-completa img{
+  max-width: 100%;
+  width: min(560px, 100%);
+  object-fit: contain;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(12,27,51,.18);
+}
+
+.paginador{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .9rem;
+  margin-top: 1rem;
+  font-size: .85rem;
+  color: var(--color-ink-soft);
+}
+.vista-selector{
+  display: flex;
+  gap: 1rem;
+  font-size: .82rem;
+  margin-left: .5rem;
+}
+.vista-selector label{ display: inline-flex; align-items: center; gap: .35em; }
+
+/* Área para agregar documentos */
+.agregar-card{ border-left-color: var(--color-ink-faint); }
+.codigo-ejemplo{
+  background: var(--color-ink);
+  color: #cfe0ff;
+  padding: .9rem 1rem;
+  border-radius: 8px;
+  font-size: .82rem;
+  overflow-x: auto;
+}
+.codigo-ejemplo code{ background: none; color: inherit; padding: 0; }
+
+/* =============================================================
+   MODAL DE IMAGEN AMPLIADA
+   ============================================================= */
+
+.modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(6,14,28,.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 2rem;
+  animation: aparecer .18s ease both;
+}
+.modal{ flex-direction: column; gap: .9rem; }
+.modal img{
+  max-width: min(90vw, 900px);
+  max-height: 82vh;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.modal-caption{
+  color: #e7ecf7;
+  font-size: .9rem;
+  text-align: center;
+  margin: 0;
+}
+.modal-cerrar{
+  position: absolute;
+  top: 1.5rem;
+  right: 1.75rem;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+}
+.modal-cerrar:hover{ background: rgba(255,255,255,.22); }
+
+/* =============================================================
+   PIE DE PÁGINA
+   ============================================================= */
+
+.site-footer{
+  max-width: 1320px;
+  margin: 2.5rem auto 0;
+  padding: 1.75rem;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: .9rem;
+}
+.footer-logos{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+.footer-logo{ height: clamp(70px, 8vw, 40px); width: auto; opacity: .99.9; }
+.footer-logo-ugb{ padding-left: 1rem; border-left: 1px solid var(--color-border); }
+.footer-texto p{ margin: 0; font-size: .82rem; }
+.footer-note{ color: var(--color-ink-faint) !important; margin-top: .2rem !important; }
+
+/* =============================================================
+   RESPONSIVE — tablet (pantallas medianas)
+   ============================================================= */
+
+@media (max-width: 1000px){
+  :root{ --sidebar-width: 280px; }
+}
+
+/* =============================================================
+   RESPONSIVE — teléfono y tablet en vertical
+   ============================================================= */
+
+@media (max-width: 700px){
+  .site-header{ padding: 1.1rem 1.1rem 1.4rem; }
+  .header-meta{ align-items: flex-start; }
+
+  .sidebar-toggle{ display: flex; }
+
+  .app-shell{
+    grid-template-columns: 1fr;
+    margin-top: 1rem;
+  }
+
+  .sidebar-resizer{ display: none; }
+
+  .sidebar{
+    position: fixed;
+    inset: 0 8% 0 0;
+    max-width: 360px;
+    top: 0;
+    height: 100vh;
+    max-height: 100vh;
+    z-index: 150;
+    border-radius: 0;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+  }
+  .app-shell.sidebar-visible-movil .sidebar{ transform: translateX(0); }
+  .sidebar-collapse{ display: block; }
+
+  .carnet-grid{ grid-template-columns: 1fr; }
+
+  .visor-header{ flex-direction: column; align-items: flex-start; }
+  .visor-controles{ width: 100%; }
+  .btn-icono{ flex: 1 1 auto; text-align: center; }
+
+  .site-footer{ padding: 1.5rem 1.25rem; }
+}
+
+/* =============================================================
+   RESPONSIVE — teléfonos muy pequeños (≤380px)
+   ============================================================= */
+
+@media (max-width: 380px){
+  .header-titles h1{ font-size: 1.25rem; }
+  .brand{ gap: .5rem; }
+  .brand-divider{ min-height: 24px; }
+  .resumen-lista{ grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .visor-controles .btn-icono{ font-size: .74rem; padding: .5em .55em; }
+}
+
+/* Respeta la preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce){
+  html{ scroll-behavior: auto; }
+  .card, .modal{ animation: none; }
+  .carnet-imagen-wrap img{ transition: none; }
+}
+
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#contenido-principal">Saltar al contenido principal</a>
+
+<!-- =========================================================
+     1. ENCABEZADO INSTITUCIONAL
+     ========================================================= -->
+<header class="site-header">
+  <div class="header-top">
+    <div class="brand">
+      <img src="logos/DI.svg" alt="Dirección de Integración" class="brand-logo brand-logo-di" id="logo-di-header">
+      <span class="brand-divider" aria-hidden="true"></span>
+      <img src="logos/UGB-logo.png" alt="Universidad Gerardo Barrios" class="brand-logo brand-logo-ugb" id="logo-ugb-header">
+    </div>
+    <div class="header-meta">
+      <span class="status-pill" id="estado-expediente">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>Expediente activo</span>
+      </span>
+      <span class="header-date">Consulta: <time id="fecha-consulta"></time></span>
+    </div>
+  </div>
+  <div class="header-titles">
+    <h1>Dirección de Integración</h1>
+    <p class="subtitle">Expediente digital del becario</p>
+  </div>
+</header>
+
+<!-- =========================================================
+     PANTALLA DE INICIO — menú principal con los 3 accesos
+     ========================================================= -->
+<section class="menu-inicio" id="menu-inicio">
+  <h2 class="menu-inicio-titulo">¿Qué deseas consultar?</h2>
+  <p class="menu-inicio-desc">Elige una opción para ver el expediente digital del becario.</p>
+  <div class="menu-botones">
+    <button class="menu-boton" type="button" data-vista="todo">
+      <span class="menu-boton-icono" aria-hidden="true">🗂️</span>
+      <span class="menu-boton-titulo">Ver todo</span>
+      <span class="menu-boton-desc">Resumen del expediente, documentos, datos del becario, responsables y carnet.</span>
+    </button>
+    <button class="menu-boton" type="button" data-vista="documentos">
+      <span class="menu-boton-icono" aria-hidden="true">📄</span>
+      <span class="menu-boton-titulo">Ver documentos</span>
+      <span class="menu-boton-desc">Lista de documentos PDF e imágenes, con filtro de búsqueda y visualizador.</span>
+    </button>
+    <button class="menu-boton" type="button" data-vista="datos">
+      <span class="menu-boton-icono" aria-hidden="true">🧑‍🎓</span>
+      <span class="menu-boton-titulo">Ver datos del becario</span>
+      <span class="menu-boton-desc">Datos personales, responsables de contacto y carnet del becario.</span>
+    </button>
+  </div>
+</section>
+
+<!-- Barra para volver a la pantalla de menú desde cualquier vista -->
+<div class="volver-bar" id="volver-bar" hidden>
+  <button class="btn-volver-menu" id="btn-volver-menu" type="button">
+    <span aria-hidden="true">←</span> Volver al menú
+  </button>
+</div>
+
+<!-- Botón flotante para mostrar/ocultar el panel de documentos en pantallas pequeñas -->
+<button id="toggle-sidebar" class="sidebar-toggle" aria-expanded="true" aria-controls="sidebar" hidden>
+  <span class="toggle-icon" aria-hidden="true">☰</span>
+  <span>Documentos del expediente</span>
+</button>
+
+<div class="app-shell" hidden>
+
+  <!-- =========================================================
+       PANEL LATERAL — Resumen, búsqueda y listado de documentos
+       ========================================================= -->
+  <aside class="sidebar" id="sidebar">
+
+    <button class="sidebar-collapse" id="sidebar-collapse" title="Ocultar panel" aria-label="Ocultar panel de documentos">
+      <span aria-hidden="true">«</span>
+    </button>
+
+    <div class="sidebar-section">
+      <h2>Resumen del expediente</h2>
+      <dl class="resumen-lista" id="resumen-lista">
+        <!-- Generado dinámicamente por script.js -->
+      </dl>
+    </div>
+
+    <div class="sidebar-section">
+      <label class="buscar-label" for="buscar-documento">Buscar documento</label>
+      <div class="buscar-caja">
+        <input type="search" id="buscar-documento" placeholder="Ej. beca, compromiso, inscripción…" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="sidebar-section documentos-section">
+      <h2>Documentos</h2>
+      <ul class="lista-documentos" id="lista-documentos">
+        <!-- Generado dinámicamente por script.js -->
+      </ul>
+      <p class="sin-resultados" id="sin-resultados" hidden>No se encontraron documentos en el expediente.</p>
+    </div>
+
+  </aside>
+
+  <div class="sidebar-resizer" id="sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Cambiar ancho del panel de documentos" tabindex="0" title="Arrastra para cambiar el ancho"></div>
+
+  <!-- =========================================================
+       COLUMNA PRINCIPAL
+       ========================================================= -->
+  <main id="contenido-principal" class="main-content">
+
+    <!-- 2. DATOS DEL BECARIO -->
+    <section class="card" id="datos-becario" aria-labelledby="datos-becario-titulo">
+      <h2 id="datos-becario-titulo"><span class="rule" aria-hidden="true"></span>Datos del becario</h2>
+      <div class="datos-grid" id="datos-grid">
+        <!-- Generado dinámicamente por script.js a partir de datosBecario -->
+      </div>
+    </section>
+
+    <!-- 3. RESPONSABLES DEL BECARIO -->
+    <section class="card" id="responsables" aria-labelledby="responsables-titulo">
+      <h2 id="responsables-titulo"><span class="rule" aria-hidden="true"></span>Responsables del becario</h2>
+      <div class="responsables-grid" id="responsables-grid">
+        <!-- Generado dinámicamente por script.js a partir de responsables -->
+      </div>
+    </section>
+
+    <!-- 4. PRESENTACIÓN DEL CARNET -->
+    <section class="card" id="carnet" aria-labelledby="carnet-titulo">
+      <h2 id="carnet-titulo"><span class="rule" aria-hidden="true"></span>Carnet del becario</h2>
+      <div class="carnet-grid">
+
+        <figure class="carnet-cara">
+          <button class="carnet-imagen-wrap" id="carnet-frente-btn" aria-label="Ampliar frente del carnet">
+            <img id="carnet-frente-img" src="carnet/carnet-frente.png" alt="Frente del carnet del becario">
+            <div class="carnet-fallback" id="carnet-frente-fallback">
+              <span class="carnet-fallback-icono" aria-hidden="true">🪪</span>
+              <span>Imagen del frente del carnet no disponible</span>
+            </div>
+          </button>
+          <figcaption>Frente del carnet</figcaption>
+        </figure>
+
+        <figure class="carnet-cara">
+          <button class="carnet-imagen-wrap" id="carnet-reverso-btn" aria-label="Ampliar reverso del carnet">
+            <img id="carnet-reverso-img" src="carnet/carnet-reverso.png" alt="Reverso del carnet del becario">
+            <div class="carnet-fallback" id="carnet-reverso-fallback">
+              <span class="carnet-fallback-icono" aria-hidden="true">🪪</span>
+              <span>Imagen del reverso del carnet no disponible</span>
+            </div>
+          </button>
+          <figcaption>Reverso del carnet</figcaption>
+        </figure>
+
+      </div>
+      <p class="carnet-ayuda"/</code> Haz clic sobre una imagen para ampliarla.</p>
+    </section>
+
+    <!-- 6. VISUALIZADOR DE DOCUMENTOS -->
+    <section class="card visualizador-card" id="visualizador" aria-labelledby="visualizador-titulo">
+      <div class="visor-header">
+        <h2 id="visualizador-titulo"><span class="rule" aria-hidden="true"></span>Visualizador de documentos</h2>
+        <div class="visor-controles">
+          <button id="doc-anterior" class="btn-icono" title="Documento anterior">← Anterior</button>
+          <button id="doc-siguiente" class="btn-icono" title="Siguiente documento">Siguiente →</button>
+          <button id="doc-nueva-pestana" class="btn-icono" title="Abrir en nueva pestaña">Nueva pestaña ⤢</button>
+          <button id="doc-pantalla-completa" class="btn-icono" title="Pantalla completa">Pantalla completa ⛶</button>
+          <button id="doc-cerrar" class="btn-icono btn-cerrar" title="Cerrar visualización">Cerrar ✕</button>
+        </div>
+      </div>
+
+      <p class="documento-actual">Documento actual: <strong id="documento-actual-nombre">Ninguno seleccionado</strong></p>
+
+      <div class="visor-marco" id="visor-marco">
+        <p class="visor-vacio" id="visor-vacio">Selecciona un documento del panel lateral para visualizarlo aquí.</p>
+      </div>
+
+      <div class="paginador" id="paginador" hidden>
+        <button id="pagina-anterior" class="btn-icono">← Página anterior</button>
+        <span id="pagina-indicador">Página 1 de 1</span>
+        <button id="pagina-siguiente" class="btn-icono">Página siguiente →</button>
+        <div class="vista-selector" id="vista-selector">
+          <label><input type="radio" name="vista-imagenes" value="pagina" checked> Vista por página</label>
+          <label><input type="radio" name="vista-imagenes" value="completa"> Vista completa</label>
+        </div>
+      </div>
+    </section>
+
+
+  </main>
+</div>
+
+<!-- =========================================================
+     MODAL — Zoom de imágenes del carnet
+     ========================================================= -->
+<div class="modal" id="modal-imagen" hidden>
+  <button class="modal-cerrar" id="modal-cerrar" aria-label="Cerrar imagen ampliada">✕</button>
+  <img id="modal-imagen-img" src="" alt="">
+  <p class="modal-caption" id="modal-caption"></p>
+</div>
+
+<!-- =========================================================
+     8. PIE DE PÁGINA
+     ========================================================= -->
+<footer class="site-footer">
+  <div class="footer-logos">
+    <img src="logos/DI.svg" class="footer-logo" alt="Dirección de Integración" id="logo-di-footer">
+    <img src="logos/UGB-logo.png" class="footer-logo footer-logo-ugb" alt="Universidad Gerardo Barrios" id="logo-ugb-footer">
+  </div>
+  <div class="footer-texto">
+    <p>© <span id="footer-anio"></span> Dirección de Integración — Programa de Continuidad Académica y Técnica</p>
+    <p class="footer-note">Expediente generado automáticamente · Consulta: <span id="footer-fecha"></span></p>
+  </div>
+</footer>
+
+<script>
+/* =============================================================
+   DIRECCIÓN DE INTEGRACIÓN — Expediente Digital del Becario
+   Lógica de la aplicación (JavaScript puro, sin dependencias)
+   =============================================================
+   Este archivo está dividido en zonas claramente comentadas:
+
+     A. DATOS DEL BECARIO          → editar aquí sus datos
+     B. RESPONSABLES DEL BECARIO   → editar aquí sus responsables
+     C. DOCUMENTOS DEL EXPEDIENTE  → agregar aquí nuevos archivos
+     D. FUNCIONAMIENTO INTERNO     → no es necesario modificar esto
+   ============================================================= */
+
+
+/* =============================================================
+   A. DATOS DEL BECARIO
+   -------------------------------------------------------------
+   Modifica los valores de este objeto para reflejar al becario
+   correspondiente. Estos datos se cargan automáticamente en la
+   tarjeta "Datos del becario".
+   ============================================================= */
+const datosBecario = {
+  nombre:      "Emerson Giancarlo Castro Pleitez",
+  id:          "CI-2026-000694",                                  // Código de Integración
+  carrera:     "Ingeniería en Sistemas y Redes Informáticas",
+  facultad:    "Ciencia y Tecnología",
+  institucion: "Universidad Gerardo Barrios — Sede San Miguel",
+  ciclo:       "Ciclo II - 2026",
+  anio:        "2026",
+  tipoBeca:    "Programa de Continuidad Académica y Técnica",
+  estado:      "Becario activo",
+  correo:      "emersongiancarlocastropleitez@gmail.com",
+  telefono:    "6964-2170"
+};
+
+/* Etiquetas y orden en que se muestran los campos de arriba.
+   Si agregas un campo nuevo a datosBecario, agrégalo también aquí
+   para que aparezca en pantalla. */
+const ORDEN_CAMPOS_BECARIO = [
+  ["nombre",      "Nombre completo"],
+  ["id",          "Código de Integración"],
+  ["carrera",     "Carrera"],
+  ["facultad",    "Facultad"],
+  ["institucion", "Institución educativa"],
+  ["ciclo",       "Ciclo académico"],
+  ["anio",        "Año"],
+  ["tipoBeca",    "Tipo de beca"],
+  ["estado",      "Estado del becario"],
+  ["correo",      "Correo"],
+  ["telefono",    "Teléfono"]
+];
+
+
+/* =============================================================
+   B. RESPONSABLES DEL BECARIO
+   -------------------------------------------------------------
+   Modifica estos tres bloques según corresponda. El bloque
+   "estudiante" puede usarse para un familiar/responsable de
+   contacto, o para un responsable académico, según lo que
+   aplique a cada becario.
+   ============================================================= */
+const responsables = {
+  estudiante: {
+    titulo:   "Contacto familiar / responsable",
+    nombre:   "Juan Carlos Castro",
+    relacion: "Padre — contacto de emergencia",
+    telefono: "6079-4434",
+    correo:   ""
+  },
+  tecnicoUBE: {
+    titulo:   "Técnico UBE",
+    nombre:   "Héctor Astuwal Melgar Martínez",
+    cargo:    "Técnico UBE",
+    unidad:   "Unidad de Becados — Dirección de Integración",
+    telefono: "2246-9950",
+    correo:   "info@integracion.gob.sv"
+  },
+  direccionIntegracion: {
+    titulo: "Dirección de Integración",
+    nombre: "Dirección de Integración",
+    cargo:  "Gerencia de Formación Educativa",
+    area:   "Programa de Continuidad Académica y Técnica"
+  }
+};
+
+
+/* =============================================================
+   C. DOCUMENTOS DEL EXPEDIENTE
+   -------------------------------------------------------------
+   Cada documento existente del expediente está registrado aquí.
+   Los nombres de "archivo" deben coincidir EXACTAMENTE con los
+   nombres de los archivos colocados en esta misma carpeta.
+   ============================================================= */
+const documentos = [
+  {
+    nombre: "Carta Compromiso",
+    archivo: "documentosPDF/Carta_COMPROMISO.pdf",
+    tipo: "pdf",
+    descripcion: "Carta de compromiso del becario dentro del Programa de Continuidad Académica y Técnica."
+  },
+  {
+    nombre: "Inscripción Ciclo II 2026",
+    archivo: "documentosPDF/INSCRIPCION_CII-2026.pdf",
+    tipo: "pdf",
+    descripcion: "Documento de asignaturas inscritas correspondiente al Ciclo II 2026."
+  },
+  {
+    nombre: "Carta de Aprobación de Beca",
+    archivo: "documentosPDF/CARTA_4957891.pdf",
+    tipo: "pdf",
+    descripcion: "Carta de aprobación de beca correspondiente al expediente del estudiante."
+  },
+  {
+    nombre: "Consentimiento Informado 2026",
+    archivo: "documentosPDF/CONSENTIMIENTO_INFORMADO_2026_DI.pdf",
+    tipo: "pdf",
+    descripcion: "Autorización para compartir información académica — Dirección de Integración."
+  },
+  {
+    nombre: "Solicitud de Beca 2026",
+    archivo: "documentosPDF/SOLICITUD_DE_BECA_2026.pdf",
+    tipo: "pdf",
+    descripcion: "Solicitud de beca del Programa de Continuidad Académica y Técnica."
+  }
+];
+
+
+
+/* =========================================================
+   AQUÍ DESCOMENTA O AGREGA NUEVOS DOCUMENTOS
+   =========================================================
+
+   Para agregar un PDF (colócalo dentro de la carpeta "documentosPDF"):
+
+   documentos.push({
+       nombre: "NOMBRE DEL DOCUMENTO",
+       archivo: "documentosPDF/nombre-del-archivo.pdf",
+       tipo: "pdf",
+       descripcion: "Descripción del documento"
+   });
+
+   =========================================================
+   PARA AGREGAR UNA SOLA IMAGEN (colócala en la carpeta "imagenes")
+   =========================================================
+
+   documentos.push({
+       nombre: "DOCUMENTO EN IMAGEN",
+       archivo: "imagenes/documento.jpg",
+       tipo: "imagen",
+       descripcion: "Descripción"
+   });
+
+   =========================================================
+   PARA AGREGAR VARIAS IMÁGENES DE UN MISMO DOCUMENTO
+   (colócalas también en la carpeta "imagenes")
+   =========================================================
+
+   documentos.push({
+       nombre: "DOCUMENTO DE VARIAS PÁGINAS",
+       tipo: "imagenes",
+       descripcion: "Documento compuesto por varias imágenes",
+       archivos: [
+           "imagenes/pagina-1.jpg",
+           "imagenes/pagina-2.jpg",
+           "imagenes/pagina-3.jpg"
+       ]
+   });
+
+   =========================================================
+   DESCOMENTA Y MODIFICA LAS LÍNEAS DE ABAJO PARA
+   AGREGAR MÁS DOCUMENTOS AL EXPEDIENTE
+   =========================================================
+
+   documentos.push({
+       nombre: "NUEVO DOCUMENTO",
+       archivo: "documentosPDF/nuevo-documento.pdf",
+       tipo: "pdf",
+       descripcion: "Descripción del nuevo documento"
+   });
+
+   ========================================================= */
+
+
+/* =============================================================
+   D. FUNCIONAMIENTO INTERNO
+   -------------------------------------------------------------
+   A partir de aquí el código lee los datos de arriba y arma toda
+   la interfaz. No es necesario modificar esta sección para
+   actualizar el contenido del expediente.
+   ============================================================= */
+
+(function () {
+  "use strict";
+
+  /* -----------------------------------------------------------
+     Referencias del DOM
+     ----------------------------------------------------------- */
+  const el = {
+    fechaConsulta: document.getElementById("fecha-consulta"),
+    footerFecha: document.getElementById("footer-fecha"),
+    datosGrid: document.getElementById("datos-grid"),
+    responsablesGrid: document.getElementById("responsables-grid"),
+    resumenLista: document.getElementById("resumen-lista"),
+    buscarInput: document.getElementById("buscar-documento"),
+    listaDocumentos: document.getElementById("lista-documentos"),
+    sinResultados: document.getElementById("sin-resultados"),
+    appShell: document.querySelector(".app-shell"),
+    sidebar: document.getElementById("sidebar"),
+    sidebarResizer: document.getElementById("sidebar-resizer"),
+    sidebarToggle: document.getElementById("toggle-sidebar"),
+    sidebarCollapse: document.getElementById("sidebar-collapse"),
+    docActualNombre: document.getElementById("documento-actual-nombre"),
+    visorMarco: document.getElementById("visor-marco"),
+    docAnterior: document.getElementById("doc-anterior"),
+    docSiguiente: document.getElementById("doc-siguiente"),
+    docNuevaPestana: document.getElementById("doc-nueva-pestana"),
+    docPantallaCompleta: document.getElementById("doc-pantalla-completa"),
+    docCerrar: document.getElementById("doc-cerrar"),
+    paginador: document.getElementById("paginador"),
+    paginaAnterior: document.getElementById("pagina-anterior"),
+    paginaSiguiente: document.getElementById("pagina-siguiente"),
+    paginaIndicador: document.getElementById("pagina-indicador"),
+    vistaSelector: document.getElementById("vista-selector"),
+    modal: document.getElementById("modal-imagen"),
+    modalImg: document.getElementById("modal-imagen-img"),
+    modalCaption: document.getElementById("modal-caption"),
+    modalCerrar: document.getElementById("modal-cerrar"),
+    carnetFrenteBtn: document.getElementById("carnet-frente-btn"),
+    carnetReversoBtn: document.getElementById("carnet-reverso-btn"),
+    carnetFrenteImg: document.getElementById("carnet-frente-img"),
+    carnetReversoImg: document.getElementById("carnet-reverso-img"),
+    menuInicio: document.getElementById("menu-inicio"),
+    menuBotones: document.querySelectorAll(".menu-boton"),
+    volverBar: document.getElementById("volver-bar"),
+    btnVolverMenu: document.getElementById("btn-volver-menu"),
+    seccionDatosBecario: document.getElementById("datos-becario"),
+    seccionResponsables: document.getElementById("responsables"),
+    seccionCarnet: document.getElementById("carnet"),
+    seccionVisualizador: document.getElementById("visualizador")
+  };
+
+  /* Estado de la aplicación */
+  const estado = {
+    documentoActualIndex: -1,
+    filtro: "",
+    paginaImagenActual: 0,
+    vistaImagenes: "pagina", // "pagina" | "completa"
+    vista: "menu" // "menu" | "todo" | "documentos" | "datos"
+  };
+
+  /* Límites y clave de almacenamiento para el ancho del panel lateral */
+  const ANCHO_PANEL_MIN = 260;
+  const ANCHO_PANEL_MAX = 560;
+  const CLAVE_ANCHO_PANEL = "di-expediente-ancho-panel";
+
+  /* -----------------------------------------------------------
+     Utilidades
+     ----------------------------------------------------------- */
+  function crearElemento(tag, clase, contenido) {
+    const nodo = document.createElement(tag);
+    if (clase) nodo.className = clase;
+    if (contenido !== undefined) nodo.textContent = contenido;
+    return nodo;
+  }
+
+  function extensionDe(archivo) {
+    const partes = (archivo || "").split(".");
+    return partes.length > 1 ? partes.pop().toLowerCase() : "";
+  }
+
+  function esImagen(archivo) {
+    return ["jpg", "jpeg", "png", "webp"].includes(extensionDe(archivo));
+  }
+
+  /* -----------------------------------------------------------
+     Fecha de consulta (generada automáticamente)
+     ----------------------------------------------------------- */
+  function cargarFecha() {
+    const ahora = new Date();
+    const opciones = { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" };
+    const texto = ahora.toLocaleString("es-SV", opciones);
+    if (el.fechaConsulta) {
+      el.fechaConsulta.textContent = texto;
+      el.fechaConsulta.setAttribute("datetime", ahora.toISOString());
+    }
+    if (el.footerFecha) el.footerFecha.textContent = texto;
+  }
+
+  /* -----------------------------------------------------------
+     2. DATOS DEL BECARIO
+     ----------------------------------------------------------- */
+  function cargarDatosBecario() {
+    if (!el.datosGrid) return;
+    el.datosGrid.innerHTML = "";
+    ORDEN_CAMPOS_BECARIO.forEach(([clave, etiqueta]) => {
+      const valor = datosBecario[clave];
+      if (!valor) return;
+      const dato = crearElemento("div", "dato");
+      const dt = crearElemento("dt", null, etiqueta);
+      const dd = crearElemento("dd", null, valor);
+      dato.append(dt, dd);
+      el.datosGrid.appendChild(dato);
+    });
+  }
+
+  /* -----------------------------------------------------------
+     3. RESPONSABLES DEL BECARIO
+     ----------------------------------------------------------- */
+  function tarjetaResponsable(info, camposContacto) {
+    const tarjeta = crearElemento("div", "responsable-tarjeta");
+    tarjeta.appendChild(crearElemento("h3", null, info.titulo || "Responsable"));
+    if (info.nombre) tarjeta.appendChild(crearElemento("p", "responsable-nombre", info.nombre));
+
+    const subtitulo = [info.cargo || info.relacion, info.unidad || info.area].filter(Boolean).join(" · ");
+    if (subtitulo) tarjeta.appendChild(crearElemento("p", "responsable-cargo", subtitulo));
+
+    const contacto = crearElemento("div", "responsable-contacto");
+    camposContacto.forEach(({ valor, tipo }) => {
+      if (!valor) return;
+      if (tipo === "correo") {
+        const enlace = crearElemento("a", null, valor);
+        enlace.href = "mailto:" + valor;
+        const linea = crearElemento("span");
+        linea.appendChild(enlace);
+        contacto.appendChild(linea);
+      } else if (tipo === "telefono") {
+        const enlace = crearElemento("a", null, valor);
+        enlace.href = "tel:" + valor.replace(/[^\d+]/g, "");
+        const linea = crearElemento("span");
+        linea.appendChild(enlace);
+        contacto.appendChild(linea);
+      } else {
+        contacto.appendChild(crearElemento("span", null, valor));
+      }
+    });
+    if (contacto.children.length) tarjeta.appendChild(contacto);
+
+    return tarjeta;
+  }
+
+  function cargarResponsables() {
+    if (!el.responsablesGrid) return;
+    el.responsablesGrid.innerHTML = "";
+
+    el.responsablesGrid.appendChild(
+      tarjetaResponsable(responsables.estudiante, [
+        { valor: responsables.estudiante.telefono, tipo: "telefono" },
+        { valor: responsables.estudiante.correo, tipo: "correo" }
+      ])
+    );
+    el.responsablesGrid.appendChild(
+      tarjetaResponsable(responsables.tecnicoUBE, [
+        { valor: responsables.tecnicoUBE.telefono, tipo: "telefono" },
+        { valor: responsables.tecnicoUBE.correo, tipo: "correo" }
+      ])
+    );
+    el.responsablesGrid.appendChild(
+      tarjetaResponsable(responsables.direccionIntegracion, [])
+    );
+  }
+
+  /* -----------------------------------------------------------
+     4. CARNET DEL BECARIO — detección de imagen disponible/no disponible
+     ----------------------------------------------------------- */
+  function prepararCarnet() {
+    [
+      { img: el.carnetFrenteImg, wrap: el.carnetFrenteBtn },
+      { img: el.carnetReversoImg, wrap: el.carnetReversoBtn }
+    ].forEach(({ img, wrap }) => {
+      if (!img || !wrap) return;
+      img.addEventListener("error", () => wrap.classList.add("sin-imagen"));
+      img.addEventListener("load", () => {
+        if (img.naturalWidth > 0) wrap.classList.remove("sin-imagen");
+      });
+      // Si la imagen ya falló antes de registrar el listener (caché), lo detectamos aquí.
+      if (img.complete && img.naturalWidth === 0) wrap.classList.add("sin-imagen");
+
+      wrap.addEventListener("click", () => {
+        if (wrap.classList.contains("sin-imagen")) return;
+        abrirModalImagen(img.src, img.alt);
+      });
+    });
+  }
+
+  function abrirModalImagen(src, alt) {
+    el.modalImg.src = src;
+    el.modalImg.alt = alt || "";
+    if (el.modalCaption) el.modalCaption.textContent = alt || "";
+    el.modal.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function cerrarModalImagen() {
+    el.modal.hidden = true;
+    el.modalImg.src = "";
+    if (el.modalCaption) el.modalCaption.textContent = "";
+    document.body.style.overflow = "";
+  }
+
+  /* -----------------------------------------------------------
+     5. LISTADO DE DOCUMENTOS + 10. BÚSQUEDA
+     ----------------------------------------------------------- */
+  function etiquetaTipo(doc) {
+    if (doc.tipo === "pdf") return "PDF";
+    if (doc.tipo === "imagen") return "IMG";
+    if (doc.tipo === "imagenes") return `${doc.archivos.length} PÁG.`;
+    return "DOC";
+  }
+
+  function documentosFiltrados() {
+    const filtro = estado.filtro.trim().toLowerCase();
+    if (!filtro) return documentos;
+    return documentos.filter((doc) => {
+      const texto = `${doc.nombre} ${doc.descripcion || ""}`.toLowerCase();
+      return texto.includes(filtro);
+    });
+  }
+
+  function renderizarListaDocumentos() {
+    if (!el.listaDocumentos) return;
+    const lista = documentosFiltrados();
+    el.listaDocumentos.innerHTML = "";
+
+    el.sinResultados.hidden = lista.length !== 0;
+
+    lista.forEach((doc) => {
+      const indiceReal = documentos.indexOf(doc);
+      const item = crearElemento("li");
+      const boton = crearElemento("button", "doc-item");
+      boton.type = "button";
+      boton.setAttribute("data-indice", String(indiceReal));
+      if (indiceReal === estado.documentoActualIndex) boton.classList.add("activo");
+
+      const icono = crearElemento("span", "doc-icono", etiquetaTipo(doc));
+      const info = crearElemento("div", "doc-info");
+      info.appendChild(crearElemento("span", "doc-nombre", doc.nombre));
+      if (doc.descripcion) info.appendChild(crearElemento("span", "doc-desc", doc.descripcion));
+      info.appendChild(crearElemento("span", "doc-tipo", "Ver documento"));
+
+      boton.append(icono, info);
+      boton.addEventListener("click", () => seleccionarDocumento(indiceReal));
+
+      item.appendChild(boton);
+      el.listaDocumentos.appendChild(item);
+    });
+  }
+
+  /* -----------------------------------------------------------
+     11. RESUMEN DEL EXPEDIENTE (se recalcula automáticamente)
+     ----------------------------------------------------------- */
+  function renderizarResumen() {
+    if (!el.resumenLista) return;
+    const total = documentos.length;
+    const pdfs = documentos.filter((d) => d.tipo === "pdf").length;
+    const imagenes = documentos.filter((d) => d.tipo === "imagen" || d.tipo === "imagenes").length;
+
+    el.resumenLista.innerHTML = "";
+    const items = [
+      ["Total de documentos", total],
+      ["Documentos PDF", pdfs],
+      ["Documentos en imágenes", imagenes]
+    ];
+    items.forEach(([etiqueta, valor]) => {
+      const contenedor = crearElemento("div");
+      contenedor.appendChild(crearElemento("dt", null, etiqueta));
+      contenedor.appendChild(crearElemento("dd", null, String(valor)));
+      el.resumenLista.appendChild(contenedor);
+    });
+
+    const estadoContenedor = crearElemento("div");
+    estadoContenedor.appendChild(crearElemento("dt", null, "Estado"));
+    estadoContenedor.appendChild(crearElemento("dd", "estado-texto", "Expediente digital activo"));
+    el.resumenLista.appendChild(estadoContenedor);
+  }
+
+  /* -----------------------------------------------------------
+     6/7. VISUALIZADOR DE DOCUMENTOS
+     ----------------------------------------------------------- */
+  function seleccionarDocumento(indice) {
+    if (indice < 0 || indice >= documentos.length) return;
+    estado.documentoActualIndex = indice;
+    estado.paginaImagenActual = 0;
+    renderizarListaDocumentos();
+    mostrarDocumentoActual();
+    cerrarPanelMovilSiEstaAbierto();
+
+    // En pantallas pequeñas, llevar la vista hacia el visualizador
+    // para que el usuario vea de inmediato el documento seleccionado.
+    if (window.innerWidth <= 700) {
+      document.getElementById("visualizador").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function cerrarPanelMovilSiEstaAbierto() {
+    if (el.appShell.classList.contains("sidebar-visible-movil")) {
+      el.appShell.classList.remove("sidebar-visible-movil");
+      el.sidebarToggle.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  /* Habilita/deshabilita "Documento anterior" y "Siguiente documento"
+     según la posición actual, en vez de dar la vuelta silenciosamente
+     al llegar a un extremo. */
+  function actualizarBotonesNavegacionDoc() {
+    const idx = estado.documentoActualIndex;
+    el.docAnterior.disabled = idx <= 0;
+    el.docSiguiente.disabled = idx !== -1 && idx >= documentos.length - 1;
+  }
+
+  function documentoActual() {
+    return documentos[estado.documentoActualIndex] || null;
+  }
+
+  function mostrarDocumentoActual() {
+    const doc = documentoActual();
+    el.visorMarco.innerHTML = "";
+    el.paginador.hidden = true;
+    actualizarBotonesNavegacionDoc();
+
+    if (!doc) {
+      el.docActualNombre.textContent = "Ninguno seleccionado";
+      const vacio = crearElemento("p", "visor-vacio", "Selecciona un documento del panel lateral para visualizarlo aquí.");
+      el.visorMarco.appendChild(vacio);
+      return;
+    }
+
+    el.docActualNombre.textContent = doc.nombre;
+
+    if (doc.tipo === "pdf") {
+      mostrarPDF(doc);
+    } else if (doc.tipo === "imagen") {
+      mostrarImagenUnica(doc);
+    } else if (doc.tipo === "imagenes") {
+      mostrarVariasImagenes(doc);
+    } else {
+      mostrarErrorVisor("Este tipo de documento no se puede previsualizar.", doc.archivo);
+    }
+  }
+
+  function mostrarErrorVisor(mensaje, archivo) {
+    el.visorMarco.innerHTML = "";
+    const contenedor = crearElemento("div", "visor-error");
+    contenedor.appendChild(crearElemento("p", null, mensaje));
+    if (archivo) {
+      const boton = crearElemento("button", "btn-icono", "Abrir archivo");
+      boton.addEventListener("click", () => window.open(archivo, "_blank"));
+      contenedor.appendChild(boton);
+    }
+    el.visorMarco.appendChild(contenedor);
+  }
+
+  function mostrarPDF(doc) {
+    // Se usa <object> en vez de <iframe>: si el navegador no puede
+    // mostrar el PDF integrado, muestra automáticamente el contenido
+    // de respaldo definido dentro (el mensaje + botón "Abrir archivo").
+    const objeto = document.createElement("object");
+    objeto.data = doc.archivo;
+    objeto.type = "application/pdf";
+    objeto.setAttribute("aria-label", doc.nombre);
+
+    const respaldo = crearElemento("div", "visor-error");
+    respaldo.appendChild(crearElemento("p", null, "Tu navegador no pudo mostrar este PDF de forma integrada."));
+    const boton = crearElemento("button", "btn-icono", "Abrir archivo");
+    boton.type = "button";
+    boton.addEventListener("click", () => window.open(doc.archivo, "_blank"));
+    respaldo.appendChild(boton);
+
+    objeto.appendChild(respaldo);
+    el.visorMarco.appendChild(objeto);
+  }
+
+  function mostrarImagenUnica(doc) {
+    const contenedor = crearElemento("div", "visor-imagen-pagina");
+    const img = document.createElement("img");
+    img.src = doc.archivo;
+    img.alt = doc.nombre;
+    img.addEventListener("error", () => mostrarErrorVisor("No fue posible cargar la imagen.", doc.archivo));
+    contenedor.appendChild(img);
+    el.visorMarco.appendChild(contenedor);
+  }
+
+  function mostrarVariasImagenes(doc) {
+    el.paginador.hidden = false;
+    actualizarSelectorVista();
+
+    if (estado.vistaImagenes === "completa") {
+      const contenedor = crearElemento("div", "visor-imagen-completa");
+      doc.archivos.forEach((src, i) => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = `${doc.nombre} — página ${i + 1}`;
+        img.loading = "lazy";
+        contenedor.appendChild(img);
+      });
+      el.visorMarco.innerHTML = "";
+      el.visorMarco.appendChild(contenedor);
+      el.paginaIndicador.textContent = `${doc.archivos.length} páginas · vista completa`;
+      return;
+    }
+
+    if (estado.paginaImagenActual >= doc.archivos.length) estado.paginaImagenActual = 0;
+    const contenedor = crearElemento("div", "visor-imagen-pagina");
+    const img = document.createElement("img");
+    img.src = doc.archivos[estado.paginaImagenActual];
+    img.alt = `${doc.nombre} — página ${estado.paginaImagenActual + 1}`;
+    contenedor.appendChild(img);
+    el.visorMarco.innerHTML = "";
+    el.visorMarco.appendChild(contenedor);
+
+    el.paginaIndicador.textContent = `Página ${estado.paginaImagenActual + 1} de ${doc.archivos.length}`;
+  }
+
+  function actualizarSelectorVista() {
+    const radios = el.vistaSelector.querySelectorAll("input[name='vista-imagenes']");
+    radios.forEach((r) => { r.checked = r.value === estado.vistaImagenes; });
+  }
+
+  function cambiarPaginaImagen(delta) {
+    const doc = documentoActual();
+    if (!doc || doc.tipo !== "imagenes") return;
+    const total = doc.archivos.length;
+    estado.paginaImagenActual = (estado.paginaImagenActual + delta + total) % total;
+    mostrarVariasImagenes(doc);
+  }
+
+  /* -----------------------------------------------------------
+     Controles del visualizador
+     ----------------------------------------------------------- */
+  function irADocumentoRelativo(delta) {
+    if (!documentos.length) return;
+    // Si no hay documento seleccionado todavía, "Siguiente" abre el
+    // primero y "Anterior" queda deshabilitado (ver actualizarBotonesNavegacionDoc).
+    let siguiente = estado.documentoActualIndex === -1
+      ? (delta > 0 ? 0 : documentos.length - 1)
+      : estado.documentoActualIndex + delta;
+    if (siguiente < 0 || siguiente >= documentos.length) return;
+    seleccionarDocumento(siguiente);
+  }
+
+  function abrirEnNuevaPestana() {
+    const doc = documentoActual();
+    if (!doc) return;
+    const archivo = doc.tipo === "imagenes" ? doc.archivos[estado.paginaImagenActual] : doc.archivo;
+    if (archivo) window.open(archivo, "_blank");
+  }
+
+  function alternarPantallaCompleta() {
+    const marco = el.visorMarco;
+    const elementoActivo = document.fullscreenElement || document.webkitFullscreenElement;
+
+    if (!elementoActivo) {
+      if (marco.requestFullscreen) {
+        marco.requestFullscreen().catch(() => marco.classList.toggle("pantalla-completa"));
+      } else if (marco.webkitRequestFullscreen) {
+        marco.webkitRequestFullscreen();
+      } else {
+        // Navegadores sin soporte para Fullscreen API en elementos
+        // arbitrarios (ej. algunas versiones de Safari en iOS):
+        // se recurre a la clase CSS como respaldo visual.
+        marco.classList.toggle("pantalla-completa");
+      }
+      return;
+    }
+
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+
+  function cerrarVisualizacion() {
+    estado.documentoActualIndex = -1;
+    el.visorMarco.classList.remove("pantalla-completa");
+    renderizarListaDocumentos();
+    mostrarDocumentoActual();
+  }
+
+  /* -----------------------------------------------------------
+     Panel lateral — redimensionar arrastrando con el mouse
+     (o con las flechas ←/→ estando enfocado en el divisor)
+     ----------------------------------------------------------- */
+  function fijarAnchoPanel(px) {
+    const ancho = Math.max(ANCHO_PANEL_MIN, Math.min(ANCHO_PANEL_MAX, px));
+    el.appShell.style.setProperty("--sidebar-width", ancho + "px");
+    return ancho;
+  }
+
+  function guardarAnchoPanel(px) {
+    try { localStorage.setItem(CLAVE_ANCHO_PANEL, String(px)); } catch (err) { /* almacenamiento no disponible */ }
+  }
+
+  function restaurarAnchoPanel() {
+    try {
+      const guardado = parseInt(localStorage.getItem(CLAVE_ANCHO_PANEL), 10);
+      if (!isNaN(guardado)) fijarAnchoPanel(guardado);
+    } catch (err) { /* almacenamiento no disponible */ }
+  }
+
+  function anchoActualPanel() {
+    const valor = parseInt(getComputedStyle(el.appShell).getPropertyValue("--sidebar-width"), 10);
+    return isNaN(valor) ? el.sidebar.getBoundingClientRect().width : valor;
+  }
+
+  function iniciarRedimensionPanel(evento) {
+    // Solo aplica en la disposición de escritorio (paneles fijos en línea, no superpuestos).
+    if (window.innerWidth <= 700) return;
+    evento.preventDefault();
+
+    const esTactil = evento.type === "touchstart";
+    const xInicial = esTactil ? evento.touches[0].clientX : evento.clientX;
+    const anchoInicial = el.sidebar.getBoundingClientRect().width;
+
+    el.sidebarResizer.classList.add("redimensionando");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function alMover(ev) {
+      const x = esTactil ? ev.touches[0].clientX : ev.clientX;
+      fijarAnchoPanel(anchoInicial + (x - xInicial));
+    }
+
+    function alSoltar() {
+      el.sidebarResizer.classList.remove("redimensionando");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener(esTactil ? "touchmove" : "mousemove", alMover);
+      document.removeEventListener(esTactil ? "touchend" : "mouseup", alSoltar);
+      guardarAnchoPanel(anchoActualPanel());
+    }
+
+    document.addEventListener(esTactil ? "touchmove" : "mousemove", alMover, { passive: false });
+    document.addEventListener(esTactil ? "touchend" : "mouseup", alSoltar);
+  }
+
+  function redimensionarPanelConTeclado(evento) {
+    if (evento.key !== "ArrowLeft" && evento.key !== "ArrowRight") return;
+    evento.preventDefault();
+    const paso = evento.key === "ArrowRight" ? 20 : -20;
+    const nuevoAncho = fijarAnchoPanel(anchoActualPanel() + paso);
+    guardarAnchoPanel(nuevoAncho);
+  }
+
+  /* -----------------------------------------------------------
+     Panel lateral — mostrar / ocultar
+     ----------------------------------------------------------- */
+  function alternarPanelEscritorio() {
+    el.appShell.classList.toggle("sidebar-oculto");
+  }
+
+  function alternarPanelMovil() {
+    const visible = el.appShell.classList.toggle("sidebar-visible-movil");
+    el.sidebarToggle.setAttribute("aria-expanded", String(visible));
+  }
+
+  /* -----------------------------------------------------------
+     Navegación entre la pantalla de menú y las 3 vistas:
+     "todo", "documentos" y "datos"
+     ----------------------------------------------------------- */
+  function mostrarVista(vista) {
+    estado.vista = vista;
+
+    if (vista === "menu") {
+      el.menuInicio.hidden = false;
+      el.volverBar.hidden = true;
+      el.appShell.hidden = true;
+      el.sidebarToggle.hidden = true;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    const mostrarDocumentos = vista === "todo" || vista === "documentos";
+    const mostrarDatos = vista === "todo" || vista === "datos";
+
+    el.menuInicio.hidden = true;
+    el.volverBar.hidden = false;
+    el.appShell.hidden = false;
+
+    // Panel lateral (resumen + búsqueda + lista de documentos)
+    el.sidebar.hidden = !mostrarDocumentos;
+    el.sidebarResizer.hidden = !mostrarDocumentos;
+    el.sidebarToggle.hidden = !mostrarDocumentos;
+    el.appShell.classList.toggle("vista-sin-sidebar", !mostrarDocumentos);
+    if (!mostrarDocumentos) el.appShell.classList.remove("sidebar-visible-movil");
+
+    // Visualizador de documentos
+    el.seccionVisualizador.hidden = !mostrarDocumentos;
+
+    // Datos del becario, responsables y carnet
+    el.seccionDatosBecario.hidden = !mostrarDatos;
+    el.seccionResponsables.hidden = !mostrarDatos;
+    el.seccionCarnet.hidden = !mostrarDatos;
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /* -----------------------------------------------------------
+     Vinculación de eventos
+     ----------------------------------------------------------- */
+  function vincularEventos() {
+    el.buscarInput.addEventListener("input", (e) => {
+      estado.filtro = e.target.value;
+      renderizarListaDocumentos();
+    });
+
+    el.docAnterior.addEventListener("click", () => irADocumentoRelativo(-1));
+    el.docSiguiente.addEventListener("click", () => irADocumentoRelativo(1));
+    el.docNuevaPestana.addEventListener("click", abrirEnNuevaPestana);
+    el.docPantallaCompleta.addEventListener("click", alternarPantallaCompleta);
+    el.docCerrar.addEventListener("click", cerrarVisualizacion);
+
+    el.paginaAnterior.addEventListener("click", () => cambiarPaginaImagen(-1));
+    el.paginaSiguiente.addEventListener("click", () => cambiarPaginaImagen(1));
+    el.vistaSelector.addEventListener("change", (e) => {
+      if (e.target.name === "vista-imagenes") {
+        estado.vistaImagenes = e.target.value;
+        estado.paginaImagenActual = 0;
+        mostrarVariasImagenes(documentoActual());
+      }
+    });
+
+    if (el.sidebarResizer) {
+      el.sidebarResizer.addEventListener("mousedown", iniciarRedimensionPanel);
+      el.sidebarResizer.addEventListener("touchstart", iniciarRedimensionPanel, { passive: false });
+      el.sidebarResizer.addEventListener("keydown", redimensionarPanelConTeclado);
+      el.sidebarResizer.addEventListener("dblclick", () => {
+        el.appShell.style.removeProperty("--sidebar-width");
+        try { localStorage.removeItem(CLAVE_ANCHO_PANEL); } catch (err) { /* almacenamiento no disponible */ }
+      });
+    }
+
+    el.sidebarToggle.addEventListener("click", alternarPanelMovil);
+    el.sidebarCollapse.addEventListener("click", () => {
+      if (window.innerWidth <= 700) {
+        alternarPanelMovil();
+      } else {
+        alternarPanelEscritorio();
+      }
+    });
+
+    el.menuBotones.forEach((boton) => {
+      boton.addEventListener("click", () => mostrarVista(boton.dataset.vista));
+    });
+    el.btnVolverMenu.addEventListener("click", () => mostrarVista("menu"));
+
+    el.modalCerrar.addEventListener("click", cerrarModalImagen);
+    el.modal.addEventListener("click", (e) => {
+      if (e.target === el.modal) cerrarModalImagen();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (!el.modal.hidden) cerrarModalImagen();
+        if (el.visorMarco.classList.contains("pantalla-completa")) el.visorMarco.classList.remove("pantalla-completa");
+      }
+    });
+  }
+
+  /* -----------------------------------------------------------
+     Logos del encabezado y pie de página — si algún archivo de
+     logo no se encuentra, se oculta en vez de mostrar el ícono
+     de imagen rota.
+     ----------------------------------------------------------- */
+  function prepararLogos() {
+    ["logo-di-header", "logo-ugb-header", "logo-di-footer", "logo-ugb-footer"].forEach((id) => {
+      const img = document.getElementById(id);
+      if (!img) return;
+      img.addEventListener("error", () => { img.style.display = "none"; });
+    });
+  }
+
+  /* -----------------------------------------------------------
+     Inicio
+     ----------------------------------------------------------- */
+  function iniciar() {
+    cargarFecha();
+    restaurarAnchoPanel();
+    prepararLogos();
+    cargarDatosBecario();
+    cargarResponsables();
+    prepararCarnet();
+    renderizarResumen();
+    renderizarListaDocumentos();
+    mostrarDocumentoActual();
+    vincularEventos();
+    mostrarVista("menu");
+  }
+
+  document.addEventListener("DOMContentLoaded", iniciar);
+})();
+
+</script>
+</body>
+</html>

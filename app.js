@@ -4786,30 +4786,16 @@ function processPaste(){
 function _procesarTextoNotas(text,volverA){
   const filas=_parsearTablaPortal(text);
   const cycle=currentCycleId?CYCLES.find(c=>c.id===currentCycleId):null;
-  const preview=[]; _pasteSinReconocer=[];
-  const usadas=new Set();
+  const usadas=new Set(), rows=[];
   filas.forEach((f,i)=>{
-    const m=_buscarMateriaPortal(f.codigo,f.nombre,cycle,i);
-    if(!m || usadas.has(m.sub.num)){ _pasteSinReconocer.push(f); return; }
-    usadas.add(m.sub.num);
-    preview.push(_filaAPreview(f,m));
+    const m=_buscarMateriaPortal(f.codigo,f.nombre,cycle,i), n=f.nums;
+    const base={codigo:f.codigo||'',nombre:f.nombre,despues:[{lab1:n[0],lab2:n[1],parcial:n[2]},{lab1:n[4],lab2:n[5],parcial:n[6]},{lab1:n[8],lab2:n[9],parcial:n[10]}]};
+    if(!m||usadas.has(m.sub.num)){ rows.push({...base,subNum:null,aviso:m?'Esa materia ya la tomó otra fila — elige a cuál corresponde.':'No se reconoció la materia — asígnala a mano.'}); return; }
+    usadas.add(m.sub.num); rows.push({...base,subNum:m.sub.num,aviso:m.aviso||''});
   });
-  if(!preview.length && !_pasteSinReconocer.length){showToast('No se encontraron materias válidas','error');return;}
-  _pastePreviewData=preview;
-  _pastePreviewVolverA=volverA||null;
-  _renderPastePreview();
+  if(!rows.length){showToast('No se encontraron materias válidas','error');return;}
+  _pvCargar(rows,volverA);
   closePasteModal();
-  document.getElementById('pastePreviewModal').classList.add('open');
-}
-function asignarMateriaManual(idx,subNum){
-  if(!subNum) return;
-  const f=_pasteSinReconocer[idx]; if(!f) return;
-  let sub=null; CYCLES.forEach(c=>c.subjects.forEach(s=>{ if(String(s.num)===String(subNum)) sub=s; }));
-  if(!sub) return;
-  if(_pastePreviewData.some(p=>String(p.subNum)===String(sub.num))){ showToast('Esa materia ya está en la lista','error'); return; }
-  _pastePreviewData.push(_filaAPreview(f,{sub,aviso:'Asignada manualmente por ti.'}));
-  _pasteSinReconocer.splice(idx,1);
-  _renderPastePreview();
 }
 // Pegar directo desde el portapapeles (el navegador pide permiso una vez)
 async function pegarDesdePortapapeles(){
@@ -4862,62 +4848,102 @@ _capturarImportacionDeURL();
 
 // _fmtNota() ahora vive en calculos.js — ver nota junto a escapeHtml()
 // más arriba en este mismo archivo.
+// ── Vista previa en TABLA editable ──
+// Cada fila del portal es independiente de la materia a la que se asigna:
+// se puede cambiar la materia (si ya está ocupada, las dos filas se
+// intercambian), mover la fila a una materia sin notas (arrastrando ☰ o con
+// ⇄ → "Mover aquí"), corregir una nota a mano o excluir la fila. Nada se
+// guarda hasta "✅ Confirmar y aplicar".
+let _pvSel=null, _pvId=0;
+function _pvCargar(rows,volverA){
+  _pvId=0; _pvSel=null;
+  _pastePreviewData=rows.map(r=>({id:++_pvId,subNum:r.subNum==null?null:String(r.subNum),codigo:r.codigo||'',nombre:r.nombre||'',aviso:r.aviso||'',despues:r.despues,incluir:true}));
+  _pastePreviewVolverA=volverA||null;
+  _renderPastePreview();
+  document.getElementById('pastePreviewModal').classList.add('open');
+}
+function _pvFila(id){return _pastePreviewData.find(r=>r.id===id);}
+function _pvSwap(a,b){const A=_pvFila(a),B=_pvFila(b); if(!A||!B) return; const t=A.subNum; A.subNum=B.subNum; B.subNum=t; _pvSel=null; _renderPastePreview();}
+function _pvTocar(id){ if(_pvSel==null) _pvSel=id; else if(_pvSel===id) _pvSel=null; else {_pvSwap(_pvSel,id);return;} _renderPastePreview(); }
+function _pvMoverA(subNum){const A=_pvFila(_pvSel); if(!A) return; A.subNum=String(subNum); _pvSel=null; _renderPastePreview();}
+function _pvDragStart(e,id){e.dataTransfer.setData('text/plain',String(id)); e.dataTransfer.effectAllowed='move';}
+function _pvDrop(e,tipo,x){e.preventDefault(); const id=parseInt(e.dataTransfer.getData('text/plain'),10); if(!id) return; if(tipo==='r'){ if(id!==x) _pvSwap(id,x); } else { _pvSel=id; _pvMoverA(x); }}
+function _pvAsignar(id,val){
+  const A=_pvFila(id); if(!A) return;
+  if(val===''){ A.subNum=null; }
+  else { const B=_pastePreviewData.find(r=>r.id!==id&&String(r.subNum)===String(val)); if(B) B.subNum=A.subNum; A.subNum=String(val); }
+  _renderPastePreview();
+}
+function _pvIncluir(id,on){const A=_pvFila(id); if(A){A.incluir=!!on; _renderPastePreview();}}
+function _pvEditar(id,ci,campo,inp){
+  const A=_pvFila(id); if(!A) return;
+  const v=String(inp.value).replace(',','.').trim(), n=parseFloat(v);
+  A.despues[ci][campo]=(v===''||isNaN(n))?'':n;
+  const ant=A.subNum!=null?(getSubjectData(A.subNum).computos[ci]||{})[campo]:undefined;
+  inp.parentNode.classList.toggle('pv-chg',A.subNum!=null&&String(_fmtNota(ant))!==String(_fmtNota(A.despues[ci][campo])));
+  _pvResumen();
+}
+function _pvResumen(){
+  const R=_pastePreviewData, sin=R.filter(r=>r.incluir&&r.subNum==null).length;
+  const cambia=r=>r.subNum!=null&&r.despues.some((d,i)=>{const a=getSubjectData(r.subNum).computos[i]||{}; return ['lab1','lab2','parcial'].some(c=>String(_fmtNota(a[c]))!==String(_fmtNota(d[c])));});
+  const nc=R.filter(r=>r.incluir&&cambia(r)).length;
+  document.getElementById('pastePreviewResumen').textContent=R.length+' fila(s) del portal · '+nc+' con cambios (amarillo)'+(sin?' · '+sin+' sin materia (no se aplicarán)':'')+'.';
+}
 function _renderPastePreview(){
-  const huboCambios = _pastePreviewData.some(p => p.despues.some((d,idx)=>{
-    const a=p.antes[idx]||{};
-    return String(_fmtNota(a.lab1))!==String(_fmtNota(d.lab1)) || String(_fmtNota(a.lab2))!==String(_fmtNota(d.lab2)) || String(_fmtNota(a.parcial))!==String(_fmtNota(d.parcial));
-  }));
-  document.getElementById('pastePreviewResumen').textContent = _pastePreviewData.length + ' materia(s) encontrada(s)' + (_pasteSinReconocer.length ? ' · '+_pasteSinReconocer.length+' sin reconocer' : '') + (huboCambios ? ' — se muestran en amarillo los valores que van a cambiar.' : ' — no hay cambios reales respecto a lo que ya tenías cargado.');
-  document.getElementById('pastePreviewList').innerHTML = _pastePreviewData.map(p=>{
-    const filas=['1° parcial','2° parcial','3° parcial'].map((label,idx)=>{
-      const a=p.antes[idx]||{}, d=p.despues[idx]||{};
-      const campo=(campo)=>{
-        const va=_fmtNota(a[campo]), vd=_fmtNota(d[campo]);
-        const cambia = String(va)!==String(vd);
-        return `<span style="${cambia?'background:rgba(245,158,11,.18);border-radius:4px;padding:1px 4px;font-weight:700;':''}">${va} → ${vd}</span>`;
-      };
-      return `<div style="font-size:11.5px;color:var(--gm);display:flex;gap:10px;padding:2px 0;">
-        <span style="min-width:66px;">${label}</span>
-        <span>Lab1: ${campo('lab1')}</span><span>Lab2: ${campo('lab2')}</span><span>Parcial: ${campo('parcial')}</span>
-      </div>`;
-    }).join('');
-    return `<div style="border:1.5px solid var(--gl);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
-      <div style="font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:4px;">${escapeHtml(p.codigo)} — ${escapeHtml(p.nombre)}</div>
-      ${p.aviso?`<div style="font-size:11px;color:#92400e;background:rgba(245,158,11,.12);border-radius:6px;padding:3px 7px;margin-bottom:4px;">⚠️ ${escapeHtml(p.aviso)}</div>`:''}
-      ${filas}
-    </div>`;
-  }).join('') + _pasteSinReconocer.map((f,i)=>{
-    const opts=_todasLasMaterias(currentCycleId?CYCLES.find(c=>c.id===currentCycleId):null)
-      .filter(x=>!_pastePreviewData.some(p=>String(p.subNum)===String(x.sub.num)))
-      .map(x=>`<option value="${escapeHtml(String(x.sub.num))}">${escapeHtml(x.sub.code)} — ${escapeHtml(x.sub.name)}</option>`).join('');
-    return `<div style="border:1.5px dashed #ef4444;border-radius:8px;padding:8px 10px;margin-bottom:8px;">
-      <div style="font-weight:700;font-size:12.5px;color:#b91c1c;margin-bottom:4px;">❓ No reconocida: ${escapeHtml((f.codigo?f.codigo+' - ':'')+f.nombre)}</div>
-      <select onchange="asignarMateriaManual(${i},this.value)" style="width:100%;padding:6px;border:1.5px solid var(--gl);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);">
-        <option value="">Elegir a qué materia corresponde…</option>${opts}
-      </select>
-    </div>`;
+  const orden=[]; CYCLES.forEach(c=>c.subjects.forEach(s=>orden.push(s)));
+  const idx=n=>orden.findIndex(s=>String(s.num)===String(n));
+  const R=_pastePreviewData, usados=new Set(R.filter(r=>r.subNum!=null).map(r=>String(r.subNum)));
+  let cyc=currentCycleId?CYCLES.find(c=>c.id===currentCycleId):null;
+  if(!cyc){const f=R.find(r=>r.subNum!=null); if(f) cyc=CYCLES.find(c=>c.subjects.some(s=>String(s.num)===String(f.subNum)));}
+  const vacias=cyc?cyc.subjects.filter(s=>!usados.has(String(s.num))):[];
+  const entradas=[...R.map(r=>({r,o:r.subNum==null?-1:idx(r.subNum)})),...vacias.map(s=>({s,o:idx(s.num)}))].sort((a,b)=>a.o-b.o);
+  const campos=['lab1','lab2','parcial'];
+  const celda=(r,ci,c)=>{
+    const d=r.despues[ci][c], a=r.subNum!=null?(getSubjectData(r.subNum).computos[ci]||{})[c]:undefined;
+    const ch=r.subNum!=null&&String(_fmtNota(a))!==String(_fmtNota(d));
+    return `<td class="pv-c${ch?' pv-chg':''}"><input class="pv-in" inputmode="decimal" value="${d===''||d==null?'':escapeHtml(String(d))}" title="Antes: ${escapeHtml(String(_fmtNota(a)))}" onchange="_pvEditar(${r.id},${ci},'${c}',this)"></td>`;
+  };
+  const opts=r=>CYCLES.map(c=>`<optgroup label="${escapeHtml(c.name)}">`+c.subjects.map(s=>{
+    const o=R.find(x=>x.id!==r.id&&String(x.subNum)===String(s.num));
+    return `<option value="${escapeHtml(String(s.num))}"${String(r.subNum)===String(s.num)?' selected':''}>${escapeHtml(s.code)} — ${escapeHtml(s.name)}${o?' (ocupada → intercambia)':''}</option>`;
+  }).join('')+'</optgroup>').join('');
+  const filas=entradas.map(e=>{
+    if(e.s) return `<tr class="pv-vacia" ondragover="event.preventDefault()" ondrop="_pvDrop(event,'v','${escapeHtml(String(e.s.num))}')"><td></td><td colspan="2"><b>${escapeHtml(e.s.code)}</b> — ${escapeHtml(e.s.name)} <i>(sin notas del portal)</i></td><td colspan="9" class="pv-hint">${_pvSel!=null?`<button class="pv-btn" onclick="_pvMoverA('${escapeHtml(String(e.s.num))}')">⬇ Mover aquí</button>`:'Arrastra una fila hasta aquí, o usa ⇄ en la fila'}</td><td></td></tr>`;
+    const r=e.r, esSel=_pvSel===r.id;
+    return `<tr class="pv-row${r.subNum==null?' pv-sin':''}${esSel?' pv-sel':''}${r.incluir?'':' pv-off'}" ondragover="event.preventDefault()" ondrop="_pvDrop(event,'r',${r.id})">
+      <td class="pv-h" draggable="true" ondragstart="_pvDragStart(event,${r.id})" title="Arrastra sobre otra fila para intercambiar">☰</td>
+      <td class="pv-nom"><label><input type="checkbox" ${r.incluir?'checked':''} onchange="_pvIncluir(${r.id},this.checked)"> ${escapeHtml((r.codigo?r.codigo+' - ':'')+r.nombre)}</label>${r.aviso?`<div class="pv-av">⚠️ ${escapeHtml(r.aviso)}</div>`:''}</td>
+      <td><select class="pv-sel-m" onchange="_pvAsignar(${r.id},this.value)"><option value="">❓ Sin materia — elegir…</option>${opts(r)}</select></td>
+      ${[0,1,2].map(ci=>campos.map(c=>celda(r,ci,c)).join('')).join('')}
+      <td><button class="pv-btn${esSel?' on':''}" onclick="_pvTocar(${r.id})" title="Mover o intercambiar">${_pvSel!=null&&!esSel?'⇄ Intercambiar':(esSel?'✖ Cancelar':'⇄')}</button></td></tr>`;
   }).join('');
+  document.getElementById('pastePreviewList').innerHTML=`<div class="pv-wrap"><table class="pv-t"><thead>
+    <tr><th rowspan="2"></th><th rowspan="2">Fila del portal</th><th rowspan="2">Asignar a materia</th><th colspan="3">Cómputo 1</th><th colspan="3">Cómputo 2</th><th colspan="3">Cómputo 3</th><th rowspan="2"></th></tr>
+    <tr>${'<th>N1</th><th>N2</th><th>P</th>'.repeat(3)}</tr></thead><tbody>${filas}</tbody></table></div>
+    <p class="pv-ayuda">☰ arrastra una fila sobre otra para <b>intercambiar</b> materias, o sobre una materia vacía para <b>mover</b>. En celular: ⇄ en una fila y luego ⇄ en otra (o "Mover aquí"). Las notas se pueden corregir a mano. Desmarca una fila para no aplicarla.</p>`;
+  _pvResumen();
 }
 
 function cancelarPegadoNotas(){
   document.getElementById('pastePreviewModal').classList.remove('open');
-  _pastePreviewData=[]; _pasteSinReconocer=[];
+  _pastePreviewData=[]; _pvSel=null;
   if(_pastePreviewVolverA) document.getElementById(_pastePreviewVolverA).classList.add('open');
 }
 
 function confirmarPegadoNotas(){
+  const sin=_pastePreviewData.filter(r=>r.incluir&&r.subNum==null).length;
   let imported=0;
   _pastePreviewData.forEach(p=>{
+    if(!p.incluir||p.subNum==null) return;
     const sd=getSubjectData(p.subNum);
-    sd.computos[0]={lab1:p.despues[0].lab1,lab2:p.despues[0].lab2,parcial:p.despues[0].parcial};
-    sd.computos[1]={lab1:p.despues[1].lab1,lab2:p.despues[1].lab2,parcial:p.despues[1].parcial};
-    sd.computos[2]={lab1:p.despues[2].lab1,lab2:p.despues[2].lab2,parcial:p.despues[2].parcial};
+    [0,1,2].forEach(i=>{ sd.computos[i]={lab1:p.despues[i].lab1,lab2:p.despues[i].lab2,parcial:p.despues[i].parcial}; });
     imported++;
   });
+  if(!imported){showToast('Ninguna fila tiene materia asignada — asígnala primero','error');return;}
   saveLocal();
   document.getElementById('pastePreviewModal').classList.remove('open');
-  _pastePreviewData=[]; _pasteSinReconocer=[];
-  showToast(`✓ ${imported} materias importadas`,'success');
+  _pastePreviewData=[]; _pvSel=null;
+  showToast(`✓ ${imported} materias importadas`+(sin?` · ${sin} fila(s) sin materia omitidas`:''),'success');
   if(currentCycleId) renderSubjects(CYCLES.find(c=>c.id===currentCycleId));
   else renderPensum();
 }
@@ -5099,11 +5125,7 @@ function importCSV(){
         });
       });
       if(!preview.length){showToast('No se encontraron materias válidas en el CSV','error');return;}
-      _pastePreviewData=preview;
-      _pasteSinReconocer=[];
-      _pastePreviewVolverA=null;
-      _renderPastePreview();
-      document.getElementById('pastePreviewModal').classList.add('open');
+      _pvCargar(preview,null);
     };r.readAsText(f,'UTF-8');
   };inp.click();
 }

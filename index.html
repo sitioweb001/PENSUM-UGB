@@ -105,7 +105,7 @@
   </div>
   <label style="display:flex;align-items:flex-start;gap:8px;margin-top:12px;cursor:pointer;font-size:12px;color:var(--text);line-height:1.4;">
     <input type="checkbox" id="mantenerSesionChk" style="margin-top:2px;flex-shrink:0;">
-    <span>🔒 <b>Mantener sesión iniciada</b> en este dispositivo — no pedirá volver a ingresar hasta que cierres sesión o pase un día completo sin usarla. <span style="color:var(--gm);">No lo actives en una computadora compartida.</span></span>
+    <span>🔒 <b>Mantener sesión iniciada</b> en este dispositivo — no pedirá volver a ingresar hasta que cierres sesión o venza la duración (por defecto 24 h; la cambias dentro de tu cuenta en ☰ → Mantener sesión iniciada). <span style="color:var(--gm);">No lo actives en una computadora compartida.</span></span>
   </label>
   <button class="login-btn" id="loginButton" onclick="doLogin()" style="margin-top:14px;">Ingresar →</button>
   <button class="login-btn" id="loginHuellaBtn" onclick="loginConHuella()" style="display:none;margin-top:8px;background:transparent;color:var(--blue);border:1.5px solid var(--blue);">🫆 Ingresar con huella</button>
@@ -302,6 +302,12 @@
     <p>Copia del portal UGB o Excel y pega aquí.</p>
     <pre style="background:var(--comp-bg);padding:7px;font-size:10px;margin-bottom:9px;border-radius:7px;overflow-x:auto;color:var(--gm);">CÓDIGO - MATERIA   N1  N2  P  C1  N1  N2  P  C2  N1  N2  P  C3  REP  NF</pre>
     <div class="modal-field"><textarea id="pasteTextarea" placeholder="Pega aquí..."></textarea></div>
+    <button class="modal-btn secondary" onclick="pegarDesdePortapapeles()" style="width:100%;margin-bottom:8px;">📥 Pegar desde el portapapeles y procesar</button>
+    <details style="font-size:11.5px;color:var(--gm);margin-bottom:8px;">
+      <summary style="cursor:pointer;font-weight:700;color:var(--blue);">⚡ Importar directo desde el portal (sin copiar y pegar)</summary>
+      <p style="margin:6px 0;">Arrastra este botón a tu barra de marcadores: <a id="bookmarkletPortal" href="#" onclick="return false" draggable="true" style="display:inline-block;background:var(--blue);color:#fff;padding:4px 10px;border-radius:14px;font-weight:700;text-decoration:none;">📥 Importar notas UGB</a></p>
+      <p style="margin:0;">Luego, con la pestaña <b>Notas</b> del portal abierta, haz clic en ese marcador: se abrirá esta app con las notas listas para revisar y confirmar. (Una página web no puede leer otra pestaña por seguridad; el marcador corre dentro del portal con tu permiso al hacer clic.)</p>
+    </details>
     <div class="modal-btns">
       <button class="modal-btn secondary" onclick="closePasteModal()">Cancelar</button>
       <button class="modal-btn primary" onclick="processPaste()">Procesar</button>
@@ -843,12 +849,29 @@
 <div class="modal-overlay" id="sesionPersistenteModal">
   <div class="modal" style="width:440px;max-width:94vw;">
     <h3 style="text-align:center;margin-bottom:3px;">🔒 Mantener sesión iniciada</h3>
-    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">En este dispositivo, no se pedirá volver a iniciar sesión hasta que cierres sesión o pase un día completo sin abrir la app.</p>
+    <p style="text-align:center;margin-bottom:14px;color:var(--gm);font-size:12px;">En este dispositivo, no se pedirá volver a iniciar sesión hasta que cierres sesión o se cumpla la duración que elijas abajo.</p>
     <div id="sesionPersistenteEstado" style="background:var(--bg);border:1.5px solid var(--gl);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;font-weight:600;color:var(--text);"></div>
     <label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:16px;font-size:13.5px;font-weight:700;">
       <input type="checkbox" id="sesionPersistenteChk" onchange="toggleSesionPersistenteDesdeApp(this.checked)">
       Mantener sesión iniciada en este dispositivo
     </label>
+    <div style="border:1.5px solid var(--gl);border-radius:8px;padding:10px 12px;margin-bottom:14px;">
+      <label style="font-size:12.5px;font-weight:700;display:block;margin-bottom:6px;">⏱️ ¿Cuándo se cierra sola la sesión de esta cuenta?</label>
+      <select id="sesDuracionModo" onchange="_sesMostrarCamposDuracion()" style="width:100%;padding:8px;border:1.5px solid var(--gl);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);">
+        <option value="24h">A las 24 horas sin usar la app (por defecto)</option>
+        <option value="horas">Tiempo personalizado (horas sin usarla)</option>
+        <option value="fecha">En una fecha y hora exacta</option>
+        <option value="nunca">Nunca (solo con "Cerrar sesión")</option>
+      </select>
+      <div id="sesDuracionHorasWrap" style="display:none;margin-top:8px;">
+        <input type="number" id="sesDuracionHoras" min="1" step="1" value="48" style="width:90px;padding:7px;border:1.5px solid var(--gl);border-radius:8px;background:var(--bg);color:var(--text);"> horas sin usar la app
+      </div>
+      <div id="sesDuracionFechaWrap" style="display:none;margin-top:8px;">
+        <input type="datetime-local" id="sesDuracionFecha" style="padding:7px;border:1.5px solid var(--gl);border-radius:8px;background:var(--bg);color:var(--text);">
+      </div>
+      <button class="modal-btn primary" onclick="guardarDuracionSesion()" style="margin-top:10px;width:100%;">💾 Guardar duración</button>
+      <p style="font-size:10.5px;color:var(--gm);margin-top:6px;">Se guarda por cuenta en este dispositivo.</p>
+    </div>
     <p style="font-size:11px;color:var(--gm);margin-bottom:14px;">⚠️ No la actives en una computadora compartida — cualquiera que la abra entrará directo a tu cuenta.</p>
     <div class="modal-btns"><button class="modal-btn primary" onclick="document.getElementById('sesionPersistenteModal').classList.remove('open')">Cerrar</button></div>
   </div>

@@ -466,6 +466,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 // después de parsear todo el documento).
 // ═══════════════════════════════════════════════════════════
 window.__firebaseReady = new Promise((resolve) => { window.__resolveFirebaseReady = resolve; });
+// Espera a Firebase pero con tope de tiempo: si la autenticación nunca
+// termina (sin internet, bloqueo de red) se rechaza en vez de quedar
+// colgado para siempre. Las pantallas lo usan para mostrar el error.
+function _esperarFirebase(ms) {
+  return Promise.race([
+    window.__firebaseReady,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('Firebase tardó demasiado en responder')), ms || 15000))
+  ]);
+}
 
 // ═══════════════════════════════════════════════════════════
 // PENSUM DATA
@@ -924,7 +933,48 @@ async function _intentarAutoInicioHuella() {
 //   (b) pase un día completo (24h) sin abrir la app en este dispositivo.
 // Guardado 100% local (localStorage, por dispositivo) — nunca en Firebase.
 // ═══════════════════════════════════════════════════════════
-const SESION_PERSISTENTE_MS = 24 * 60 * 60 * 1000; // 1 día completo
+const SESION_PERSISTENTE_MS = 24 * 60 * 60 * 1000; // 1 día completo (valor por defecto)
+
+// ── DURACIÓN DE LA SESIÓN, PERSONALIZABLE POR CUENTA ──
+// Cada cuenta elige (en este dispositivo) cuándo se cierra sola:
+//   '24h'   → tras 24 h sin usar la app (por defecto)
+//   'nunca' → nunca se cierra sola (solo con "Cerrar sesión")
+//   'horas' → tras N horas sin usar la app (tiempo personalizado)
+//   'fecha' → llega una fecha y hora exacta y se cierra, se use o no
+function _leerCfgSesion(nombre) {
+  try {
+    const todo = JSON.parse(localStorage.getItem('ugb_ses_cfg') || '{}');
+    const c = todo[nombre];
+    if (c && ['24h','nunca','horas','fecha'].includes(c.modo)) return c;
+  } catch (e) {}
+  return { modo: '24h' };
+}
+function _guardarCfgSesion(nombre, cfg) {
+  try {
+    const todo = JSON.parse(localStorage.getItem('ugb_ses_cfg') || '{}');
+    todo[nombre] = cfg;
+    localStorage.setItem('ugb_ses_cfg', JSON.stringify(todo));
+  } catch (e) { console.error('[Sesión] No se pudo guardar la duración:', e); }
+}
+// Devuelve null si la sesión sigue vigente, o un texto con el motivo si venció.
+function _motivoSesionVencida(nombre, ultimaActividad) {
+  const c = _leerCfgSesion(nombre);
+  const ahora = Date.now();
+  if (c.modo === 'nunca') return null;
+  if (c.modo === 'fecha') {
+    const t = new Date(c.hasta).getTime();
+    return (t && ahora > t) ? 'llegó la fecha límite elegida (' + c.hasta.replace('T',' ') + ')' : null;
+  }
+  const ms = c.modo === 'horas' ? Math.max(1, Number(c.horas) || 24) * 3600000 : SESION_PERSISTENTE_MS;
+  return (ahora - ultimaActividad > ms) ? 'pasó el tiempo de inactividad elegido (' + (ms/3600000) + ' h)' : null;
+}
+function _textoCfgSesion(nombre) {
+  const c = _leerCfgSesion(nombre);
+  if (c.modo === 'nunca') return 'nunca se cierra sola — solo al presionar "Cerrar sesión"';
+  if (c.modo === 'fecha') return 'se cerrará el ' + new Date(c.hasta).toLocaleString('es-SV', {dateStyle:'medium', timeStyle:'short'});
+  if (c.modo === 'horas') return 'se cierra tras ' + (Number(c.horas) || 24) + ' h sin usar la app';
+  return 'se cierra tras 24 h sin usar la app';
+}
 function _leerSesionPersistente() {
   try {
     if (localStorage.getItem('ugb_mantener_sesion') !== '1') {
@@ -939,10 +989,11 @@ function _leerSesionPersistente() {
       return null;
     }
     const horasInactivo = ((Date.now() - ts) / 3600000).toFixed(1);
-    if (Date.now() - ts > SESION_PERSISTENTE_MS) {
-      // Pasó más de un día completo sin ingresar — la sesión expira sola.
-      console.log('[Sesión] Expirada por inactividad ('+horasInactivo+'h sin abrir la app) — se borra.');
-      _borrarSesionPersistente('expiró por inactividad ('+horasInactivo+'h)');
+    const vencida = _motivoSesionVencida(estudiante, ts);
+    if (vencida) {
+      // Venció según la duración que eligió esta cuenta — la sesión expira sola.
+      console.log('[Sesión] Expirada: ' + vencida + ' — se borra.');
+      _borrarSesionPersistente('expiró: ' + vencida);
       return null;
     }
     console.log('[Sesión] Sesión persistente válida encontrada:', estudiante, '/', carrera, '— última actividad hace', horasInactivo, 'h');
@@ -998,17 +1049,48 @@ function abrirSesionPersistenteModal() {
   const estado = document.getElementById('sesionPersistenteEstado');
   const chk = document.getElementById('sesionPersistenteChk');
   if (estado) estado.textContent = activa
-    ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — no se pedirá iniciar sesión de nuevo aquí hasta que cierres sesión o pase un día completo sin usar la app.'
+    ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — ' + _textoCfgSesion(currentStudent) + '.'
     : '🔒 Desactivada — este dispositivo pedirá iniciar sesión cada vez.';
   if (chk) chk.checked = activa;
+  const c = _leerCfgSesion(currentStudent);
+  document.getElementById('sesDuracionModo').value = c.modo;
+  document.getElementById('sesDuracionHoras').value = c.horas || 48;
+  document.getElementById('sesDuracionFecha').value = c.hasta || '';
+  _sesMostrarCamposDuracion();
   document.getElementById('sesionPersistenteModal').classList.add('open');
+}
+function _sesMostrarCamposDuracion() {
+  const m = document.getElementById('sesDuracionModo').value;
+  document.getElementById('sesDuracionHorasWrap').style.display = m === 'horas' ? 'block' : 'none';
+  document.getElementById('sesDuracionFechaWrap').style.display = m === 'fecha' ? 'block' : 'none';
+}
+function guardarDuracionSesion() {
+  const modo = document.getElementById('sesDuracionModo').value;
+  const cfg = { modo };
+  if (modo === 'horas') {
+    const h = parseFloat(document.getElementById('sesDuracionHoras').value);
+    if (!(h >= 1)) { showToast('Escribe un número de horas (mínimo 1)', 'error'); return; }
+    cfg.horas = h;
+  }
+  if (modo === 'fecha') {
+    const f = document.getElementById('sesDuracionFecha').value;
+    if (!f || !(new Date(f).getTime() > Date.now())) { showToast('Elige una fecha y hora que todavía no haya pasado', 'error'); return; }
+    cfg.hasta = f;
+  }
+  _guardarCfgSesion(currentStudent, cfg);
+  // Guardar la duración implica mantener la sesión activa en este dispositivo.
+  _guardarSesionPersistente(currentStudent, currentCareer);
+  const chk = document.getElementById('sesionPersistenteChk'); if (chk) chk.checked = true;
+  const estado = document.getElementById('sesionPersistenteEstado');
+  if (estado) estado.textContent = '🔓 Activada en este dispositivo para ' + currentStudent + ' — ' + _textoCfgSesion(currentStudent) + '.';
+  showToast('✓ Duración de sesión guardada', 'success');
 }
 function toggleSesionPersistenteDesdeApp(checked) {
   if (checked) _guardarSesionPersistente(currentStudent, currentCareer);
   else _borrarSesionPersistente('desactivada desde el menú Cuenta');
   const estado = document.getElementById('sesionPersistenteEstado');
   if (estado) estado.textContent = checked
-    ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — no se pedirá iniciar sesión de nuevo aquí hasta que cierres sesión o pase un día completo sin usar la app.'
+    ? '🔓 Activada en este dispositivo para ' + currentStudent + ' — ' + _textoCfgSesion(currentStudent) + '.'
     : '🔒 Desactivada — este dispositivo pedirá iniciar sesión cada vez.';
   showToast(checked ? '✓ Sesión se mantendrá iniciada en este dispositivo' : '✓ Sesión persistente desactivada', 'success');
 }
@@ -1134,7 +1216,7 @@ async function _checkPassword(studentName, plainPass) {
   // pass en distintos usuarios genere hashes distintos)
 
   try {
-    await window.__firebaseReady;
+    await _esperarFirebase(15000);
     await window.FirebaseDB.crearOCargarEstudiante(studentName, currentCareer);
     const res = await window.FirebaseDB.verificarPassword(studentName, currentCareer, plainPass);
     if (!res.existe) {
@@ -1232,12 +1314,11 @@ async function init() {
   // es Firebase (ver window.FirebaseDB).
   config = { appsScriptUrl: 'firebase' };
 
-  _showLoading('Conectando con Firebase...', 'Autenticando');
-  await window.__firebaseReady;
-  try {
-    accountListVisible = await window.FirebaseDB.getShowAccountList();
-  } catch(e) { console.error('[Firebase] Error leyendo config global:', e); }
-  _hideLoading();
+  // La conexión con Firebase ahora corre EN SEGUNDO PLANO: la pantalla de
+  // inicio aparece al instante y cada acción (elegir carrera, iniciar
+  // sesión) espera a Firebase solo si todavía no terminó. Si falla, se
+  // avisa con un mensaje y las acciones muestran su error — nunca deja pasar.
+  _conectarFirebaseEnSegundoPlano();
 
   const t = localStorage.getItem('ugb_theme') || 'light';
   document.getElementById('htmlRoot').setAttribute('data-theme', t);
@@ -1293,6 +1374,27 @@ async function init() {
   document.getElementById('careerSelectView').style.display = 'flex';
 }
 
+function _mostrarEstadoFirebase(ok) {
+  const bar    = document.getElementById('firebaseStatusBar');
+  const barOff = document.getElementById('firebaseOfflineBar');
+  if (bar)    bar.style.display    = ok ? 'block' : 'none';
+  if (barOff) barOff.style.display = ok ? 'none'  : 'block';
+}
+function _conectarFirebaseEnSegundoPlano() {
+  _esperarFirebase(20000).then(async () => {
+    _mostrarEstadoFirebase(true);
+    try {
+      accountListVisible = await window.FirebaseDB.getShowAccountList();
+      applyAccountListVisibility();
+      if (document.getElementById('loginView').style.display !== 'none') renderStudentList();
+    } catch(e) { console.error('[Firebase] Error leyendo config global:', e); }
+  }).catch((e) => {
+    console.error('[Firebase] No se pudo conectar:', e);
+    _mostrarEstadoFirebase(false);
+    showToast('⚠️ No se pudo conectar con Firebase. Revisa tu internet.', 'error');
+  });
+}
+
 // Aplica al DOM (badge del login, encabezado de la app, menú lateral) la
 // info visual de una carrera — separado de chooseCareer() para poder
 // reutilizarlo también en la restauración silenciosa de sesión (init()),
@@ -1328,7 +1430,7 @@ async function chooseCareer(career) {
     for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
       try {
         if (attempt > 1) _showLoading('Reintentando... (' + attempt + '/3)', 'Cargando lista de estudiantes');
-        await window.__firebaseReady;
+        await _esperarFirebase(15000);
         const nombres = await window.FirebaseDB.listarEstudiantes(career);
         nombres.forEach(name => {
           if (!appData[name]) appData[name] = { notas:{}, events:[], cyclesDone:{}, asistencias:{}, asistenciasActividad:{}, cyclesInProgress:{}, cycleDateRanges:{}, specialCards:{}, undoStack:[] };
@@ -1574,7 +1676,7 @@ async function selectStudent(name) {
   let _downloadOk = false;
   if (config.appsScriptUrl) {
     try {
-      await window.__firebaseReady;
+      await _esperarFirebase(15000);
       const { perfil, notas, eventos, asistencias, asistenciasActividad, pensumHistorial } = await window.FirebaseDB.cargarEstudianteUnaVez(name, currentCareer);
       const local = appData[name];
       // Notas
@@ -1642,6 +1744,7 @@ async function selectStudent(name) {
     renderPensum();
     startAutoSyncInterval();
     startNotifWatcher();
+    setTimeout(_revisarImportacionPendiente, 500);
     return;
   }
 
@@ -1649,6 +1752,7 @@ async function selectStudent(name) {
   renderPensum();
   startAutoSyncInterval();
   startNotifWatcher();
+  setTimeout(_revisarImportacionPendiente, 500);
 }
 
 // ── LOADING HELPERS ──
@@ -1886,19 +1990,9 @@ async function resetearBaseDeDatosUI() {
 }
 
 function changeStudent() {
-  currentStudent=null;
-  localStorage.removeItem('ugb_last_student');
   _borrarSesionPersistente('se presionó "Cambiar estudiante"');
-  const _pEl=document.getElementById('loginPass'); if(_pEl)_pEl.value='';
-  const _chk=document.getElementById('mantenerSesionChk'); if(_chk)_chk.checked=false;
-  stopAutoSyncInterval();
-  stopNotifWatcher();
-  closeDondeEstoy();
-  document.getElementById('dondeEstoyFab').style.display='none';
-  // La lista de estudiantes puede no estar completa si se venía de una
-  // sesión restaurada automáticamente (que se salta chooseCareer) — se
-  // refresca desde Firebase para no mostrar una lista incompleta.
-  recargarLista();
+  // Vuelve al login de la misma carrera (y refresca la lista de cuentas).
+  _salirDeLaApp('login');
 }
 
 // Abre el horario en una pestaña nueva, sin pasar por el login de estudiante
@@ -1955,11 +2049,39 @@ function openAdvanced(){
 // hasta la pantalla de selección de carrera (no solo al login).
 function cerrarSesion(){
   if(!confirm('¿Cerrar sesión? Volverás a la pantalla de selección de carrera.')) return;
-  currentStudent=null;
-  localStorage.removeItem('ugb_last_student');
-  localStorage.removeItem('ugb_career');
   _borrarSesionPersistente('se presionó "Cerrar sesión"');
+  _salirDeLaApp('career');
   showToast('✓ Sesión cerrada','success');
+}
+// Sale de la app SIN recargar la página: detiene la sincronización,
+// oculta toda la app y muestra la pantalla de carrera o de login.
+// (Antes solo se borraban variables y la pantalla quedaba abierta, por
+// eso había que cerrar la pestaña para que la sesión se cerrara.)
+function _salirDeLaApp(destino) {
+  currentStudent = null;
+  localStorage.removeItem('ugb_last_student');
+  try { stopAutoSyncInterval(); } catch(e) {}
+  try { stopNotifWatcher(); } catch(e) {}
+  try { closeDondeEstoy(); } catch(e) {}
+  try { closeHam(); } catch(e) {}
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+  const adv = document.getElementById('advancedOverlay'); if (adv) adv.style.display = 'none';
+  const ids = {appView:'none', bottomBar:'none', dondeEstoyFab:'none'};
+  Object.keys(ids).forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ids[id]; });
+  const pEl = document.getElementById('loginPass'); if (pEl) pEl.value = '';
+  const nEl = document.getElementById('loginName'); if (nEl) nEl.value = '';
+  const chk = document.getElementById('mantenerSesionChk'); if (chk) chk.checked = false;
+  appData = {};
+  if (destino === 'career') {
+    localStorage.removeItem('ugb_career');
+    document.getElementById('loginView').style.display = 'none';
+    document.getElementById('careerSelectView').style.display = 'flex';
+  } else {
+    document.getElementById('careerSelectView').style.display = 'none';
+    document.getElementById('loginView').style.display = 'flex';
+    recargarLista();
+  }
+  window.scrollTo(0, 0);
 }
 
 async function deleteStudent(name) {
@@ -4562,7 +4684,7 @@ function exportAsistenciaCombinadaExcel(){
 // ═══════════════════════════════════════════════════════════
 // PASTE FROM PORTAL
 // ═══════════════════════════════════════════════════════════
-function openPasteModal(){document.getElementById('pasteModal').classList.add('open');document.getElementById('pasteTextarea').value='';}
+function openPasteModal(){document.getElementById('pasteModal').classList.add('open');document.getElementById('pasteTextarea').value='';prepararBookmarkletPortal();}
 function closePasteModal(){document.getElementById('pasteModal').classList.remove('open');}
 // El pegado de notas del portal ahora es en dos pasos: primero se arma una
 // VISTA PREVIA de qué materia va a cambiar y con qué valores (comparando
@@ -4573,44 +4695,170 @@ let _pastePreviewData = [];
 // del pegado manual, null cuando viene de importar un CSV (ahí no hay
 // modal de origen que reabrir).
 let _pastePreviewVolverA = 'pasteModal';
+// ── Reconocimiento de materias del portal ──
+// El portal a veces cambia el CÓDIGO de una materia (p. ej. Educación
+// Ciudadana: 1180 en el pénsum, 1186 en el portal) o escribe el nombre sin
+// tilde ("Sociologia"). Por eso ya no se depende solo del código: si el
+// código no calza con el nombre, se busca por NOMBRE ignorando tildes,
+// mayúsculas y signos. Lo que aun así no se reconozca se lista en la vista
+// previa para elegir la materia a mano — nada se descarta en silencio.
+function _normTexto(t){
+  return String(t||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+function _similitud(a,b){
+  a=_normTexto(a); b=_normTexto(b);
+  if(!a||!b) return 0;
+  if(a===b) return 1;
+  const m=a.length,n=b.length;
+  let prev=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){
+    const cur=[i];
+    for(let j=1;j<=n;j++) cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    prev=cur;
+  }
+  return 1-prev[n]/Math.max(m,n);
+}
+function _todasLasMaterias(cycle){
+  const out=[]; const vistos=new Set();
+  const add=(c,pref)=>c.subjects.forEach(s=>{ const k=s.num; if(!vistos.has(k)){ vistos.add(k); out.push({sub:s,pref}); } });
+  if(cycle) add(cycle,true);
+  CYCLES.forEach(c=>add(c,false));
+  return out;
+}
+// Devuelve {sub, via:'codigo'|'nombre'|'posicion', aviso} o null
+function _buscarMateriaPortal(codigo,nombre,cycle,idxPos){
+  const todas=_todasLasMaterias(cycle);
+  const porCodigo = codigo ? todas.find(x=>x.sub.code===codigo) : null;
+  let mejor=null;
+  if(nombre){
+    todas.forEach(x=>{
+      const sc=_similitud(nombre,x.sub.name)+(x.pref?0.03:0);
+      if(!mejor||sc>mejor.sc) mejor={x,sc};
+    });
+  }
+  if(porCodigo){
+    const simCod = nombre ? _similitud(nombre,porCodigo.sub.name) : 1;
+    if(simCod>=0.6) return {sub:porCodigo.sub,via:'codigo'};
+    if(mejor && mejor.sc>=0.75) return {sub:mejor.x.sub,via:'nombre',aviso:'El portal usa el código '+codigo+' pero en tu pénsum es '+mejor.x.sub.code+' — se reconoció por el nombre.'};
+    return {sub:porCodigo.sub,via:'codigo',aviso:'El nombre del portal ("'+nombre+'") no coincide con el del pénsum — revisa que sea la materia correcta.'};
+  }
+  if(mejor && mejor.sc>=0.75) return {sub:mejor.x.sub,via:'nombre',aviso: codigo ? 'Código '+codigo+' del portal no existe en tu pénsum — se reconoció por el nombre.' : ''};
+  if(!nombre && cycle && idxPos!=null){
+    const ord=[...cycle.subjects].sort((a,b)=>a.code.localeCompare(b.code));
+    if(idxPos<ord.length) return {sub:ord[idxPos],via:'posicion',aviso:'Sin nombre ni código: se asignó por posición.'};
+  }
+  return null;
+}
+// Convierte el texto pegado (tabulaciones o espacios) en filas {codigo,nombre,nums}
+function _parsearTablaPortal(text){
+  const filas=[];
+  text.split(/\r?\n/).forEach(line=>{
+    if(!line.trim()) return;
+    const tokens=line.trim().split(/[\t ]+/).filter(Boolean);
+    const nums=[];
+    for(let i=tokens.length-1;i>=0;i--){const t=tokens[i].replace(',','.');if(t!==''&&!isNaN(parseFloat(t))&&isFinite(t))nums.unshift(parseFloat(t));else break;}
+    if(nums.length<12) return;
+    const usados=Math.min(nums.length,14);
+    const nombreTokens=tokens.slice(0,tokens.length-usados);
+    let nombreTxt=nombreTokens.join(' ');
+    const m=nombreTxt.match(/^(\d{2,4})\s*[-–—]?\s*(.*)$/);
+    const codigo=m?m[1]:null;
+    const nombre=(m?m[2]:nombreTxt).trim();
+    filas.push({codigo,nombre,linea:line.trim(),nums:nums.length>14?nums.slice(-14):nums});
+  });
+  return filas;
+}
+let _pasteSinReconocer=[];
+function _filaAPreview(f,m){
+  const n=f.nums;
+  const actual=getSubjectData(m.sub.num);
+  return {
+    subNum:m.sub.num, nombre:m.sub.name, codigo:m.sub.code, aviso:m.aviso||'',
+    antes:actual.computos.map(c=>({lab1:c.lab1,lab2:c.lab2,parcial:c.parcial})),
+    despues:[{lab1:n[0],lab2:n[1],parcial:n[2]},{lab1:n[4],lab2:n[5],parcial:n[6]},{lab1:n[8],lab2:n[9],parcial:n[10]}]
+  };
+}
 function processPaste(){
   const text=document.getElementById('pasteTextarea').value.trim();
   if(!text){showToast('Pega una tabla primero','error');return;}
-  const lines=text.split(/\r?\n/);
-  const valid=[];
-  for(const line of lines){
-    if(!line.trim()) continue;
-    const tokens=line.trim().split(/\s+/);
-    const nums=[];
-    for(let i=tokens.length-1;i>=0;i--){const t=tokens[i].replace(',','.');if(!isNaN(parseFloat(t))&&isFinite(t))nums.unshift(parseFloat(t));else break;}
-    if(nums.length>=12) valid.push({line,nums:nums.length>14?nums.slice(-14):nums});
-  }
-  let cycle=null;
-  if(currentCycleId) cycle=CYCLES.find(c=>c.id===currentCycleId);
-  const subSorted=cycle?[...cycle.subjects].sort((a,b)=>a.code.localeCompare(b.code)):[];
-  const preview=[];
-  valid.forEach((vl,i)=>{
-    const m=vl.line.match(/^(\d{2,4})\s*-\s*/);
-    const code=m?m[1]:null;
-    let sub=null;
-    if(code){for(const c of CYCLES)for(const s of c.subjects)if(s.code===code){sub=s;break;}}
-    else if(cycle&&i<subSorted.length) sub=subSorted[i];
-    if(!sub) return;
-    const n=vl.nums;
-    const actual=getSubjectData(sub.num);
-    preview.push({
-      subNum: sub.num, nombre: sub.name, codigo: sub.code,
-      antes: actual.computos.map(c=>({lab1:c.lab1,lab2:c.lab2,parcial:c.parcial})),
-      despues: [{lab1:n[0],lab2:n[1],parcial:n[2]},{lab1:n[4],lab2:n[5],parcial:n[6]},{lab1:n[8],lab2:n[9],parcial:n[10]}]
-    });
+  _procesarTextoNotas(text,'pasteModal');
+}
+function _procesarTextoNotas(text,volverA){
+  const filas=_parsearTablaPortal(text);
+  const cycle=currentCycleId?CYCLES.find(c=>c.id===currentCycleId):null;
+  const preview=[]; _pasteSinReconocer=[];
+  const usadas=new Set();
+  filas.forEach((f,i)=>{
+    const m=_buscarMateriaPortal(f.codigo,f.nombre,cycle,i);
+    if(!m || usadas.has(m.sub.num)){ _pasteSinReconocer.push(f); return; }
+    usadas.add(m.sub.num);
+    preview.push(_filaAPreview(f,m));
   });
-  if(!preview.length){showToast('No se encontraron materias válidas','error');return;}
+  if(!preview.length && !_pasteSinReconocer.length){showToast('No se encontraron materias válidas','error');return;}
   _pastePreviewData=preview;
-  _pastePreviewVolverA='pasteModal';
+  _pastePreviewVolverA=volverA||null;
   _renderPastePreview();
   closePasteModal();
   document.getElementById('pastePreviewModal').classList.add('open');
 }
+function asignarMateriaManual(idx,subNum){
+  if(!subNum) return;
+  const f=_pasteSinReconocer[idx]; if(!f) return;
+  let sub=null; CYCLES.forEach(c=>c.subjects.forEach(s=>{ if(String(s.num)===String(subNum)) sub=s; }));
+  if(!sub) return;
+  if(_pastePreviewData.some(p=>String(p.subNum)===String(sub.num))){ showToast('Esa materia ya está en la lista','error'); return; }
+  _pastePreviewData.push(_filaAPreview(f,{sub,aviso:'Asignada manualmente por ti.'}));
+  _pasteSinReconocer.splice(idx,1);
+  _renderPastePreview();
+}
+// Pegar directo desde el portapapeles (el navegador pide permiso una vez)
+async function pegarDesdePortapapeles(){
+  try{
+    const t=await navigator.clipboard.readText();
+    if(!t||!t.trim()){showToast('El portapapeles está vacío — copia la tabla del portal primero','error');return;}
+    document.getElementById('pasteTextarea').value=t;
+    _procesarTextoNotas(t,'pasteModal');
+  }catch(e){
+    showToast('El navegador no dio acceso al portapapeles — pega con Ctrl+V en el cuadro','error');
+  }
+}
+
+// ── Importar desde la pestaña del portal ──
+// Una página web NO puede leer otra pestaña (el navegador lo prohíbe por
+// seguridad). Lo que sí se puede es un marcador ("bookmarklet"): se corre
+// estando en la pestaña del portal, lee la tabla de notas de ahí y abre
+// esta app con los datos ya cargados para revisar y confirmar.
+function _codigoBookmarkletPortal(){
+  const appUrl=location.href.split('#')[0];
+  const js="(function(){var tb=[].slice.call(document.querySelectorAll('table')).filter(function(t){return /C[ÓO]MPUTO\\s*1/i.test(t.innerText)&&/MATERIA/i.test(t.innerText)})[0];"+
+  "if(!tb){alert('No encontré la tabla de notas. Abre la pestaña NOTAS del portal e inténtalo de nuevo.');return}"+
+  "var f=[].slice.call(tb.querySelectorAll('tr')).map(function(r){return [].slice.call(r.cells).map(function(c){return c.innerText.trim()}).join('\\t')}).filter(function(l){return /^\\d{2,4}\\s*-/.test(l)});"+
+  "if(!f.length){alert('No encontré filas de materias.');return}"+
+  "var x=f.join('\\n');try{navigator.clipboard.writeText(x)}catch(e){}"+
+  "window.open('"+appUrl+"#importar='+btoa(unescape(encodeURIComponent(x))),'_blank')})();";
+  return 'javascript:'+js;
+}
+function prepararBookmarkletPortal(){
+  const a=document.getElementById('bookmarkletPortal');
+  if(a) a.setAttribute('href',_codigoBookmarkletPortal());
+}
+function _capturarImportacionDeURL(){
+  try{
+    const m=location.hash.match(/^#importar=(.+)$/);
+    if(!m) return;
+    const txt=decodeURIComponent(escape(atob(m[1])));
+    sessionStorage.setItem('ugb_import_pendiente',txt);
+    history.replaceState(null,'',location.pathname+location.search);
+  }catch(e){ console.error('[Importar] No se pudo leer la importación del portal:',e); }
+}
+function _revisarImportacionPendiente(){
+  let txt=null;
+  try{ txt=sessionStorage.getItem('ugb_import_pendiente'); sessionStorage.removeItem('ugb_import_pendiente'); }catch(e){}
+  if(!txt) return;
+  showToast('📥 Notas recibidas del portal — revisa la vista previa','success');
+  _procesarTextoNotas(txt,null);
+}
+_capturarImportacionDeURL();
 
 // _fmtNota() ahora vive en calculos.js — ver nota junto a escapeHtml()
 // más arriba en este mismo archivo.
@@ -4619,7 +4867,7 @@ function _renderPastePreview(){
     const a=p.antes[idx]||{};
     return String(_fmtNota(a.lab1))!==String(_fmtNota(d.lab1)) || String(_fmtNota(a.lab2))!==String(_fmtNota(d.lab2)) || String(_fmtNota(a.parcial))!==String(_fmtNota(d.parcial));
   }));
-  document.getElementById('pastePreviewResumen').textContent = _pastePreviewData.length + ' materia(s) encontrada(s)' + (huboCambios ? ' — se muestran en amarillo los valores que van a cambiar.' : ' — no hay cambios reales respecto a lo que ya tenías cargado.');
+  document.getElementById('pastePreviewResumen').textContent = _pastePreviewData.length + ' materia(s) encontrada(s)' + (_pasteSinReconocer.length ? ' · '+_pasteSinReconocer.length+' sin reconocer' : '') + (huboCambios ? ' — se muestran en amarillo los valores que van a cambiar.' : ' — no hay cambios reales respecto a lo que ya tenías cargado.');
   document.getElementById('pastePreviewList').innerHTML = _pastePreviewData.map(p=>{
     const filas=['1° parcial','2° parcial','3° parcial'].map((label,idx)=>{
       const a=p.antes[idx]||{}, d=p.despues[idx]||{};
@@ -4635,14 +4883,25 @@ function _renderPastePreview(){
     }).join('');
     return `<div style="border:1.5px solid var(--gl);border-radius:8px;padding:8px 10px;margin-bottom:8px;">
       <div style="font-weight:700;font-size:12.5px;color:var(--text);margin-bottom:4px;">${escapeHtml(p.codigo)} — ${escapeHtml(p.nombre)}</div>
+      ${p.aviso?`<div style="font-size:11px;color:#92400e;background:rgba(245,158,11,.12);border-radius:6px;padding:3px 7px;margin-bottom:4px;">⚠️ ${escapeHtml(p.aviso)}</div>`:''}
       ${filas}
+    </div>`;
+  }).join('') + _pasteSinReconocer.map((f,i)=>{
+    const opts=_todasLasMaterias(currentCycleId?CYCLES.find(c=>c.id===currentCycleId):null)
+      .filter(x=>!_pastePreviewData.some(p=>String(p.subNum)===String(x.sub.num)))
+      .map(x=>`<option value="${escapeHtml(String(x.sub.num))}">${escapeHtml(x.sub.code)} — ${escapeHtml(x.sub.name)}</option>`).join('');
+    return `<div style="border:1.5px dashed #ef4444;border-radius:8px;padding:8px 10px;margin-bottom:8px;">
+      <div style="font-weight:700;font-size:12.5px;color:#b91c1c;margin-bottom:4px;">❓ No reconocida: ${escapeHtml((f.codigo?f.codigo+' - ':'')+f.nombre)}</div>
+      <select onchange="asignarMateriaManual(${i},this.value)" style="width:100%;padding:6px;border:1.5px solid var(--gl);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text);">
+        <option value="">Elegir a qué materia corresponde…</option>${opts}
+      </select>
     </div>`;
   }).join('');
 }
 
 function cancelarPegadoNotas(){
   document.getElementById('pastePreviewModal').classList.remove('open');
-  _pastePreviewData=[];
+  _pastePreviewData=[]; _pasteSinReconocer=[];
   if(_pastePreviewVolverA) document.getElementById(_pastePreviewVolverA).classList.add('open');
 }
 
@@ -4657,7 +4916,7 @@ function confirmarPegadoNotas(){
   });
   saveLocal();
   document.getElementById('pastePreviewModal').classList.remove('open');
-  _pastePreviewData=[];
+  _pastePreviewData=[]; _pasteSinReconocer=[];
   showToast(`✓ ${imported} materias importadas`,'success');
   if(currentCycleId) renderSubjects(CYCLES.find(c=>c.id===currentCycleId));
   else renderPensum();
@@ -4841,6 +5100,7 @@ function importCSV(){
       });
       if(!preview.length){showToast('No se encontraron materias válidas en el CSV','error');return;}
       _pastePreviewData=preview;
+      _pasteSinReconocer=[];
       _pastePreviewVolverA=null;
       _renderPastePreview();
       document.getElementById('pastePreviewModal').classList.add('open');

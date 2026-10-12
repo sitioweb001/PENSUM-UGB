@@ -9,9 +9,11 @@ INSTALACIÓN (Chrome / Edge / Brave)
 
 USO
 1. Entra a https://estudiantes.ugb.edu.sv/Notas e inicia sesión.
-2. Aparece un recuadro abajo a la derecha con los logos UGB y Dirección de Integración.
-3. Pulsa "Enviar notas a Pénsum UGB": se abre la app con una vista previa
-   en tabla donde puedes mover / intercambiar filas y asignar materias
-   antes de confirmar. Nada se guarda hasta que confirmes.
+2. Pulsa el icono de la extensión en la barra superior del navegador
+   (si no se ve, fíjala desde el icono de piezas de rompecabezas).
+3. Se abre el panel con los logos UGB y Dirección de Integración y las
+   materias detectadas. Pulsa "Enviar notas a Pénsum UGB".
+4. Se abre la app con una vista previa en tabla donde puedes mover /
+   intercambiar filas y asignar materias. Nada se guarda hasta confirmar.
 
-La extensión solo funciona en estudiantes.ugb.edu.sv y no envía datos a ningún servidor.
+La extensión solo lee la página del portal cuando tú la abres y no envía datos a ningún servidor.

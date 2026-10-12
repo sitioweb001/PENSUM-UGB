@@ -32,11 +32,12 @@ async function descargarExtensionUGB(){
     const get=async u=>{const r=await fetch(u,{cache:'no-cache'});if(!r.ok)throw new Error(u+' ('+r.status+')');return new Uint8Array(await r.arrayBuffer());};
     const enc=new TextEncoder(),dec=new TextDecoder();
     const appUrl=location.href.split('#')[0];
-    const content=dec.decode(await get('extension-ugb/content.js')).replace('__APP_URL__',appUrl.replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+    const popupJs=dec.decode(await get('extension-ugb/popup.js')).replace('__APP_URL__',appUrl.replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
     const R='extension-ugb-pensum/';
     const files=[
       {name:R+'manifest.json',data:await get('extension-ugb/manifest.json')},
-      {name:R+'content.js',data:enc.encode(content)},
+      {name:R+'popup.js',data:enc.encode(popupJs)},
+      {name:R+'popup.html',data:await get('extension-ugb/popup.html')},
       {name:R+'LEEME.txt',data:await get('extension-ugb/LEEME.txt')},
       {name:R+'logos/ugb.png',data:await get('Logotipo-horizontal-azul.png')},
       {name:R+'logos/di.jpg',data:await get('logo2.jpg')},

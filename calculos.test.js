@@ -73,7 +73,18 @@ t('null si la fecha no es válida', () => {
 
 console.log('getTodayKey()');
 t('formato YYYY-MM-DD', () => {
-  assert.strictEqual(getTodayKey(new Date('2026-01-05T10:00:00Z')), '2026-01-05');
+  assert.strictEqual(getTodayKey(new Date(2026, 0, 5, 10, 0)), '2026-01-05');
+});
+t('usa la fecha LOCAL: a las 6:16 p. m. sigue siendo el mismo día (bug de UTC)', () => {
+  assert.strictEqual(getTodayKey(new Date(2026, 9, 12, 18, 16)), '2026-10-12');
+  assert.strictEqual(getTodayKey(new Date(2026, 9, 12, 23, 59)), '2026-10-12');
+  assert.strictEqual(getTodayKey(new Date(2026, 9, 13, 0, 1)), '2026-10-13');
+});
+
+console.log('filterByPeriod() — fechas YYYY-MM-DD como día local');
+t('"today" con fecha sin hora no cae en el día anterior', () => {
+  const ahora = new Date(2026, 9, 12, 18, 30);
+  assert.strictEqual(filterByPeriod([{ date: '2026-10-12' }, { date: '2026-10-11' }], 'date', 'today', ahora).length, 1);
 });
 
 console.log('filterByPeriod()');

@@ -941,11 +941,15 @@ const SESION_PERSISTENTE_MS = 24 * 60 * 60 * 1000; // 1 día completo (valor por
 //   'nunca' → nunca se cierra sola (solo con "Cerrar sesión")
 //   'horas' → tras N horas sin usar la app (tiempo personalizado)
 //   'fecha' → llega una fecha y hora exacta y se cierra, se use o no
+//   'semana'→ activa solo en los días (y horas) elegidos, p. ej. lunes a viernes;
+//             fuera de ese periodo la sesión queda en PAUSA (pide iniciar
+//             sesión) y al volver a un día activo se reactiva sola
+//             (reactivar:'auto') o pide iniciar sesión una vez (reactivar:'login').
 function _leerCfgSesion(nombre) {
   try {
     const todo = JSON.parse(localStorage.getItem('ugb_ses_cfg') || '{}');
     const c = todo[nombre];
-    if (c && ['24h','nunca','horas','fecha'].includes(c.modo)) return c;
+    if (c && ['24h','nunca','horas','fecha','semana'].includes(c.modo)) return c;
   } catch (e) {}
   return { modo: '24h' };
 }
@@ -956,11 +960,27 @@ function _guardarCfgSesion(nombre, cfg) {
     localStorage.setItem('ugb_ses_cfg', JSON.stringify(todo));
   } catch (e) { console.error('[Sesión] No se pudo guardar la duración:', e); }
 }
+const _SES_DIAS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+function _hmMin(hm) { const m = /^(\d{1,2}):(\d{2})$/.exec(hm || ''); return m ? (+m[1]) * 60 + (+m[2]) : 0; }
+// ¿La fecha `d` cae dentro del periodo activo (días y horas) de la config 'semana'?
+function _semanaActiva(c, d) {
+  const dias = Array.isArray(c.dias) ? c.dias : [1,2,3,4,5];
+  if (!dias.includes(d.getDay())) return false;
+  const hm = d.getHours() * 60 + d.getMinutes();
+  const ini = _hmMin(c.desde || '00:00'), fin = _hmMin(c.hasta || '23:59');
+  return ini <= fin ? (hm >= ini && hm <= fin) : (hm >= ini || hm <= fin);
+}
+// ¿Hubo algún momento de PAUSA entre la última actividad y ahora?
+function _huboPausaSemana(c, desdeMs, hastaMs) {
+  if (!desdeMs || hastaMs - desdeMs > 14 * 86400000) return true;
+  for (let t = desdeMs; t <= hastaMs; t += 30 * 60000) if (!_semanaActiva(c, new Date(t))) return true;
+  return false;
+}
 // Devuelve null si la sesión sigue vigente, o un texto con el motivo si venció.
 function _motivoSesionVencida(nombre, ultimaActividad) {
   const c = _leerCfgSesion(nombre);
   const ahora = Date.now();
-  if (c.modo === 'nunca') return null;
+  if (c.modo === 'nunca' || c.modo === 'semana') return null; // 'semana' se resuelve en _leerSesionPersistente
   if (c.modo === 'fecha') {
     const t = new Date(c.hasta).getTime();
     return (t && ahora > t) ? 'llegó la fecha límite elegida (' + c.hasta.replace('T',' ') + ')' : null;
@@ -972,6 +992,10 @@ function _textoCfgSesion(nombre) {
   const c = _leerCfgSesion(nombre);
   if (c.modo === 'nunca') return 'nunca se cierra sola — solo al presionar "Cerrar sesión"';
   if (c.modo === 'fecha') return 'se cerrará el ' + new Date(c.hasta).toLocaleString('es-SV', {dateStyle:'medium', timeStyle:'short'});
+  if (c.modo === 'semana') {
+    const dias = (c.dias || [1,2,3,4,5]).slice().sort((a,b)=>((a+6)%7)-((b+6)%7)).map(d => _SES_DIAS[d]).join(', ');
+    return 'activa solo ' + dias + ' (' + (c.desde || '00:00') + '–' + (c.hasta || '23:59') + '); fuera de ese periodo se pausa y al volver ' + (c.reactivar === 'login' ? 'pide iniciar sesión' : 'se reactiva sola');
+  }
   if (c.modo === 'horas') return 'se cierra tras ' + (Number(c.horas) || 24) + ' h sin usar la app';
   return 'se cierra tras 24 h sin usar la app';
 }
@@ -987,6 +1011,11 @@ function _leerSesionPersistente() {
     if (!estudiante || !carrera || !ts) {
       console.log('[Sesión] Flag activo pero faltan datos guardados (estudiante/carrera/fecha) — se ignora.', {estudiante, carrera, ts});
       return null;
+    }
+    const cfgSem = _leerCfgSesion(estudiante);
+    if (cfgSem.modo === 'semana') {
+      if (!_semanaActiva(cfgSem, new Date())) { console.log('[Sesión] En pausa: hoy/ahora está fuera del periodo activo — se pide iniciar sesión (la sesión no se borra).'); return null; }
+      if (cfgSem.reactivar === 'login' && _huboPausaSemana(cfgSem, ts, Date.now())) { console.log('[Sesión] Hubo una pausa desde el último uso — se pide iniciar sesión una vez para reactivarla.'); return null; }
     }
     const horasInactivo = ((Date.now() - ts) / 3600000).toFixed(1);
     const vencida = _motivoSesionVencida(estudiante, ts);
@@ -1033,7 +1062,11 @@ function _borrarSesionPersistente(motivo) {
 function _aplicarPreferenciaSesionActual(nombre) {
   const chk = document.getElementById('mantenerSesionChk');
   console.log('[Sesión] Checkbox "mantener sesión" al iniciar sesión:', chk ? (chk.checked ? 'MARCADO' : 'desmarcado') : 'NO ENCONTRADO EN EL DOM (¿versión vieja de index.html?)');
-  if (chk && chk.checked) _guardarSesionPersistente(nombre, currentCareer);
+  // Con horario semanal activo, volver a iniciar sesión reactiva el periodo aunque
+  // el checkbox del login esté sin marcar (se apaga desde ☰ → Mantener sesión o al cerrar sesión).
+  let semanaPendiente = false;
+  try { semanaPendiente = _leerCfgSesion(nombre).modo === 'semana' && localStorage.getItem('ugb_mantener_sesion') === '1'; } catch (e) {}
+  if ((chk && chk.checked) || semanaPendiente) _guardarSesionPersistente(nombre, currentCareer);
   else _borrarSesionPersistente(chk ? 'checkbox desmarcado al iniciar sesión' : 'checkbox no existe en este index.html');
 }
 // true si HAY una sesión persistente activa ahora mismo en este
@@ -1055,7 +1088,12 @@ function abrirSesionPersistenteModal() {
   const c = _leerCfgSesion(currentStudent);
   document.getElementById('sesDuracionModo').value = c.modo;
   document.getElementById('sesDuracionHoras').value = c.horas || 48;
-  document.getElementById('sesDuracionFecha').value = c.hasta || '';
+  document.getElementById('sesDuracionFecha').value = (c.modo === 'fecha' && c.hasta) || '';
+  const dSel = c.modo === 'semana' && Array.isArray(c.dias) ? c.dias : [1,2,3,4,5];
+  document.querySelectorAll('.sesDia').forEach(i => { i.checked = dSel.includes(+i.value); });
+  document.getElementById('sesSemanaDesde').value = (c.modo === 'semana' && c.desde) || '00:00';
+  document.getElementById('sesSemanaHasta').value = (c.modo === 'semana' && c.hasta) || '23:59';
+  document.getElementById('sesSemanaReactivar').value = (c.modo === 'semana' && c.reactivar) || 'auto';
   _sesMostrarCamposDuracion();
   document.getElementById('sesionPersistenteModal').classList.add('open');
 }
@@ -1063,6 +1101,7 @@ function _sesMostrarCamposDuracion() {
   const m = document.getElementById('sesDuracionModo').value;
   document.getElementById('sesDuracionHorasWrap').style.display = m === 'horas' ? 'block' : 'none';
   document.getElementById('sesDuracionFechaWrap').style.display = m === 'fecha' ? 'block' : 'none';
+  document.getElementById('sesDuracionSemanaWrap').style.display = m === 'semana' ? 'block' : 'none';
 }
 function guardarDuracionSesion() {
   const modo = document.getElementById('sesDuracionModo').value;
@@ -1076,6 +1115,13 @@ function guardarDuracionSesion() {
     const f = document.getElementById('sesDuracionFecha').value;
     if (!f || !(new Date(f).getTime() > Date.now())) { showToast('Elige una fecha y hora que todavía no haya pasado', 'error'); return; }
     cfg.hasta = f;
+  }
+  if (modo === 'semana') {
+    cfg.dias = [...document.querySelectorAll('.sesDia')].filter(i => i.checked).map(i => +i.value);
+    if (!cfg.dias.length) { showToast('Marca al menos un día de la semana', 'error'); return; }
+    cfg.desde = document.getElementById('sesSemanaDesde').value || '00:00';
+    cfg.hasta = document.getElementById('sesSemanaHasta').value || '23:59';
+    cfg.reactivar = document.getElementById('sesSemanaReactivar').value === 'login' ? 'login' : 'auto';
   }
   _guardarCfgSesion(currentStudent, cfg);
   // Guardar la duración implica mantener la sesión activa en este dispositivo.
@@ -3291,7 +3337,7 @@ function renderEvents(){
   let filtered=filterByPeriod(sorted,'date',calFilter);
   if(calCycleFilter!=='all') filtered=filtered.filter(ev=>{ const c=getCycleOfEvent(ev); return c && c.id===calCycleFilter; });
   if(!filtered.length){list.innerHTML='<div style="color:var(--gm);text-align:center;padding:20px;">No hay actividades '+(calFilter!=='all'||calCycleFilter!=='all'?'en este filtro.':'anotadas.')+' </div>';return;}
-  const today=new Date().toISOString().slice(0,10);
+  const today=getTodayKey();
   const accent={'Lab 1':'var(--blue)','Lab 2':'var(--blue)','Parcial':'var(--pend)','Actividad DI':'#8b5cf6','Otra':'var(--gl)'};
   list.innerHTML=filtered.map(ev=>{
     let sname='';CYCLES.forEach(c=>c.subjects.forEach(s=>{if(s.num===ev.subject)sname=s.name;}));
@@ -4207,7 +4253,7 @@ function generateAsistenciaPDF(){
   doc.setTextColor(0,0,0);
 
   _asistPdfFooter(doc);
-  doc.save('asistencia_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  doc.save('asistencia_'+currentStudent.replace(/\s+/g,'_')+'_'+getTodayKey()+'.pdf');
   showToast('✓ PDF de asistencia generado','success');
 }
 
@@ -4228,7 +4274,7 @@ function exportAsistenciaExcel(){
   const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='asistencia_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.download='asistencia_'+currentStudent.replace(/\s+/g,'_')+'_'+getTodayKey()+'.xls';
   a.click();
   showToast('✓ Excel de asistencia exportado','success');
 }
@@ -4512,7 +4558,7 @@ function generateActividadPDF(){
   doc.setTextColor(0,0,0);
 
   _asistPdfFooter(doc);
-  doc.save('asistencia_actividad_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  doc.save('asistencia_actividad_'+currentStudent.replace(/\s+/g,'_')+'_'+getTodayKey()+'.pdf');
   showToast('✓ PDF de asistencia de actividad generado','success');
 }
 
@@ -4534,7 +4580,7 @@ function exportActividadExcel(){
   const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='asistencia_actividad_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.download='asistencia_actividad_'+currentStudent.replace(/\s+/g,'_')+'_'+getTodayKey()+'.xls';
   a.click();
   showToast('✓ Excel de asistencia de actividad exportado','success');
 }
@@ -4647,7 +4693,7 @@ function generateAsistenciaCombinadaPDF(){
   }
 
   _asistPdfFooter(doc);
-  doc.save('asistencia_combinada_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  doc.save('asistencia_combinada_'+currentStudent.replace(/\s+/g,'_')+'_'+getTodayKey()+'.pdf');
   showToast('✓ PDF combinado de asistencia generado','success');
 }
 
@@ -4676,7 +4722,7 @@ function exportAsistenciaCombinadaExcel(){
   const blob=new Blob(['\ufeff'+html], {type:'application/vnd.ms-excel'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='asistencia_combinada_'+currentStudent.replace(/\s+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.download='asistencia_combinada_'+currentStudent.replace(/\s+/g,'_')+'_'+getTodayKey()+'.xls';
   a.click();
   showToast('✓ Excel combinado de asistencia exportado','success');
 }
@@ -5090,7 +5136,7 @@ function cancelarExportCSV(){
 function confirmarExportCSV(){
   if(!_csvExportRows) return;
   const csv=_csvExportRows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='notas_ugb_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download='notas_ugb_'+getTodayKey()+'.csv';a.click();
   document.getElementById('csvPreviewModal').classList.remove('open');
   _csvExportRows=null;
   showToast('✓ CSV exportado','success');
@@ -7169,7 +7215,7 @@ function generarBitacoraDIPDF() {
   }
 
   const doc = _bitacConstruirPDF(perfil, tecRespNombre, tecRespObj, obligatorias, extra, selloRespImg);
-  const fname = 'Bitacora_DI_' + currentStudent.replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+  const fname = 'Bitacora_DI_' + currentStudent.replace(/\s+/g, '_') + '_' + getTodayKey() + '.pdf';
 
   const registro = {
     generadoTs: new Date().toISOString(),

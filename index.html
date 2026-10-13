@@ -862,6 +862,7 @@
         <option value="24h">A las 24 horas sin usar la app (por defecto)</option>
         <option value="horas">Tiempo personalizado (horas sin usarla)</option>
         <option value="fecha">En una fecha y hora exacta</option>
+        <option value="semana">Por días de la semana (ej. lunes a viernes)</option>
         <option value="nunca">Nunca (solo con "Cerrar sesión")</option>
       </select>
       <div id="sesDuracionHorasWrap" style="display:none;margin-top:8px;">
@@ -869,6 +870,25 @@
       </div>
       <div id="sesDuracionFechaWrap" style="display:none;margin-top:8px;">
         <input type="datetime-local" id="sesDuracionFecha" style="padding:7px;border:1.5px solid var(--gl);border-radius:8px;background:var(--bg);color:var(--text);">
+      </div>
+      <div id="sesDuracionSemanaWrap" style="display:none;margin-top:8px;">
+        <div style="font-size:12px;font-weight:700;margin-bottom:5px;">📅 Días en que la sesión se mantiene iniciada</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
+          <label class="ses-dia"><input type="checkbox" class="sesDia" value="1">Lun</label>
+          <label class="ses-dia"><input type="checkbox" class="sesDia" value="2">Mar</label>
+          <label class="ses-dia"><input type="checkbox" class="sesDia" value="3">Mié</label>
+          <label class="ses-dia"><input type="checkbox" class="sesDia" value="4">Jue</label>
+          <label class="ses-dia"><input type="checkbox" class="sesDia" value="5">Vie</label>
+          <label class="ses-dia"><input type="checkbox" class="sesDia" value="6">Sáb</label>
+          <label class="ses-dia"><input type="checkbox" class="sesDia" value="0">Dom</label>
+        </div>
+        <div style="font-size:12px;margin-bottom:8px;">🕒 Horario (opcional): de <input type="time" id="sesSemanaDesde" value="00:00" style="padding:5px;border:1.5px solid var(--gl);border-radius:6px;background:var(--bg);color:var(--text);"> a <input type="time" id="sesSemanaHasta" value="23:59" style="padding:5px;border:1.5px solid var(--gl);border-radius:6px;background:var(--bg);color:var(--text);"></div>
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;">🔁 Al volver a un día activo (ej. el lunes):</label>
+        <select id="sesSemanaReactivar" style="width:100%;padding:7px;border:1.5px solid var(--gl);border-radius:8px;font-size:12.5px;background:var(--bg);color:var(--text);">
+          <option value="auto">Reactivar la sesión sola (entrar directo)</option>
+          <option value="login">Pedir iniciar sesión una vez</option>
+        </select>
+        <p style="font-size:10.5px;color:var(--gm);margin-top:5px;">Fuera de esos días y horas la sesión queda en pausa: al abrir la app se pide iniciar sesión. La pausa se aplica al abrir la app, no cierra una sesión que ya esté abierta.</p>
       </div>
       <button class="modal-btn primary" onclick="guardarDuracionSesion()" style="margin-top:10px;width:100%;">💾 Guardar duración</button>
       <p style="font-size:10.5px;color:var(--gm);margin-top:6px;">Se guarda por cuenta en este dispositivo.</p>

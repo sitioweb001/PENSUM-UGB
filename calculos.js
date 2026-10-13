@@ -52,7 +52,11 @@ function filterByPeriod(arr, dateField, period, now) {
   if (period === 'all') return arr;
   now = now || new Date();
   return arr.filter(item => {
-    const d = new Date(item[dateField] || '');
+    const raw = item[dateField] || '';
+    // "YYYY-MM-DD" solo (sin hora) se interpreta como día LOCAL; new Date()
+    // lo tomaría como medianoche UTC y en UTC-6 caería en el día anterior.
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(raw);
     if (isNaN(d)) return true;
     if (period === 'today') { const t = new Date(now); t.setHours(0, 0, 0, 0); const dd = new Date(d); dd.setHours(0, 0, 0, 0); return dd.getTime() === t.getTime(); }
     if (period === 'week') { const w = new Date(now); w.setDate(w.getDate() - 7); return d >= w; }
@@ -75,7 +79,10 @@ function daysUntil(dateStr, today) {
 // Fecha de hoy en formato "YYYY-MM-DD" (huso horario local). `d` opcional
 // para pruebas.
 function getTodayKey(d) {
-  return (d || new Date()).toISOString().slice(0, 10);
+  // OJO: NO usar toISOString() acá — da la fecha en UTC, y en El Salvador
+  // (UTC-6) desde las 6 p. m. ya sería "mañana". Se arma con la fecha local.
+  d = d || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
 // Muestra un guion largo en vez de vacío/undefined/null — usado en vistas

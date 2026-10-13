@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Logotipo-horizontal-azul.png" alt="Universidad Gerardo Barrios" height="90">&nbsp;&nbsp;&nbsp;&nbsp;<img src="DI.svg" alt="Dirección de Integración" height="90">
+<img src="Logotipo-horizontal-azul.png" alt="Universidad Gerardo Barrios" height="90">&nbsp;&nbsp;&nbsp;&nbsp;<img src="logo2.jpg" alt="Dirección de Integración" height="90">
 
 # 🎓 Pénsum UGB
 
@@ -11,7 +11,7 @@ Universidad Gerardo Barrios · Dirección de Integración
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%2B%20Auth-f59e0b?style=for-the-badge)
 ![JS](https://img.shields.io/badge/JavaScript-vanilla-3b82f6?style=for-the-badge)
 ![Extensión](https://img.shields.io/badge/Extensi%C3%B3n-Chrome%20%2F%20Edge-10b981?style=for-the-badge)
-![Caché](https://img.shields.io/badge/service--worker-v7-9ca3af?style=for-the-badge)
+![Caché](https://img.shields.io/badge/service--worker-v8-9ca3af?style=for-the-badge)
 
 </div>
 
@@ -101,7 +101,7 @@ flowchart LR
 | `firebase-db.js` | 45 funciones de lectura / escritura / escucha en Firestore. |
 | `extension-ugb.js` | **Nuevo.** Arma en el navegador el `.zip` de la extensión (ZIP sin compresión, sin librerías). |
 | `extension-ugb/` | **Nuevo.** Código fuente de la extensión: `manifest.json`, `popup.html`, `popup.js`, `LEEME.txt`. |
-| `service-worker.js` | Cachea el cascarón para uso offline (`pensum-ugb-v7`). Nunca cachea datos de Firebase. |
+| `service-worker.js` | Cachea el cascarón para uso offline (`pensum-ugb-v8`). Nunca cachea datos de Firebase. |
 | `manifest.json` | Metadatos de instalación PWA. |
 | `horarios.html` | Visor de horario standalone, sin dependencias de Firebase. |
 | `editordelogo.html` | Editor de logo independiente. |
@@ -753,6 +753,8 @@ migrar de la contraseña propia (hash SHA-256) a Firebase Auth con usuario y con
 | **Auto-inicio con huella** | Preferencia por dispositivo (`localStorage`), no una cuenta de Firestore: al cambiar de dispositivo hay que activarla de nuevo. |
 | **Huellas generales** | Panel de administrador con contraseña fija (`747`) verificada solo en el navegador. Es una barrera básica, no seguridad real; sirve para uso interno. |
 | **remove.bg** | Alternativa al filtro automático de «fondo transparente» cuando la foto tiene sombras; no es obligatorio. |
+| **Fechas y zona horaria** | El «día de hoy» (asistencia, filtros del calendario, nombres de archivo) se calcula con la **fecha local** del dispositivo, no en UTC. Antes, desde las 6 p. m. en El Salvador (UTC−6) la app creía que ya era el día siguiente. |
+| **Mantener sesión iniciada** | Modos: 24 h, horas personalizadas, fecha exacta, nunca y **por días de la semana** (ej. lunes a viernes, con horario opcional). Fuera del periodo la sesión se pausa y, al volver, se reactiva sola o pide iniciar sesión una vez. |
 | **Vista previa de notas** | Nada se guarda hasta confirmar. Las filas sin materia asignada se omiten y se avisa cuántas fueron. |
 | **Extensión** | Solo lee la página del portal al pulsar su icono. Permisos: `activeTab`, `scripting` y acceso a `estudiantes.ugb.edu.sv`. Requiere conexión para generarse (descarga logos y fuentes). |
 | **Archivos sin uso** | `migrar-exportar.gs`, `migrar-importar.html`, `codigo_gs_UGB.gs` y todo lo de Google Sheets / Apps Script no se usan; se pueden archivar. |

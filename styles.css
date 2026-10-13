@@ -694,3 +694,6 @@ header{flex-wrap:wrap;row-gap:6px;}
 .pv-btn{border:none;background:var(--gl);color:var(--text);border-radius:6px;padding:5px 8px;font-weight:700;font-size:11.5px;cursor:pointer;white-space:nowrap;}
 .pv-btn.on{background:#ef4444;color:#fff;}.pv-btn:hover{filter:brightness(.95);}
 .pv-ayuda{font-size:11.5px;color:var(--gm);margin:8px 2px 0;}
+
+.ses-dia{display:flex;align-items:center;gap:3px;padding:5px 8px;border:1.5px solid var(--gl);border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;background:var(--bg);}
+.ses-dia:has(input:checked){background:var(--blue);color:#fff;border-color:var(--blue);}

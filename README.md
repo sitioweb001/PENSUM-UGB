@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Logotipo-horizontal-azul.png" alt="Universidad Gerardo Barrios" height="90">&nbsp;&nbsp;&nbsp;&nbsp;<img src="logo2.jpg" alt="Dirección de Integración" height="90">
+<img src="Logotipo-horizontal-azul.png" alt="Universidad Gerardo Barrios" height="90">&nbsp;&nbsp;&nbsp;&nbsp;<img src="DI.svg" alt="Dirección de Integración" height="90">
 
 # 🎓 Pénsum UGB
 

@@ -3409,9 +3409,11 @@ function exportarCalendarioICS(){
 // NOTIFICACIONES (laboratorios, parciales y actividades del calendario)
 // Verde = falta ~1 semana · Amarillo = faltan 3-4 días · Rojo = faltan 2 o menos.
 // Todo esto vive solo en este dispositivo (localStorage), igual que el
-// tema/idioma o "recordar estudiante" — no pasa por Firebase.
+// tema/idioma o "recordar estudiante". Excepción: para los avisos PUSH (celular
+// cerrado) una copia de esta config + materias silenciadas se sube a Firestore
+// (ver _sincronizarNotifPush) porque el servidor necesita leerla.
 // ═══════════════════════════════════════════════════════════
-const NOTIF_DEFAULTS = { enabled:true, greenDays:7, yellowDays:4, redDays:2, duration:8, attendanceReminder:true };
+const NOTIF_DEFAULTS = { enabled:true, greenDays:7, yellowDays:4, redDays:2, duration:8, attendanceReminder:true, pushHoraEventos:7, pushHoraAsistencia:8 };
 let notifConfig = Object.assign({}, NOTIF_DEFAULTS);
 
 function _notifKeyBase(){ return (currentStudent||'')+'__'+(currentCareer||''); }
@@ -3428,6 +3430,7 @@ function loadNotifConfig(){
 function saveNotifConfig(){
   try{ localStorage.setItem(notifConfigStorageKey(), JSON.stringify(notifConfig)); }
   catch(e){ console.error('[Notif] Error guardando configuración:', e); }
+  _sincronizarNotifPush();
 }
 function getNotifSeen(){
   try{ return JSON.parse(localStorage.getItem(notifSeenStorageKey())||'{}'); }
@@ -3451,6 +3454,7 @@ function getNotifMutedSubjects(){
 function setNotifMutedSubjects(map){
   try{ localStorage.setItem(notifMutedStorageKey(), JSON.stringify(map)); }
   catch(e){ console.error('[Notif] Error guardando materias silenciadas:', e); }
+  _sincronizarNotifPush();
 }
 function silenciarMateriaNotif(subjectNum, sname){
   if(subjectNum===null||subjectNum===undefined) return;
@@ -3632,6 +3636,9 @@ function openNotifConfig(){
   document.getElementById('notifCfgYellow').value = notifConfig.yellowDays;
   document.getElementById('notifCfgRed').value = notifConfig.redDays;
   document.getElementById('notifCfgDuration').value = notifConfig.duration;
+  document.getElementById('notifCfgPushEventos').value = notifConfig.pushHoraEventos;
+  document.getElementById('notifCfgPushAsistencia').value = notifConfig.pushHoraAsistencia;
+  refreshPushUI();
   _renderMateriasSilenciadasList();
   document.getElementById('notifModal').classList.remove('open');
   document.getElementById('notifConfigModal').classList.add('open');
@@ -3645,6 +3652,12 @@ function saveNotifConfigUI(){
   let yellow=parseInt(document.getElementById('notifCfgYellow').value,10);
   let red=parseInt(document.getElementById('notifCfgRed').value,10);
   let duration=parseInt(document.getElementById('notifCfgDuration').value,10);
+  // Horas del push (hora de El Salvador). El servidor corre entre las 5:00 y las 21:00, por eso 5–20.
+  let hEv=parseInt(document.getElementById('notifCfgPushEventos').value,10);
+  let hAs=parseInt(document.getElementById('notifCfgPushAsistencia').value,10);
+  if(isNaN(hEv)) hEv=NOTIF_DEFAULTS.pushHoraEventos;
+  if(isNaN(hAs)) hAs=NOTIF_DEFAULTS.pushHoraAsistencia;
+  hEv=Math.min(20,Math.max(5,hEv)); hAs=Math.min(20,Math.max(5,hAs));
   if(isNaN(green)||green<1) green=NOTIF_DEFAULTS.greenDays;
   if(isNaN(yellow)||yellow<1) yellow=NOTIF_DEFAULTS.yellowDays;
   if(isNaN(red)||red<0) red=NOTIF_DEFAULTS.redDays;
@@ -3655,7 +3668,8 @@ function saveNotifConfigUI(){
   notifConfig = {
     enabled: document.getElementById('notifCfgEnabled').checked,
     attendanceReminder: document.getElementById('notifCfgAttendance').checked,
-    greenDays: green, yellowDays: yellow, redDays: red, duration: duration
+    greenDays: green, yellowDays: yellow, redDays: red, duration: duration,
+    pushHoraEventos: hEv, pushHoraAsistencia: hAs
   };
   saveNotifConfig();
   showToast('✓ Configuración de notificaciones guardada','success');
@@ -3671,6 +3685,8 @@ function resetNotifConfig(){
   document.getElementById('notifCfgYellow').value = notifConfig.yellowDays;
   document.getElementById('notifCfgRed').value = notifConfig.redDays;
   document.getElementById('notifCfgDuration').value = notifConfig.duration;
+  document.getElementById('notifCfgPushEventos').value = notifConfig.pushHoraEventos;
+  document.getElementById('notifCfgPushAsistencia').value = notifConfig.pushHoraAsistencia;
   showToast('Valores por defecto restaurados','success');
 }
 
@@ -3771,9 +3787,104 @@ function startNotifWatcher(){
   loadNotifConfig();
   checkAndShowNotifToasts();
   _notifWatcherInterval=setInterval(checkAndShowNotifToasts,5*60*1000);
+  _iniciarPushSesion();
 }
 function stopNotifWatcher(){
   if(_notifWatcherInterval){ clearInterval(_notifWatcherInterval); _notifWatcherInterval=null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AVISOS PUSH (celular cerrado) — Firebase Cloud Messaging
+// El envío lo hace scripts/enviar-avisos.mjs (GitHub Actions); aquí solo:
+//   · registrar/quitar este dispositivo (firebase-push.js → window.FirebasePush)
+//   · subir la config de avisos a Firestore para que el servidor la lea
+//   · abrir la pantalla correcta al tocar una notificación (?aviso=...)
+// ═══════════════════════════════════════════════════════════
+let _avisoPendiente = new URLSearchParams(location.search).get('aviso');
+let _notifPushTimer = null;
+
+function _sincronizarNotifPush(){
+  if(!currentStudent || !window.FirebasePush) return;
+  clearTimeout(_notifPushTimer);
+  _notifPushTimer = setTimeout(async ()=>{
+    try{
+      await window.__firebaseReady;
+      await window.FirebasePush.guardarNotifConfig(currentStudent, currentCareer,
+        Object.assign({}, notifConfig, { mutedSubjects: getNotifMutedSubjects() }));
+    }catch(e){ console.warn('[Push] No se pudo sincronizar la configuración:', e); }
+  }, 1200);
+}
+async function _refrescarPushSilencioso(){
+  if(!currentStudent || !window.FirebasePush) return;
+  try{ await window.__firebaseReady; await window.FirebasePush.refrescar(currentStudent, currentCareer); }
+  catch(e){ console.warn('[Push] No se pudo renovar el token:', e); }
+}
+function _iniciarPushSesion(){
+  _sincronizarNotifPush();
+  _refrescarPushSilencioso();
+  setTimeout(_procesarAvisoPendiente, 900);
+}
+function _procesarAvisoPendiente(){
+  if(!_avisoPendiente || !currentStudent) return;
+  const aviso=_avisoPendiente;
+  _avisoPendiente=null;
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+  if(aviso==='asistencia') openAsistencia();
+  else if(aviso==='calendario') openNotifModal();
+}
+if('serviceWorker' in navigator){
+  // La app ya estaba abierta (en segundo plano) y el usuario tocó la notificación.
+  navigator.serviceWorker.addEventListener('message',(ev)=>{
+    const d=ev.data||{};
+    if(d.tipo!=='ugb-notif-click') return;
+    try{ _avisoPendiente=new URL(d.url,location.href).searchParams.get('aviso'); }catch(e){ _avisoPendiente=null; }
+    _procesarAvisoPendiente();
+  });
+}
+
+async function refreshPushUI(){
+  const txt=document.getElementById('pushEstadoTxt'), btn=document.getElementById('pushToggleBtn');
+  if(!txt||!btn) return;
+  const P=window.FirebasePush;
+  if(!P||!currentStudent){ txt.textContent='Firebase todavía está cargando…'; btn.disabled=true; return; }
+  btn.disabled=false;
+  const est=await P.estado(currentStudent,currentCareer);
+  if(!est.soportado){
+    txt.textContent='Este navegador no soporta avisos push. En iPhone hay que agregar la app a la pantalla de inicio (iOS 16.4 o superior).';
+    btn.disabled=true; btn.textContent='No disponible'; return;
+  }
+  if(est.permiso==='denied'){
+    txt.textContent='🚫 Bloqueaste las notificaciones de este sitio. Actívalas en los ajustes del navegador (candado junto a la dirección → Permisos) y vuelve aquí.';
+    btn.disabled=true; btn.textContent='Bloqueado por el navegador'; return;
+  }
+  if(est.activoAqui){
+    txt.textContent='✅ Este dispositivo recibe avisos aunque la app esté cerrada.';
+    btn.textContent='🔕 Desactivar en este dispositivo';
+  }else{
+    txt.textContent='Actívalos para recibir recordatorios en este celular aunque la app esté cerrada.';
+    btn.textContent='🔔 Activar en este dispositivo';
+  }
+}
+async function togglePushDevice(){
+  const P=window.FirebasePush, btn=document.getElementById('pushToggleBtn');
+  if(!P||!currentStudent||!btn) return;
+  btn.disabled=true;
+  try{
+    if(P.activoAqui(currentStudent,currentCareer)){
+      await P.desactivar(currentStudent,currentCareer);
+      showToast('Avisos desactivados en este dispositivo','success');
+    }else{
+      await P.activar(currentStudent,currentCareer);
+      _sincronizarNotifPush();
+      showToast('✓ Avisos activados — te llegarán aunque la app esté cerrada','success');
+    }
+  }catch(e){
+    const m=e&&e.message;
+    if(m==='VAPID_NO_CONFIGURADA') showToast('Falta pegar la clave VAPID en firebase-push.js (ver README del push)','error');
+    else if(m==='PERMISO_DENEGADO') showToast('No diste permiso de notificaciones','error');
+    else { console.error('[Push]',e); showToast('No se pudieron activar los avisos: '+(m||'error'),'error'); }
+  }
+  refreshPushUI();
 }
 
 // ═══════════════════════════════════════════════════════════

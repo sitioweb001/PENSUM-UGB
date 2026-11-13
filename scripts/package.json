@@ -1,0 +1,13 @@
+{
+  "name": "pensum-avisos-push",
+  "private": true,
+  "type": "module",
+  "description": "Envía los avisos push de Pénsum UGB (se ejecuta desde GitHub Actions)",
+  "scripts": {
+    "test": "node logica.test.mjs",
+    "enviar": "node enviar-avisos.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

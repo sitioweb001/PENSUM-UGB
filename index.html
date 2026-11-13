@@ -504,6 +504,20 @@
     <p style="font-size:11px;margin-top:-4px;">Desliza cualquier mensaje emergente hacia la derecha para ocultarlo antes de tiempo. Esta configuración se guarda en este dispositivo.</p>
 
     <div class="ham-divider" style="margin:12px 0 10px;"></div>
+    <h4 style="margin-bottom:2px;">📲 Avisos en el celular (push)</h4>
+    <p id="pushEstadoTxt" style="font-size:11.5px;color:var(--gm);margin-bottom:8px;">Revisando…</p>
+    <div class="notif-cfg-row">
+      <label>📅 Hora de avisos del calendario (5–20)</label>
+      <input type="number" id="notifCfgPushEventos" min="5" max="20">
+    </div>
+    <div class="notif-cfg-row">
+      <label>🏛 Hora del recordatorio de asistencia (5–20)</label>
+      <input type="number" id="notifCfgPushAsistencia" min="5" max="20">
+    </div>
+    <p style="font-size:11px;color:var(--gm);margin:-2px 0 8px;">Horas de El Salvador. Los avisos llegan en la hora indicada o poco después, aunque la app esté cerrada. Se activan por dispositivo; los días y las materias silenciadas se comparten con el servidor al guardar.</p>
+    <button class="modal-btn secondary" id="pushToggleBtn" style="width:100%;margin-bottom:6px;" onclick="togglePushDevice()">🔔 Activar en este dispositivo</button>
+
+    <div class="ham-divider" style="margin:12px 0 10px;"></div>
     <h4 style="margin-bottom:2px;">🔇 Materias silenciadas</h4>
     <p style="font-size:11px;color:var(--gm);margin-bottom:8px;">Tocá el 🔇 en cualquier notificación para silenciar TODOS los avisos futuros de esa materia (no solo esa fecha). Se pueden reactivar acá cuando quieras.</p>
     <div id="notifMateriasSilenciadasList"></div>

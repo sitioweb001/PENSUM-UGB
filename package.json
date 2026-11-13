@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "test": "node calculos.test.js",
-    "lint": "eslint app.js calculos.js firebase-db.js firebase-init.js firebase-bootstrap.js service-worker.js"
+    "lint": "eslint app.js calculos.js firebase-db.js firebase-init.js firebase-bootstrap.js firebase-push.js service-worker.js"
   },
   "devDependencies": {
     "eslint": "^9.0.0"

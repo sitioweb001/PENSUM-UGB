@@ -72,7 +72,7 @@ export async function guardarPasswordHash(nombre, carrera, hash) {
 export async function eliminarEstudiante(nombre, carrera) {
   const id = studentId(nombre, carrera);
   // Borra subcolecciones primero (Firestore no borra en cascada solo).
-  for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial']) {
+  for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial', 'dispositivos', 'ajustes']) {
     const snap = await getDocs(collection(db, 'estudiantes', id, sub));
     const batch = writeBatch(db);
     snap.docs.forEach(d => batch.delete(d.ref));
@@ -591,7 +591,7 @@ export async function resetearBaseDeDatos(onProgress = () => {}) {
 
   let borrados = 0;
   for (const id of ids) {
-    for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial']) {
+    for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial', 'dispositivos', 'ajustes']) {
       const subSnap = await getDocs(collection(db, 'estudiantes', id, sub));
       if (subSnap.docs.length) {
         const batch = writeBatch(db);

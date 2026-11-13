@@ -52,7 +52,7 @@ module.exports = [
         alert: 'readonly', confirm: 'readonly', prompt: 'readonly', location: 'readonly',
         setTimeout: 'readonly', clearTimeout: 'readonly',
         setInterval: 'readonly', clearInterval: 'readonly',
-        URL: 'readonly', Blob: 'readonly', FileReader: 'readonly',
+        URL: 'readonly', URLSearchParams: 'readonly', history: 'readonly', Blob: 'readonly', FileReader: 'readonly',
         crypto: 'readonly', self: 'readonly', caches: 'readonly',
         DOMParser: 'readonly', Image: 'readonly', requestAnimationFrame: 'readonly',
         MutationObserver: 'readonly', PublicKeyCredential: 'readonly',
@@ -91,11 +91,11 @@ module.exports = [
     rules: { 'no-undef': 'warn', 'no-unused-vars': 'off' }
   },
   {
-    files: ['firebase-init.js', 'firebase-db.js', 'firebase-bootstrap.js'],
+    files: ['firebase-init.js', 'firebase-db.js', 'firebase-bootstrap.js', 'firebase-push.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      globals: { console: 'readonly', window: 'readonly', crypto: 'readonly', TextEncoder: 'readonly' }
+      globals: { console: 'readonly', window: 'readonly', crypto: 'readonly', TextEncoder: 'readonly', navigator: 'readonly', localStorage: 'readonly', Notification: 'readonly' }
     },
     rules: {
       'no-undef': 'warn',

@@ -1,1 +1,44 @@
+name: Avisos push (Pénsum UGB)
 
+on:
+  schedule:
+    - cron: '5 0-3,11-23 * * *'
+  workflow_dispatch:
+    inputs:
+      probar:
+        description: 'Enviar un aviso de PRUEBA a todos los dispositivos registrados'
+        type: boolean
+        default: false
+
+concurrency:
+  group: avisos-push
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        working-directory: scripts
+        run: npm install --omit=dev --no-audit --no-fund
+
+      - name: Probar reglas de avisos
+        working-directory: scripts
+        run: node logica.test.mjs
+
+      - name: Enviar avisos
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROBAR: ${{ inputs.probar }}
+        run: node enviar-avisos.mjs

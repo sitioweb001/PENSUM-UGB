@@ -21,7 +21,8 @@ import {
 // Firebase Console → ⚙️ Configuración del proyecto → Cloud Messaging →
 // "Certificados push web" → Generar par de claves → copiar "Par de claves".
 // ═══════════════════════════════════════════════════════════
-BAcX8q75pTuYXFhpa0Ydvrum895IPXf1g2vRnH9_dVdtMk0gWbpgwEheSJbFRBYjqezKpKe_Pl7leCwWoGCkKR8
+const VAPID_PUBLIC_KEY = 'BAcX8q75pTuYXFhpa0Ydvrum895IPXf1g2vRnH9_dVdtMk0gWbpgwEheSJbFRBYjqezKpKe_Pl7leCwWoGCkKR8';
+
 const FCM_MODULE = 'https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging.js';
 
 // Se importa solo cuando hace falta: así, si no hay internet o el navegador no

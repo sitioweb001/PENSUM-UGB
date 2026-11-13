@@ -3804,19 +3804,26 @@ let _avisoPendiente = new URLSearchParams(location.search).get('aviso');
 let _notifPushTimer = null;
 
 function _sincronizarNotifPush(){
-  if(!currentStudent || !window.FirebasePush) return;
+  if(!currentStudent) return;
   clearTimeout(_notifPushTimer);
   _notifPushTimer = setTimeout(async ()=>{
     try{
       await window.__firebaseReady;
+      if(window.__firebasePushReady) await window.__firebasePushReady;
+      if(!window.FirebasePush) return; // push no disponible: no pasa nada
       await window.FirebasePush.guardarNotifConfig(currentStudent, currentCareer,
         Object.assign({}, notifConfig, { mutedSubjects: getNotifMutedSubjects() }));
     }catch(e){ console.warn('[Push] No se pudo sincronizar la configuración:', e); }
   }, 1200);
 }
 async function _refrescarPushSilencioso(){
-  if(!currentStudent || !window.FirebasePush) return;
-  try{ await window.__firebaseReady; await window.FirebasePush.refrescar(currentStudent, currentCareer); }
+  if(!currentStudent) return;
+  try{
+    await window.__firebaseReady;
+    if(window.__firebasePushReady) await window.__firebasePushReady;
+    if(!window.FirebasePush) return;
+    await window.FirebasePush.refrescar(currentStudent, currentCareer);
+  }
   catch(e){ console.warn('[Push] No se pudo renovar el token:', e); }
 }
 function _iniciarPushSesion(){

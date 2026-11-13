@@ -72,7 +72,7 @@ export async function guardarPasswordHash(nombre, carrera, hash) {
 export async function eliminarEstudiante(nombre, carrera) {
   const id = studentId(nombre, carrera);
   // Borra subcolecciones primero (Firestore no borra en cascada solo).
-  for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial', 'dispositivos', 'ajustes']) {
+  for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial', 'dispositivos', 'ajustes', 'recordatorios']) {
     const snap = await getDocs(collection(db, 'estudiantes', id, sub));
     const batch = writeBatch(db);
     snap.docs.forEach(d => batch.delete(d.ref));
@@ -591,7 +591,7 @@ export async function resetearBaseDeDatos(onProgress = () => {}) {
 
   let borrados = 0;
   for (const id of ids) {
-    for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial', 'dispositivos', 'ajustes']) {
+    for (const sub of ['notas', 'eventos', 'asistencias', 'asistenciasActividad', 'pensumHistorial', 'dispositivos', 'ajustes', 'recordatorios']) {
       const subSnap = await getDocs(collection(db, 'estudiantes', id, sub));
       if (subSnap.docs.length) {
         const batch = writeBatch(db);
@@ -613,4 +613,38 @@ export async function resetearBaseDeDatos(onProgress = () => {}) {
 
   onProgress('Base de datos reiniciada — lista para datos nuevos.');
   return { ok: true, cuentasBorradas: borrados };
+}
+
+// ============================================================
+// RECORDATORIOS PERSONALIZADOS (nombre, fecha, hora y repetición)
+// Subcolección estudiantes/{id}/recordatorios/{recId}. La app los muestra en
+// el Calendario y el servidor de avisos push (scripts/enviar-avisos.mjs) los
+// lee para enviarlos a la hora indicada aunque la app esté cerrada.
+// ============================================================
+
+export function escucharRecordatorios(nombre, carrera, callback, onError) {
+  const col = collection(db, 'estudiantes', studentId(nombre, carrera), 'recordatorios');
+  return onSnapshot(col, (snap) => {
+    callback(snap.docs.map(d => Object.assign({ id: d.id }, d.data())));
+  }, (err) => { if (onError) onError(err); else console.warn('[Recordatorios] Listener:', err); });
+}
+
+export async function guardarRecordatorio(nombre, carrera, rec) {
+  // Firestore no acepta "undefined": se arma el documento solo con valores válidos.
+  const limpio = {
+    nombre: String(rec.nombre || '').slice(0, 120),
+    fecha: rec.fecha,
+    hora: rec.hora,
+    repetir: rec.repetir || 'nunca',
+    dias: Array.isArray(rec.dias) ? rec.dias.map(Number) : [],
+    hasta: rec.hasta || '',
+    nota: String(rec.nota || '').slice(0, 300),
+    activo: rec.activo !== false,
+    actualizadoEn: serverTimestamp()
+  };
+  await setDoc(doc(db, 'estudiantes', studentId(nombre, carrera), 'recordatorios', rec.id), limpio);
+}
+
+export async function borrarRecordatorio(nombre, carrera, recId) {
+  await deleteDoc(doc(db, 'estudiantes', studentId(nombre, carrera), 'recordatorios', recId));
 }

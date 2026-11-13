@@ -10,7 +10,8 @@
 
 const assert = require('assert');
 const {
-  escapeHtml, calcComputo, calcFinal, filterByPeriod, daysUntil, getTodayKey, _fmtNota, _hhmmFromIso
+  escapeHtml, calcComputo, calcFinal, filterByPeriod, daysUntil, getTodayKey, _fmtNota, _hhmmFromIso,
+  recDiaSemana, recSumarDias, recordatorioOcurreEn, proximaOcurrenciaRecordatorio, resumenRepeticionRecordatorio
 } = require('./calculos.js');
 
 let pasadas = 0;
@@ -134,6 +135,58 @@ t('con una fecha inválida no revienta (aunque el resultado no sea una hora real
   // que quede claro cuál es el comportamiento real (no ideal, pero
   // predecible) en vez de asumirlo.
   assert.strictEqual(_hhmmFromIso('esto-no-es-una-fecha-iso-válida'), 'NaN:NaN');
+});
+
+console.log('\nRecordatorios personalizados');
+const base = { id: 'r1', nombre: 'Tomar agua', fecha: '2026-11-12', hora: '09:30', repetir: 'nunca', activo: true };
+t('recDiaSemana: 12-nov-2026 es jueves (4)', () => { assert.strictEqual(recDiaSemana('2026-11-12'), 4); });
+t('recSumarDias cruza mes y año', () => {
+  assert.strictEqual(recSumarDias('2026-12-31', 1), '2027-01-01');
+  assert.strictEqual(recSumarDias('2026-03-01', -1), '2026-02-28');
+});
+t('una sola vez: solo en su fecha', () => {
+  assert.strictEqual(recordatorioOcurreEn(base, '2026-11-12'), true);
+  assert.strictEqual(recordatorioOcurreEn(base, '2026-11-13'), false);
+  assert.strictEqual(recordatorioOcurreEn(base, '2026-11-11'), false);
+});
+t('desactivado nunca ocurre', () => {
+  assert.strictEqual(recordatorioOcurreEn({ ...base, activo: false }, '2026-11-12'), false);
+});
+t('diario: desde su fecha, y respeta "hasta"', () => {
+  const r = { ...base, repetir: 'diario', hasta: '2026-11-14' };
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-11'), false);
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-13'), true);
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-14'), true);
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-15'), false);
+});
+t('semanal: solo los días elegidos (lun=1, mié=3)', () => {
+  const r = { ...base, repetir: 'semanal', dias: [1, 3] };
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-16'), true);   // lunes
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-18'), true);   // miércoles
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-17'), false);  // martes
+});
+t('semanal sin días: usa el día de la semana de su fecha', () => {
+  const r = { ...base, repetir: 'semanal', dias: [] };
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-19'), true);   // otro jueves
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-11-20'), false);
+});
+t('mensual: mismo día del mes; el 31 cae el último día en meses cortos', () => {
+  const r = { ...base, fecha: '2026-01-31', repetir: 'mensual' };
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-02-28'), true);
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-02-27'), false);
+  assert.strictEqual(recordatorioOcurreEn(r, '2026-03-31'), true);
+});
+t('próxima ocurrencia: hoy solo si la hora no pasó', () => {
+  const r = { ...base, repetir: 'diario' };
+  assert.strictEqual(proximaOcurrenciaRecordatorio(r, '2026-11-12', 9 * 60), '2026-11-12');
+  assert.strictEqual(proximaOcurrenciaRecordatorio(r, '2026-11-12', 10 * 60), '2026-11-13');
+  assert.strictEqual(proximaOcurrenciaRecordatorio(base, '2026-11-13', 0), null); // una sola vez, ya pasó
+});
+t('resumenRepeticionRecordatorio', () => {
+  assert.strictEqual(resumenRepeticionRecordatorio(base), 'Una sola vez');
+  assert.strictEqual(resumenRepeticionRecordatorio({ ...base, repetir: 'diario' }), 'Todos los días');
+  assert.strictEqual(resumenRepeticionRecordatorio({ ...base, repetir: 'semanal', dias: [3, 1] }), 'Cada lun, mié');
+  assert.strictEqual(resumenRepeticionRecordatorio({ ...base, repetir: 'diario', hasta: '2026-12-01' }), 'Todos los días hasta 2026-12-01');
 });
 
 console.log('\n✅ ' + pasadas + ' pruebas pasaron correctamente.');

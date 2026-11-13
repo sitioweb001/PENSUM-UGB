@@ -3161,7 +3161,7 @@ function findSubject(num){for(const c of CYCLES)for(const s of c.subjects)if(s.n
 // ═══════════════════════════════════════════════════════════
 // CALENDAR
 // ═══════════════════════════════════════════════════════════
-function openCalendarModal(){_calendarModalOpen=true;document.getElementById('calendarModal').classList.add('open');renderEvents();}
+function openCalendarModal(){_calendarModalOpen=true;document.getElementById('calendarModal').classList.add('open');renderEvents();renderRecordatorios();}
 function closeCalendarModal(){_calendarModalOpen=false;document.getElementById('calendarModal').classList.remove('open');}
 
 function setCalFilter(f,btn){
@@ -3369,7 +3369,7 @@ function exportarCalendarioICS(){
   const sorted=[...evs].sort((a,b)=>new Date(a.date)-new Date(b.date));
   let filtered=filterByPeriod(sorted,'date',calFilter);
   if(calCycleFilter!=='all') filtered=filtered.filter(ev=>{ const c=getCycleOfEvent(ev); return c && c.id===calCycleFilter; });
-  if(!filtered.length){ showToast('No hay actividades en este filtro para exportar','error'); return; }
+  if(!filtered.length && !recordatorios.length){ showToast('No hay actividades ni recordatorios para exportar','error'); return; }
   const pad=n=>String(n).padStart(2,'0');
   const now=new Date();
   const stamp=now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate())+'T'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds())+'Z';
@@ -3392,6 +3392,27 @@ function exportarCalendarioICS(){
     lines.push('SUMMARY:'+escapeICS(summary));
     if(descParts.length) lines.push('DESCRIPTION:'+escapeICS(descParts.join(' — ')));
     if(ev.done) lines.push('STATUS:CONFIRMED');
+    lines.push('END:VEVENT');
+  });
+  // Recordatorios personalizados: se exportan todos los activos, con su hora y repetición (RRULE) y una alarma.
+  const BYDAY=['SU','MO','TU','WE','TH','FR','SA'];
+  recordatorios.forEach(r=>{
+    if(!r || r.activo===false) return;
+    const ini=proximaOcurrenciaRecordatorio(r,r.fecha);
+    if(!ini) return;
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:ugb-pensum-rec-'+r.id+'@pensumugb');
+    lines.push('DTSTAMP:'+stamp);
+    lines.push('DTSTART:'+ini.replace(/-/g,'')+'T'+String(r.hora||'09:00').replace(':','')+'00');
+    lines.push('DURATION:PT15M');
+    lines.push('SUMMARY:'+escapeICS('⏰ '+r.nombre));
+    if(r.nota) lines.push('DESCRIPTION:'+escapeICS(r.nota));
+    let rr='';
+    if(r.repetir==='diario') rr='FREQ=DAILY';
+    else if(r.repetir==='semanal') rr='FREQ=WEEKLY;BYDAY='+(Array.isArray(r.dias)&&r.dias.length?r.dias:[recDiaSemana(r.fecha)]).map(d=>BYDAY[d]).join(',');
+    else if(r.repetir==='mensual') rr='FREQ=MONTHLY';
+    if(rr){ if(r.hasta) rr+=';UNTIL='+r.hasta.replace(/-/g,'')+'T235959'; lines.push('RRULE:'+rr); }
+    lines.push('BEGIN:VALARM','ACTION:DISPLAY','TRIGGER:PT0M','DESCRIPTION:'+escapeICS(r.nombre),'END:VALARM');
     lines.push('END:VEVENT');
   });
   lines.push('END:VCALENDAR');
@@ -3791,6 +3812,7 @@ function startNotifWatcher(){
 }
 function stopNotifWatcher(){
   if(_notifWatcherInterval){ clearInterval(_notifWatcherInterval); _notifWatcherInterval=null; }
+  detenerRecordatorios();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3827,6 +3849,7 @@ async function _refrescarPushSilencioso(){
   catch(e){ console.warn('[Push] No se pudo renovar el token:', e); }
 }
 function _iniciarPushSesion(){
+  iniciarRecordatorios();
   _sincronizarNotifPush();
   _refrescarPushSilencioso();
   setTimeout(_procesarAvisoPendiente, 900);
@@ -3838,6 +3861,7 @@ function _procesarAvisoPendiente(){
   try{ history.replaceState(null,'',location.pathname); }catch(e){}
   if(aviso==='asistencia') openAsistencia();
   else if(aviso==='calendario') openNotifModal();
+  else if(aviso==='recordatorios') openCalendarModal();
 }
 if('serviceWorker' in navigator){
   // La app ya estaba abierta (en segundo plano) y el usuario tocó la notificación.
@@ -3847,6 +3871,186 @@ if('serviceWorker' in navigator){
     try{ _avisoPendiente=new URL(d.url,location.href).searchParams.get('aviso'); }catch(e){ _avisoPendiente=null; }
     _procesarAvisoPendiente();
   });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RECORDATORIOS PERSONALIZADOS (nombre + hora exacta + repetición)
+// Se guardan en Firestore (estudiantes/{id}/recordatorios) y se ven en el
+// Calendario. Suenan de dos formas:
+//   · app ABIERTA y visible → aviso emergente a la hora exacta (aquí abajo)
+//   · app CERRADA → push desde scripts/enviar-avisos.mjs (si activaste los avisos)
+// Las reglas de repetición viven en calculos.js (recordatorioOcurreEn, etc.).
+// ═══════════════════════════════════════════════════════════
+let recordatorios=[];
+let _recUnsub=null, _recTimer=null, _recEditId=null, _recGen=0;
+
+function _nuevoIdRecordatorio(){ return 'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function _minutosAhora(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+function _hhmmAMinutos(hhmm){ const m=/^(\d{1,2}):(\d{2})$/.exec(hhmm||''); return m?(+m[1])*60+(+m[2]):null; }
+
+async function iniciarRecordatorios(){
+  detenerRecordatorios();
+  if(!currentStudent) return;
+  const gen=_recGen, alumno=currentStudent, carrera=currentCareer;
+  renderRecordatorios();
+  try{
+    await window.__firebaseReady;
+    if(gen!==_recGen) return; // se cerró sesión o se reinició mientras esperaba
+    _recUnsub=window.FirebaseDB.escucharRecordatorios(alumno,carrera,(lista)=>{ recordatorios=lista; renderRecordatorios(); });
+  }catch(e){ console.warn('[Recordatorios] No se pudo iniciar:', e); }
+  _limpiarRecordatoriosDisparados();
+  _recTimer=setInterval(revisarRecordatoriosAbiertos,20000);
+}
+function detenerRecordatorios(){
+  _recGen++;
+  if(_recUnsub){ try{ _recUnsub(); }catch(e){} _recUnsub=null; }
+  if(_recTimer){ clearInterval(_recTimer); _recTimer=null; }
+  recordatorios=[];
+}
+function _limpiarRecordatoriosDisparados(){
+  try{
+    const hoy=getTodayKey();
+    for(let i=localStorage.length-1;i>=0;i--){
+      const k=localStorage.key(i);
+      if(k && k.indexOf('ugb_rec_fired_')===0 && !k.endsWith('_'+hoy)) localStorage.removeItem(k);
+    }
+  }catch(e){}
+}
+
+// App abierta: avisa a la hora exacta (ventana de 2 min por si el navegador atrasa el temporizador).
+// Si la pestaña está oculta no hace nada: en ese caso el push del servidor es quien avisa.
+function revisarRecordatoriosAbiertos(){
+  if(!currentStudent || document.visibilityState!=='visible') return;
+  const hoy=getTodayKey(), ahora=_minutosAhora();
+  recordatorios.forEach(r=>{
+    if(!recordatorioOcurreEn(r,hoy)) return;
+    const min=_hhmmAMinutos(r.hora);
+    if(min===null) return;
+    const diff=ahora-min;
+    if(diff<0 || diff>2) return;
+    const k='ugb_rec_fired_'+_notifKeyBase()+'_'+r.id+'_'+hoy;
+    try{ if(localStorage.getItem(k)) return; localStorage.setItem(k,'1'); }catch(e){}
+    showReminderToast(r);
+  });
+}
+function showReminderToast(rec){
+  const wrap=document.getElementById('notifToastContainer');
+  if(!wrap) return;
+  const id='nt_rec_'+rec.id;
+  if(document.getElementById(id)) return;
+  const el=document.createElement('div');
+  el.className='notif-toast tier-yellow';
+  el.id=id;
+  el.innerHTML=`
+    <div class="notif-toast-icon">⏰</div>
+    <div class="notif-toast-body">
+      <div class="notif-toast-title">${escapeHtml(rec.nombre)}</div>
+      <div class="notif-toast-sub">${escapeHtml(rec.nota||('Recordatorio · '+rec.hora))}</div>
+    </div>
+    <div class="notif-toast-close" onclick="event.stopPropagation();dismissNotifToast('${id}')" title="Cerrar">✕</div>`;
+  el.addEventListener('click',()=>{
+    if(el._dragged){ el._dragged=false; return; }
+    dismissNotifToast(id);
+    openCalendarModal();
+  });
+  wrap.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  _attachNotifSwipe(el,id);
+  _notifToastTimers[id]=setTimeout(()=>dismissNotifToast(id),Math.max(15,notifConfig.duration)*1000);
+}
+
+function renderRecordatorios(){
+  const box=document.getElementById('recordatoriosList');
+  if(!box) return;
+  if(!recordatorios.length){
+    box.innerHTML='<div style="color:var(--gm);text-align:center;padding:10px;font-size:12px;">Sin recordatorios. Toca "⏰ + Recordatorio" para crear uno.</div>';
+    return;
+  }
+  const hoy=getTodayKey(), min=_minutosAhora();
+  const filas=recordatorios.map(r=>({ r, prox:proximaOcurrenciaRecordatorio(r,hoy,min) }));
+  filas.sort((x,y)=>{
+    const kx=(x.prox||'9999-99-99')+' '+(x.r.hora||''), ky=(y.prox||'9999-99-99')+' '+(y.r.hora||'');
+    return kx<ky?-1:(kx>ky?1:0);
+  });
+  box.innerHTML=filas.map(({r,prox})=>{
+    const activo=r.activo!==false;
+    const proximo=!activo?'Desactivado':(prox?('Próximo: '+(prox===hoy?'hoy':prox)+' · '+r.hora):'Sin próximas fechas');
+    return `<div class="cal-event-row" style="border-left:4px solid #f59e0b;${activo?'':'opacity:.55;'}">
+      <div class="ev-top">
+        <input type="checkbox" class="ev-check" ${activo?'checked':''} onchange="toggleRecordatorio('${r.id}',this.checked)" title="Activar / desactivar">
+        <span class="ev-type">⏰ ${escapeHtml(r.nombre)}</span>
+        <span class="ev-date">🕒 ${escapeHtml(r.hora)}</span>
+        <button class="ev-del-btn" style="margin-left:auto;" onclick="openRecordatorioModal('${r.id}')" title="Editar">✏️</button>
+        <button class="ev-del-btn" onclick="borrarRecordatorioUI('${r.id}')" title="Borrar">🗑</button>
+      </div>
+      <div class="ev-sub">${escapeHtml(resumenRepeticionRecordatorio(r))} · ${escapeHtml(proximo)}</div>
+      ${r.nota?`<div class="ev-sub" style="font-style:italic;">"${escapeHtml(r.nota)}"</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function onRecRepetirChange(){
+  const v=document.getElementById('recRepetir').value;
+  document.getElementById('recDiasWrap').style.display=(v==='semanal')?'':'none';
+  document.getElementById('recHastaWrap').style.display=(v==='nunca')?'none':'';
+}
+function openRecordatorioModal(id){
+  if(!currentStudent){ showToast('Primero entra con tu estudiante','error'); return; }
+  _recEditId=id||null;
+  const r=id?recordatorios.find(x=>x.id===id):null;
+  document.getElementById('recTitulo').textContent=r?'Editar recordatorio':'Nuevo recordatorio';
+  document.getElementById('recNombre').value=r?r.nombre:'';
+  document.getElementById('recFecha').value=r?r.fecha:getTodayKey();
+  document.getElementById('recHora').value=r?r.hora:(String((new Date().getHours()+1)%24).padStart(2,'0')+':00');
+  document.getElementById('recRepetir').value=r?(r.repetir||'nunca'):'nunca';
+  for(let i=0;i<7;i++) document.getElementById('recDia'+i).checked=!!(r&&Array.isArray(r.dias)&&r.dias.indexOf(i)!==-1);
+  document.getElementById('recHasta').value=r?(r.hasta||''):'';
+  document.getElementById('recNota').value=r?(r.nota||''):'';
+  onRecRepetirChange();
+  document.getElementById('recordatorioModal').classList.add('open');
+}
+async function guardarRecordatorioUI(){
+  const nombre=document.getElementById('recNombre').value.trim();
+  const fecha=document.getElementById('recFecha').value;
+  const hora=document.getElementById('recHora').value;
+  const repetir=document.getElementById('recRepetir').value;
+  if(!nombre){ showToast('Escribe el nombre del recordatorio','error'); return; }
+  if(!fecha){ showToast('Elige la fecha','error'); return; }
+  if(!hora){ showToast('Elige la hora exacta','error'); return; }
+  const dias=[];
+  if(repetir==='semanal'){
+    for(let i=0;i<7;i++) if(document.getElementById('recDia'+i).checked) dias.push(i);
+    if(!dias.length){ showToast('Elige al menos un día de la semana','error'); return; }
+  }
+  const hasta=(repetir==='nunca')?'':document.getElementById('recHasta').value;
+  if(hasta && hasta<fecha){ showToast('"Repetir hasta" no puede ser antes de la fecha','error'); return; }
+  const prev=_recEditId?recordatorios.find(x=>x.id===_recEditId):null;
+  const rec={ id:_recEditId||_nuevoIdRecordatorio(), nombre, fecha, hora, repetir, dias, hasta,
+    nota:document.getElementById('recNota').value.trim(), activo:prev?prev.activo!==false:true };
+  if(rec.activo && !proximaOcurrenciaRecordatorio(rec,getTodayKey(),_minutosAhora())){
+    showToast('Esa fecha y hora ya pasaron: el recordatorio no sonaría nunca','error'); return;
+  }
+  document.getElementById('recordatorioModal').classList.remove('open');
+  try{
+    await window.__firebaseReady;
+    // Sin "await" del guardado: sin internet Firestore lo deja en cola y la lista se actualiza igual.
+    window.FirebaseDB.guardarRecordatorio(currentStudent,currentCareer,rec)
+      .catch(e=>{ console.error('[Recordatorios]',e); showToast('No se pudo guardar el recordatorio: '+((e&&e.message)||'error'),'error'); });
+    showToast('✓ Recordatorio guardado','success');
+  }catch(e){ showToast('Firebase no está listo todavía, intenta de nuevo','error'); }
+}
+function toggleRecordatorio(id,activo){
+  const r=recordatorios.find(x=>x.id===id);
+  if(!r) return;
+  window.FirebaseDB.guardarRecordatorio(currentStudent,currentCareer,Object.assign({},r,{activo}))
+    .catch(e=>{ console.error('[Recordatorios]',e); showToast('No se pudo actualizar el recordatorio','error'); });
+}
+function borrarRecordatorioUI(id){
+  const r=recordatorios.find(x=>x.id===id);
+  if(!r) return;
+  if(!confirm('¿Borrar el recordatorio "'+r.nombre+'"?')) return;
+  window.FirebaseDB.borrarRecordatorio(currentStudent,currentCareer,id)
+    .catch(e=>{ console.error('[Recordatorios]',e); showToast('No se pudo borrar el recordatorio','error'); });
 }
 
 async function refreshPushUI(){

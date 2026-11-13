@@ -1,12 +1,19 @@
 // logica.mjs — reglas de los avisos push (funciones puras, sin red ni Firebase).
 // Replica lo que ya hace computeNotifications() en app.js para los avisos dentro
 // de la app: verde / amarillo / rojo según los días que faltan.
+// Los recordatorios personalizados usan las mismas reglas de repetición que la
+// app: se cargan desde ../calculos.js (un solo lugar, sin copias que se desfasen).
+
+import { createRequire } from 'node:module';
+const { recordatorioOcurreEn } = createRequire(import.meta.url)('../calculos.js');
 
 export const TZ = 'America/El_Salvador'; // UTC-6 todo el año (sin horario de verano)
 export const HORA_LIMITE_ASISTENCIA = 21; // no recordar asistencia a las 9 p. m. o después
 export const RETENER_DIAS = 45;           // cuánto tiempo se recuerda "ya avisé de esto"
 export const URL_ASISTENCIA = './index.html?aviso=asistencia';
 export const URL_CALENDARIO = './index.html?aviso=calendario';
+export const URL_RECORDATORIOS = './index.html?aviso=recordatorios';
+export const VENTANA_RECORDATORIO_MIN = 120; // si el servidor se atrasa, se avisa hasta 2 h tarde; después ya no tiene sentido
 
 export const DEFAULTS = {
   enabled: true, attendanceReminder: true,
@@ -17,13 +24,13 @@ export const DEFAULTS = {
 
 const ICONO = { red: '🔴', yellow: '🟡', green: '🟢' };
 
-// Fecha (YYYY-MM-DD) y hora (0-23) actuales en El Salvador.
+// Fecha (YYYY-MM-DD), hora (0-23) y minuto (0-59) actuales en El Salvador.
 export function ahoraLocal(fecha = new Date(), tz = TZ) {
   const partes = new Intl.DateTimeFormat('en-CA', {
-    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23'
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   }).formatToParts(fecha);
   const g = (t) => partes.find((p) => p.type === t).value;
-  return { hoy: `${g('year')}-${g('month')}-${g('day')}`, hora: parseInt(g('hour'), 10) };
+  return { hoy: `${g('year')}-${g('month')}-${g('day')}`, hora: parseInt(g('hour'), 10), minuto: parseInt(g('minute'), 10) };
 }
 
 // Días de calendario entre dos fechas YYYY-MM-DD (hasta - desde). null si es inválida.
@@ -62,8 +69,20 @@ export function nombreMateria(est, num, materias) {
 }
 
 // Devuelve los avisos pendientes (ordenados por urgencia) que aún no se enviaron.
-export function construirAvisos({ est, cfg, eventos, asistioHoy, enviados, hoy, hora, materias }) {
+export function construirAvisos({ est, cfg, eventos, asistioHoy, enviados, hoy, hora, materias, recordatorios = [], minutosAhora = hora * 60 }) {
   const avisos = [];
+
+  // Recordatorios personalizados: a su hora exacta (o hasta VENTANA_RECORDATORIO_MIN después), una vez por día.
+  for (const r of recordatorios) {
+    if (!recordatorioOcurreEn(r, hoy)) continue;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(r.hora || '');
+    if (!m) continue;
+    const diff = minutosAhora - (parseInt(m[1], 10) * 60 + parseInt(m[2], 10));
+    if (diff < 0 || diff > VENTANA_RECORDATORIO_MIN) continue;
+    const key = `rec_${r.id}_${hoy}`;
+    if (enviados[key]) continue;
+    avisos.push({ key, orden: -1000, title: `⏰ ${r.nombre}`, body: r.nota || `Recordatorio · ${r.hora}`, tag: 'rec_' + r.id, url: URL_RECORDATORIOS });
+  }
 
   if (cfg.attendanceReminder && hora >= cfg.pushHoraAsistencia && hora < HORA_LIMITE_ASISTENCIA && !asistioHoy) {
     const key = 'asistencia_' + hoy;

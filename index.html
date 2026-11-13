@@ -161,6 +161,7 @@
     <div class="ham-item" onclick="openCopyGradesModal();closeHam()"><span class="ham-ico">📤</span> Copiar notas</div>
     <div class="ham-item" onclick="descargarExtensionUGB();closeHam()"><span class="ham-ico">🧩</span> Descargar extensión UGB (extraer notas del portal)</div>
     <div class="ham-item" onclick="openCalendarModal();closeHam()"><span class="ham-ico">📅</span> Calendario</div>
+    <div class="ham-item" onclick="openRecordatorioModal();closeHam()"><span class="ham-ico">⏰</span> Nuevo recordatorio</div>
     <div class="ham-item" onclick="openNotifModal();closeHam()"><span class="ham-ico">🔔</span> Notificaciones <span class="notif-badge" id="notifBadge"></span></div>
     <div class="ham-item" onclick="openAsistenciasHub();closeHam()"><span class="ham-ico">📋</span> Asistencias</div>
     <div class="ham-item" onclick="openBitacoraDI();closeHam()"><span class="ham-ico">📄</span> Bitácora DI</div>
@@ -389,7 +390,11 @@
       <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="addEvent('Parcial')">+ Parcial</button>
       <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;" onclick="addEvent('Otra')">+ Otra</button>
       <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;background:rgba(139,92,246,.12);border-color:#8b5cf6;color:#8b5cf6;" onclick="addEvent('Actividad DI')">🏛 + Actividad DI</button>
+      <button class="modal-btn secondary" style="padding:6px 10px;font-size:12px;background:rgba(245,158,11,.14);border-color:#f59e0b;color:#b45309;" onclick="openRecordatorioModal()">⏰ + Recordatorio</button>
     </div>
+    <h4 style="margin:2px 0 6px;font-size:13px;">⏰ Recordatorios</h4>
+    <div id="recordatoriosList" style="max-height:190px;overflow-y:auto;margin-bottom:11px;"></div>
+    <h4 style="margin:2px 0 6px;font-size:13px;">📅 Actividades</h4>
     <div class="filter-tabs" id="calFilterTabs">
       <button class="filter-tab active" onclick="setCalFilter('all',this)">Todos</button>
       <button class="filter-tab" onclick="setCalFilter('week',this)">Esta semana</button>
@@ -449,6 +454,46 @@
     <div class="modal-btns">
       <button class="modal-btn secondary" onclick="document.getElementById('addEventModal').classList.remove('open')">Cancelar</button>
       <button class="modal-btn primary" onclick="saveEvent()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="recordatorioModal" style="z-index:9999;">
+  <div class="modal">
+    <h3>⏰ <span id="recTitulo">Nuevo recordatorio</span></h3>
+    <div class="modal-field"><label>Nombre</label>
+      <input type="text" id="recNombre" maxlength="120" placeholder="Ej. Tomar agua, Estudiar Redes..." style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+    <div style="display:flex;gap:10px;">
+      <div class="modal-field" style="flex:1;"><label>Fecha</label>
+        <input type="date" id="recFecha" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+      <div class="modal-field" style="flex:1;"><label>Hora exacta</label>
+        <input type="time" id="recHora" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+    </div>
+    <div class="modal-field"><label>Repetir</label>
+      <select id="recRepetir" onchange="onRecRepetirChange()" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;">
+        <option value="nunca">Una sola vez</option>
+        <option value="diario">Todos los días</option>
+        <option value="semanal">Días de la semana…</option>
+        <option value="mensual">Cada mes (mismo día)</option>
+      </select></div>
+    <div class="modal-field" id="recDiasWrap" style="display:none;"><label>Días</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="recDia1"> L</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="recDia2"> M</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="recDia3"> Mi</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="recDia4"> J</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="recDia5"> V</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="recDia6"> S</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" id="recDia0"> D</label>
+      </div></div>
+    <div class="modal-field" id="recHastaWrap" style="display:none;"><label>Repetir hasta (opcional)</label>
+      <input type="date" id="recHasta" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+    <div class="modal-field"><label>Nota (opcional)</label>
+      <input type="text" id="recNota" maxlength="300" placeholder="Texto que aparecerá en el aviso" style="width:100%;padding:9px 12px;border:1.5px solid var(--inp-b);border-radius:8px;background:var(--inp-bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;outline:none;"></div>
+    <p style="font-size:11px;color:var(--gm);margin:2px 0 8px;">Hora de El Salvador. Con la app abierta suena a la hora exacta; con la app cerrada llega por push (si activaste los avisos en el celular) entre las 5:00 a. m. y las 9:50 p. m., con unos minutos de margen.</p>
+    <div class="modal-btns">
+      <button class="modal-btn secondary" onclick="document.getElementById('recordatorioModal').classList.remove('open')">Cancelar</button>
+      <button class="modal-btn primary" onclick="guardarRecordatorioUI()">Guardar</button>
     </div>
   </div>
 </div>

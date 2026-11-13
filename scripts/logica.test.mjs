@@ -11,13 +11,13 @@ let n = 0;
 const t = (nombre, fn) => { fn(); n++; console.log('  ✓', nombre); };
 
 t('ahoraLocal usa UTC-6 (8:30 a. m. local = 14:30 UTC)', () => {
-  assert.deepEqual(ahoraLocal(new Date('2026-11-12T14:30:00Z')), { hoy: '2026-11-12', hora: 8 });
+  assert.deepEqual(ahoraLocal(new Date('2026-11-12T14:30:00Z')), { hoy: '2026-11-12', hora: 8, minuto: 30 });
 });
 t('ahoraLocal: a las 21:30 locales el día sigue siendo el mismo (03:30 UTC del día siguiente)', () => {
-  assert.deepEqual(ahoraLocal(new Date('2026-11-13T03:30:00Z')), { hoy: '2026-11-12', hora: 21 });
+  assert.deepEqual(ahoraLocal(new Date('2026-11-13T03:30:00Z')), { hoy: '2026-11-12', hora: 21, minuto: 30 });
 });
 t('ahoraLocal: medianoche local es hora 0, no 24', () => {
-  assert.deepEqual(ahoraLocal(new Date('2026-11-12T06:10:00Z')), { hoy: '2026-11-12', hora: 0 });
+  assert.deepEqual(ahoraLocal(new Date('2026-11-12T06:10:00Z')), { hoy: '2026-11-12', hora: 0, minuto: 10 });
 });
 t('diasEntre', () => {
   assert.equal(diasEntre('2026-11-12', '2026-11-19'), 7);
@@ -90,6 +90,38 @@ t('orden por urgencia y agrupación (máx. 3 sueltos + 1 resumen)', () => {
 t('podarEnviados olvida lo de hace más de 45 días', () => {
   const p = podarEnviados({ a: '2026-11-10', b: '2026-09-01' }, '2026-11-12');
   assert.deepEqual(p, { a: '2026-11-10' });
+});
+
+const rec = { id: 'r1', nombre: 'Tomar agua', fecha: '2026-11-12', hora: '09:30', repetir: 'nunca', activo: true };
+const conRec = (o, extra = {}) => construirAvisos({ ...base, asistioHoy: true, hora: 9, minutosAhora: 9 * 60 + 30, recordatorios: [{ ...rec, ...o }], ...extra });
+t('recordatorio: suena a su hora exacta con su nombre', () => {
+  const a = conRec({});
+  assert.equal(a.length, 1);
+  assert.equal(a[0].title, '⏰ Tomar agua');
+  assert.equal(a[0].body, 'Recordatorio · 09:30');
+  assert.equal(a[0].url, './index.html?aviso=recordatorios');
+  assert.equal(conRec({ nota: 'Dos vasos' })[0].body, 'Dos vasos');
+});
+t('recordatorio: no antes de su hora, y hasta 2 h tarde si el servidor se atrasó', () => {
+  assert.equal(conRec({}, { minutosAhora: 9 * 60 + 29 }).length, 0);
+  assert.equal(conRec({}, { minutosAhora: 9 * 60 + 30 + 120 }).length, 1);
+  assert.equal(conRec({}, { minutosAhora: 9 * 60 + 30 + 121 }).length, 0);
+});
+t('recordatorio: una vez por día (aunque se repita)', () => {
+  assert.equal(conRec({}, { enviados: { 'rec_r1_2026-11-12': '2026-11-12' } }).length, 0);
+  assert.equal(conRec({ repetir: 'diario' }, { hoy: '2026-11-13', enviados: { 'rec_r1_2026-11-12': '2026-11-12' } }).length, 1);
+});
+t('recordatorio: respeta día, repetición, "hasta" y desactivado', () => {
+  assert.equal(conRec({ fecha: '2026-11-13' }).length, 0);                       // es mañana
+  assert.equal(conRec({ repetir: 'semanal', dias: [1, 3] }).length, 0);           // hoy es jueves
+  assert.equal(conRec({ repetir: 'semanal', dias: [4] }).length, 1);              // jueves
+  assert.equal(conRec({ repetir: 'diario', hasta: '2026-11-11' }).length, 0);
+  assert.equal(conRec({ activo: false }).length, 0);
+});
+t('recordatorio: sale aunque sea antes de la hora de avisos del calendario y va primero', () => {
+  const a = construirAvisos({ ...base, asistioHoy: false, hora: 8, minutosAhora: 9 * 60 + 30, recordatorios: [rec] });
+  assert.equal(a[0].tag, 'rec_r1');
+  assert.equal(a[1].tag, 'asistencia');
 });
 
 console.log(`\n${n} pruebas OK`);

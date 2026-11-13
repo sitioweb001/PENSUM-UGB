@@ -100,6 +100,71 @@ function _hhmmFromIso(iso) {
   catch (e) { return ''; }
 }
 
+// ═══════════════════════════════════════════════════════════
+// RECORDATORIOS PERSONALIZADOS (nombre + fecha + hora + repetición)
+// Funciones puras que usan TANTO la app (app.js) como el servidor de avisos
+// push (scripts/logica.mjs lo carga con require). Trabajan solo con textos
+// "YYYY-MM-DD", sin depender del huso horario de quien las ejecute.
+//   rec = { id, nombre, fecha, hora:'HH:MM', repetir:'nunca'|'diario'|'semanal'|'mensual',
+//           dias:[0-6] (solo semanal; 0 = domingo), hasta:'YYYY-MM-DD'|'', activo, nota }
+// ═══════════════════════════════════════════════════════════
+function _recPartes(ymd) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || '');
+  return m ? { y: +m[1], m: +m[2], d: +m[3] } : null;
+}
+function recDiaSemana(ymd) {
+  const p = _recPartes(ymd);
+  return p ? new Date(Date.UTC(p.y, p.m - 1, p.d)).getUTCDay() : null;
+}
+function recSumarDias(ymd, n) {
+  const p = _recPartes(ymd);
+  if (!p) return null;
+  return new Date(Date.UTC(p.y, p.m - 1, p.d + n)).toISOString().slice(0, 10);
+}
+function _recDiasDelMes(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+
+// ¿Este recordatorio "toca" ese día? (sin mirar la hora)
+function recordatorioOcurreEn(rec, ymd) {
+  if (!rec || rec.activo === false) return false;
+  const p = _recPartes(ymd), s = _recPartes(rec.fecha);
+  if (!p || !s) return false;
+  if (ymd < rec.fecha) return false;              // ISO: comparar como texto es correcto
+  if (rec.hasta && ymd > rec.hasta) return false;
+  if (rec.repetir === 'diario') return true;
+  if (rec.repetir === 'semanal') {
+    const dias = Array.isArray(rec.dias) && rec.dias.length ? rec.dias.map(Number) : [recDiaSemana(rec.fecha)];
+    return dias.indexOf(recDiaSemana(ymd)) !== -1;
+  }
+  if (rec.repetir === 'mensual') return p.d === Math.min(s.d, _recDiasDelMes(p.y, p.m)); // día 31 → último día en meses cortos
+  return ymd === rec.fecha;                        // 'nunca' (una sola vez)
+}
+
+// Próxima fecha en que sonará (hoy cuenta solo si la hora aún no pasó).
+// `minutosAhora` = minutos desde medianoche; si no se pasa, hoy cuenta siempre.
+function proximaOcurrenciaRecordatorio(rec, hoyYmd, minutosAhora) {
+  const hm = /^(\d{1,2}):(\d{2})$/.exec((rec && rec.hora) || '');
+  const minRec = hm ? (+hm[1]) * 60 + (+hm[2]) : 0;
+  for (let i = 0; i <= 400; i++) {
+    const ymd = recSumarDias(hoyYmd, i);
+    if (!ymd) return null;
+    if (i === 0 && minutosAhora !== undefined && minutosAhora > minRec) continue;
+    if (recordatorioOcurreEn(rec, ymd)) return ymd;
+  }
+  return null;
+}
+
+function resumenRepeticionRecordatorio(rec) {
+  const NOMBRES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  let t = 'Una sola vez';
+  if (rec.repetir === 'diario') t = 'Todos los días';
+  else if (rec.repetir === 'semanal') {
+    const dias = (Array.isArray(rec.dias) && rec.dias.length ? rec.dias.map(Number) : [recDiaSemana(rec.fecha)]).slice().sort();
+    t = dias.length === 7 ? 'Todos los días' : 'Cada ' + dias.map((d) => NOMBRES[d]).join(', ');
+  } else if (rec.repetir === 'mensual') t = 'Cada mes (día ' + ((_recPartes(rec.fecha) || {}).d || '?') + ')';
+  if (rec.repetir && rec.repetir !== 'nunca' && rec.hasta) t += ' hasta ' + rec.hasta;
+  return t;
+}
+
 // ── Puente para Node/pruebas — no afecta al navegador ──
 // En un <script> normal del navegador, `module` no existe, así que este
 // bloque directamente no se ejecuta y el comportamiento es idéntico a
@@ -107,5 +172,6 @@ function _hhmmFromIso(iso) {
 // archivo se carga con `require()` desde Node (ver calculos.test.js) se
 // exponen como exports para poder probarlas.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { escapeHtml, calcComputo, calcFinal, filterByPeriod, daysUntil, getTodayKey, _fmtNota, _hhmmFromIso };
+  module.exports = { escapeHtml, calcComputo, calcFinal, filterByPeriod, daysUntil, getTodayKey, _fmtNota, _hhmmFromIso,
+    recDiaSemana, recSumarDias, recordatorioOcurreEn, proximaOcurrenciaRecordatorio, resumenRepeticionRecordatorio };
 }

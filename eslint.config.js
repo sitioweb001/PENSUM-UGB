@@ -65,7 +65,9 @@ module.exports = [
         // ESLint analice cada archivo por separado y no lo sepa solo.
         escapeHtml: 'readonly', calcComputo: 'readonly', calcFinal: 'readonly',
         filterByPeriod: 'readonly', daysUntil: 'readonly', getTodayKey: 'readonly',
-        _fmtNota: 'readonly', _hhmmFromIso: 'readonly'
+        _fmtNota: 'readonly', _hhmmFromIso: 'readonly',
+        recDiaSemana: 'readonly', recordatorioOcurreEn: 'readonly',
+        proximaOcurrenciaRecordatorio: 'readonly', resumenRepeticionRecordatorio: 'readonly'
       }
     },
     rules: {

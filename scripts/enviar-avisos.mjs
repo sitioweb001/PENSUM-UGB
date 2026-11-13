@@ -1,7 +1,7 @@
 // enviar-avisos.mjs — manda los avisos push de Pénsum UGB (se ejecuta en GitHub Actions)
 //
 // Para cada estudiante con dispositivos registrados (estudiantes/{id}/dispositivos):
-//   1. lee su configuración (ajustes/notificaciones), eventos y asistencia de hoy,
+//   1. lee su configuración (ajustes/notificaciones), eventos, recordatorios y asistencia de hoy,
 //   2. decide qué avisos tocan según la hora de El Salvador (ver logica.mjs),
 //   3. los envía por FCM y anota en ajustes/pushEstado lo ya enviado, para no repetir.
 // Es idempotente: si GitHub retrasa o repite una ejecución, no se duplican avisos.
@@ -58,8 +58,8 @@ async function enviar(dispositivos, aviso) {
   return res.successCount;
 }
 
-const { hoy, hora } = ahoraLocal();
-console.log(`🕒 Hora local de El Salvador: ${hoy} ${String(hora).padStart(2, '0')}:xx${PROBAR ? '  (MODO PRUEBA)' : ''}`);
+const { hoy, hora, minuto } = ahoraLocal();
+console.log(`🕒 Hora local de El Salvador: ${hoy} ${String(hora).padStart(2, '0')}:${String(minuto).padStart(2, '0')}${PROBAR ? '  (MODO PRUEBA)' : ''}`);
 
 const snapDisp = await db.collectionGroup('dispositivos').get();
 const porEstudiante = new Map();
@@ -97,9 +97,11 @@ for (const [sid, dispositivos] of porEstudiante) {
   const enviados = Object.assign({}, estadoSnap.exists ? (estadoSnap.data().enviados || {}) : {});
   const asistioHoy = (await estRef.collection('asistencias').doc(hoy).get()).exists;
   const eventos = (await estRef.collection('eventos').get()).docs.map((d) => Object.assign({ id: d.id }, d.data()));
+  const recordatorios = (await estRef.collection('recordatorios').get()).docs.map((d) => Object.assign({ id: d.id }, d.data()));
 
   const pendientes = construirAvisos({
-    est: estSnap.data(), cfg, eventos, asistioHoy, enviados, hoy, hora, materias
+    est: estSnap.data(), cfg, eventos, asistioHoy, enviados, hoy, hora, materias,
+    recordatorios, minutosAhora: hora * 60 + minuto
   });
   if (!pendientes.length) { console.log(`• ${sid}: nada que avisar.`); continue; }
 
